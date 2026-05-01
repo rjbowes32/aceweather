@@ -121,6 +121,7 @@ const elements = {
   agronomyDisclaimer: $("#agronomy-disclaimer"),
   exportHourlyChart: $("#export-hourly-chart"),
   exportHistoryChart: $("#export-history-chart"),
+  copyAiReport: $("#copy-ai-report"),
   exportStatus: $("#export-status"),
   saveLocationButton: $("#save-location-button"),
   settingsStatus: $("#settings-status"),
@@ -925,6 +926,25 @@ elements.exportHistoryChart.addEventListener("click", () => {
   const suffix = state.history.mode === "custom" ? `${state.history.start}-to-${state.history.end}` : `${state.history.days}d`;
   downloadCanvas(elements.historyChart, `aceweather-history-${suffix}.png`);
   setExportStatus("Downloaded the historical weather chart.");
+});
+
+elements.copyAiReport.addEventListener("click", async () => {
+  const loc = state.selectedLocation;
+  const params = new URLSearchParams({
+    lat: loc.latitude,
+    lon: loc.longitude,
+    timezone: loc.timezone || "auto",
+    label: loc.name,
+  });
+  setExportStatus("Generating AI report…");
+  try {
+    const response = await fetch(`/api/report?${params.toString()}`);
+    const text = await response.text();
+    await navigator.clipboard.writeText(text);
+    setExportStatus(`Copied report for ${loc.name} — paste it into Claude.`);
+  } catch {
+    setExportStatus("Could not copy report. Try again.");
+  }
 });
 
 initHistoryDefaults();

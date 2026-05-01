@@ -174,6 +174,25 @@ SMITH_MIN_RH: int = 90
 MAX_HISTORY_DAYS: int = 730
 _VALID_TIMEZONE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_+\-/]{0,63}$")
 
+_WMO_LABELS: dict[int, str] = {
+    0: "Clear sky", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Fog", 48: "Rime fog",
+    51: "Light drizzle", 53: "Drizzle", 55: "Dense drizzle",
+    56: "Freezing drizzle", 57: "Heavy freezing drizzle",
+    61: "Light rain", 63: "Rain", 65: "Heavy rain",
+    66: "Freezing rain", 67: "Heavy freezing rain",
+    71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
+    80: "Rain showers", 81: "Heavy showers", 82: "Violent showers",
+    85: "Snow showers", 86: "Heavy snow showers",
+    95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Heavy thunderstorm with hail",
+}
+
+
+def wmo_label(code: int | None) -> str:
+    if code is None:
+        return "Unknown"
+    return _WMO_LABELS.get(int(code), "Unknown")
+
 
 @dataclass
 class MeteomaticsCredentials:
@@ -510,6 +529,96 @@ def aggregate_weather(
     }
 
 
+def build_report(payload: dict[str, Any]) -> str:
+    location = payload["location"]
+    forecast = payload["providers"]["openMeteo"]["forecast"]
+    history = payload["providers"]["openMeteo"]["history"]
+    air = payload["providers"]["openMeteo"]["airQuality"]
+    agronomy = payload["agronomy"]
+
+    lines: list[str] = []
+
+    lines += [
+        f"# AceWeather Report: {location['name']}",
+        f"Generated: {payload['generatedAt']} | Lat: {location['latitude']:.4f} | Lon: {location['longitude']:.4f} | Timezone: {location['timezone']}",
+        "",
+    ]
+
+    cur = forecast["current"]
+    lines += [
+        "## Current Conditions",
+        f"- Temperature: {cur['temperature_2m']:.1f} °C (feels like {cur['apparent_temperature']:.1f} °C)",
+        f"- Condition: {wmo_label(cur['weather_code'])}",
+        f"- Humidity: {cur['relative_humidity_2m']}% | Wind: {cur['wind_speed_10m']:.0f} km/h (gusts {cur['wind_gusts_10m']:.0f} km/h) | Pressure: {cur['pressure_msl']:.0f} hPa",
+        f"- Precipitation (current reading): {cur['precipitation']:.1f} mm",
+        "",
+    ]
+
+    hist = history["daily"]
+    n = len(hist["time"])
+    lines += [
+        "## Last 7 Days (Observed Archive)",
+        "| Date       | Max °C | Min °C | Rain mm | Wind km/h | Condition            |",
+        "|------------|--------|--------|---------|-----------|----------------------|",
+    ]
+    for i in range(max(0, n - 7), n):
+        tmax = hist["temperature_2m_max"][i]
+        tmin = hist["temperature_2m_min"][i]
+        rain = hist["precipitation_sum"][i] or 0
+        wind = hist["wind_speed_10m_max"][i] or 0
+        tmax_s = f"{tmax:.1f}" if tmax is not None else "--"
+        tmin_s = f"{tmin:.1f}" if tmin is not None else "--"
+        lines.append(
+            f"| {hist['time'][i]} | {tmax_s:>6} | {tmin_s:>6} | {rain:>7.1f} | {wind:>9.0f} | {wmo_label(hist['weather_code'][i]):<20} |"
+        )
+    lines.append("")
+
+    daily = forecast["daily"]
+    lines += [
+        "## 10-Day Forecast",
+        "| Date       | Max °C | Min °C | Rain mm | Rain % | Wind km/h | Condition            |",
+        "|------------|--------|--------|---------|--------|-----------|----------------------|",
+    ]
+    for i in range(min(10, len(daily["time"]))):
+        tmax = daily["temperature_2m_max"][i]
+        tmin = daily["temperature_2m_min"][i]
+        rain = daily["precipitation_sum"][i] or 0
+        rain_prob = daily["precipitation_probability_max"][i] or 0
+        wind = daily["wind_speed_10m_max"][i] or 0
+        tmax_s = f"{tmax:.1f}" if tmax is not None else "--"
+        tmin_s = f"{tmin:.1f}" if tmin is not None else "--"
+        lines.append(
+            f"| {daily['time'][i]} | {tmax_s:>6} | {tmin_s:>6} | {rain:>7.1f} | {rain_prob:>5}% | {wind:>9.0f} | {wmo_label(daily['weather_code'][i]):<20} |"
+        )
+    lines.append("")
+
+    air_cur = air["current"]
+    lines += [
+        "## Air Quality (Current)",
+        f"- European AQI: {air_cur.get('european_aqi', '--')} | US AQI: {air_cur.get('us_aqi', '--')}",
+        f"- PM2.5: {air_cur.get('pm2_5', '--')} µg/m³ | PM10: {air_cur.get('pm10', '--')} µg/m³",
+        f"- NO2: {air_cur.get('nitrogen_dioxide', '--')} µg/m³ | O3: {air_cur.get('ozone', '--')} µg/m³",
+        "",
+    ]
+
+    ag = agronomy["summary"]
+    spray = agronomy["sprayWindow"]
+    disease = agronomy["diseaseModels"]
+    lines += [
+        "## Agronomy Summary",
+        f"- Rain last 7 days: {ag['rainLast7Days']:.1f} mm | Rain next 7 days: {ag['rainNext7Days']:.1f} mm",
+        f"- Field access score: {ag['fieldAccessScore']}/100 ({ag['fieldAccessLabel']})",
+        f"- Spray window (next 24 h): {spray['openHoursNext24']} h open | {spray['longestBlockHours']} h longest block",
+        f"- General fungal pressure: {disease['generalFungalPressure']['label']} (score {disease['generalFungalPressure']['score']})",
+        f"- Late blight Smith proxy: {'Triggered' if disease['lateBlightSmithProxy']['triggered'] else 'Not triggered'}",
+        f"- Septoria proxy: {disease['septoriaProxy']['label']} (score {disease['septoriaProxy']['score']})",
+        f"- Disclaimer: {agronomy['disclaimer']}",
+        "",
+    ]
+
+    return "\n".join(lines)
+
+
 class AceWeatherHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(STATIC_DIR), **kwargs)
@@ -518,6 +627,9 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/api/search":
             self.handle_search(parsed.query)
+            return
+        if parsed.path == "/api/report":
+            self.handle_report(parsed.query)
             return
         if parsed.path == "/api/weather":
             self.handle_weather(parsed.query)
@@ -531,6 +643,60 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
             )
             return
         super().do_GET()
+
+    def handle_report(self, query_string: str) -> None:
+        params = urllib.parse.parse_qs(query_string)
+        location_query = params.get("query", [None])[0]
+
+        try:
+            if location_query:
+                location_query = location_query.strip()
+                if len(location_query) < 2:
+                    self.send_error_json(HTTPStatus.BAD_REQUEST, "Location query must be at least 2 characters.")
+                    return
+                geo = fetch_geocoding(location_query)
+                results = geo.get("results") or []
+                if not results:
+                    self.send_error_json(HTTPStatus.NOT_FOUND, f"No location found for '{location_query}'.")
+                    return
+                best = results[0]
+                latitude = float(best["latitude"])
+                longitude = float(best["longitude"])
+                timezone = best.get("timezone") or "auto"
+                label = ", ".join(filter(None, [best.get("name"), best.get("admin1"), best.get("country")]))
+            else:
+                try:
+                    latitude = float(params.get("lat", [""])[0])
+                    longitude = float(params.get("lon", [""])[0])
+                except ValueError:
+                    self.send_error_json(HTTPStatus.BAD_REQUEST, "Provide ?query=<location> or ?lat=<n>&lon=<n>.")
+                    return
+                if not (-90 <= latitude <= 90):
+                    self.send_error_json(HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.")
+                    return
+                if not (-180 <= longitude <= 180):
+                    self.send_error_json(HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.")
+                    return
+                timezone = params.get("timezone", ["auto"])[0] or "auto"
+                if timezone != "auto" and not _VALID_TIMEZONE_RE.match(timezone):
+                    self.send_error_json(HTTPStatus.BAD_REQUEST, "Invalid timezone format.")
+                    return
+                label = params.get("label", [None])[0]
+
+            payload = aggregate_weather(latitude, longitude, timezone, label, history_days=7)
+            report_text = build_report(payload)
+            body = report_text.encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+        except ValueError as exc:
+            self.send_error_json(HTTPStatus.BAD_REQUEST, str(exc))
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
+            _log.error("Report generation failed: %s", exc)
+            self.send_error_json(HTTPStatus.BAD_GATEWAY, "Report generation is temporarily unavailable.")
 
     def handle_search(self, query_string: str) -> None:
         params = urllib.parse.parse_qs(query_string)
