@@ -1,0 +1,2 @@
+# AceWeather uses Python standard library only — no third-party packages required.
+# Python 3.10+ needed (uses zip strict= parameter).
