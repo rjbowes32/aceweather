@@ -1015,17 +1015,29 @@ initHistoryDefaults();
 hydrateSettings();
 renderSettings();
 
+async function reverseGeocode(latitude, longitude) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`;
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+    const addr = data.address || {};
+    const name = addr.city || addr.town || addr.village || addr.hamlet || addr.suburb || addr.county || data.display_name?.split(",")[0] || "My Location";
+    const region = addr.state || addr.county || "";
+    const country = addr.country || "";
+    return [name, region, country].filter(Boolean).join(", ");
+  } catch {
+    return "My Location";
+  }
+}
+
 if ("geolocation" in navigator) {
   elements.heroLocation.textContent = "Detecting your location…";
   elements.heroSummary.textContent = "Requesting GPS position.";
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      loadWeather({
-        name: "My Location",
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        timezone: "auto",
-      });
+    async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      const name = await reverseGeocode(latitude, longitude);
+      loadWeather({ name, latitude, longitude, timezone: "auto" });
     },
     () => {
       loadWeather();
