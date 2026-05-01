@@ -131,6 +131,9 @@ const elements = {
   searchInput: $("#search-input"),
   searchResults: $("#search-results"),
   resultTemplate: $("#result-template"),
+  modelVerifyPanel: $("#model-verify-panel"),
+  modelVerifyGrid: $("#model-verify-grid"),
+  modelVerifyStamp: $("#model-verify-stamp"),
   hourlyChart: $("#hourly-chart"),
   historyChart: $("#history-chart"),
 };
@@ -605,14 +608,74 @@ function renderClimate(data) {
     .join("");
 }
 
+function renderModelVerification(data) {
+  const ecmwf = data.providers?.ecmwf;
+  if (!ecmwf?.enabled || !ecmwf.observation) {
+    elements.modelVerifyPanel.hidden = true;
+    return;
+  }
+  elements.modelVerifyPanel.hidden = false;
+
+  const obs = ecmwf.observation;
+  const cur = data.providers.openMeteo.forecast.current;
+
+  const tempDelta = (obs.temperature_2m != null && cur.temperature_2m != null)
+    ? (obs.temperature_2m - cur.temperature_2m)
+    : null;
+  const windDelta = (obs.wind_speed_10m != null && cur.wind_speed_10m != null)
+    ? (obs.wind_speed_10m - cur.wind_speed_10m)
+    : null;
+
+  function deltaChip(value, unit) {
+    if (value === null) return "";
+    const sign = value >= 0 ? "+" : "";
+    const cls = Math.abs(value) < 1 ? "agree" : Math.abs(value) < 3 ? "close" : "diverge";
+    return `<span class="model-delta ${cls}">${sign}${value.toFixed(1)}${unit}</span>`;
+  }
+
+  const rows = [
+    ["Temperature", formatTemperature(obs.temperature_2m, 1), deltaChip(tempDelta, "°")],
+    ["Humidity", obs.relative_humidity_2m != null ? `${obs.relative_humidity_2m}%` : "--", ""],
+    ["Wind speed", obs.wind_speed_10m != null ? `${formatNumber(obs.wind_speed_10m, 0)} km/h` : "--", deltaChip(windDelta, " km/h")],
+    ["Gusts", obs.wind_gusts_10m != null ? `${formatNumber(obs.wind_gusts_10m, 0)} km/h` : "--", ""],
+    ["Precipitation", obs.precipitation != null ? `${formatNumber(obs.precipitation, 1)} mm` : "--", ""],
+    ["Cloud cover", obs.cloud_cover != null ? `${obs.cloud_cover}%` : "--", ""],
+    ["Pressure", obs.pressure_msl != null ? `${formatNumber(obs.pressure_msl, 0)} hPa` : "--", ""],
+    ["Condition", weatherCodeToLabel(obs.weather_code), ""],
+  ];
+
+  elements.modelVerifyGrid.innerHTML = rows.map(([label, value, delta]) => `
+    <article class="verify-card">
+      <div class="metric-label">${label}</div>
+      <div class="metric-value">${value}${delta}</div>
+    </article>
+  `).join("");
+
+  const obsTime = obs.time ? new Date(obs.time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+  elements.modelVerifyStamp.textContent = `ECMWF IFS reading at ${obsTime} | Delta vs best-match blend`;
+}
+
 function renderProviders(data) {
+  const ecmwf = data.providers?.ecmwf;
+  const ecmwfStatus = ecmwf?.enabled ? "live" : "";
+  const ecmwfNote = ecmwf?.enabled
+    ? `ECMWF IFS 0.25° reading at ${ecmwf.observation?.time ? new Date(ecmwf.observation.time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "unknown"}.`
+    : (ecmwf?.reason || "Unavailable.");
+
   const openMeteoCard = `
     <article class="provider-card">
       <div class="provider-title">
         <strong>Open-Meteo</strong>
         <span class="status-dot live" aria-hidden="true"></span>
       </div>
-      <p class="provider-meta">Forecast, archive, geocoding, and air quality active.</p>
+      <p class="provider-meta">Forecast (best-match blend), archive, geocoding, and air quality active.</p>
+    </article>
+    <article class="provider-card">
+      <div class="provider-title">
+        <strong>ECMWF IFS 0.25°</strong>
+        <span class="status-dot ${ecmwfStatus}" aria-hidden="true"></span>
+      </div>
+      <p class="provider-meta">${ecmwfNote}</p>
     </article>
   `;
 
@@ -693,6 +756,7 @@ function renderAll(data) {
   renderAirQuality(data);
   renderHistory(data);
   renderClimate(data);
+  renderModelVerification(data);
   renderProviders(data);
   renderAgronomy(data);
   renderSettings();

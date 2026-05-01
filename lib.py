@@ -63,6 +63,11 @@ AIR_QUALITY_HOURLY = [
     "sulphur_dioxide", "ozone", "uv_index", "aerosol_optical_depth",
 ]
 
+ECMWF_HOURLY_VARS = [
+    "temperature_2m", "relative_humidity_2m", "precipitation",
+    "weather_code", "cloud_cover", "wind_speed_10m", "wind_gusts_10m", "pressure_msl",
+]
+
 # Spray-window thresholds
 SPRAY_MAX_WIND_KMH: float = 18
 SPRAY_MAX_GUST_KMH: float = 28
@@ -242,6 +247,35 @@ def fetch_air_quality(latitude: float, longitude: float, timezone: str) -> dict[
     return read_json(url)
 
 
+def fetch_ecmwf_current(latitude: float, longitude: float, timezone: str) -> dict[str, Any]:
+    url = build_url(
+        OPEN_METEO_FORECAST_URL,
+        latitude=latitude, longitude=longitude, timezone=timezone,
+        hourly=ECMWF_HOURLY_VARS,
+        past_hours=3, forecast_hours=1,
+        models="ecmwf_ifs025",
+    )
+    try:
+        data = read_json(url)
+        times = data.get("hourly", {}).get("time", [])
+        if not times:
+            return {"enabled": False, "reason": "No ECMWF data returned."}
+        # Use second-to-last entry: most recent completed hour from past_hours
+        idx = max(0, len(times) - 2)
+        hourly = data["hourly"]
+        obs = {var: hourly[var][idx] for var in ECMWF_HOURLY_VARS if var in hourly}
+        obs["time"] = times[idx]
+        return {
+            "enabled": True,
+            "model": "ECMWF IFS 0.25°",
+            "observation": obs,
+            "retrievedAt": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        }
+    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
+        _log.warning("ECMWF IFS fetch failed: %s", exc)
+        return {"enabled": False, "reason": "ECMWF IFS data is temporarily unavailable."}
+
+
 def fetch_meteomatics(latitude: float, longitude: float) -> dict[str, Any]:
     credentials = get_meteomatics_credentials()
     if credentials is None:
@@ -419,6 +453,7 @@ def aggregate_weather(
     )
     climate_window = fetch_climate_window(latitude, longitude, timezone)
     air_quality = fetch_air_quality(latitude, longitude, timezone)
+    ecmwf = fetch_ecmwf_current(latitude, longitude, timezone)
     meteomatics = fetch_meteomatics(latitude, longitude)
     return {
         "location": {
@@ -434,6 +469,7 @@ def aggregate_weather(
                 "climateWindow": climate_window,
                 "airQuality": air_quality,
             },
+            "ecmwf": ecmwf,
             "meteomatics": meteomatics,
         },
         "agronomy": derive_agronomy(forecast, history, climate_window),
@@ -446,6 +482,7 @@ def build_report(payload: dict[str, Any]) -> str:
     forecast = payload["providers"]["openMeteo"]["forecast"]
     history = payload["providers"]["openMeteo"]["history"]
     air = payload["providers"]["openMeteo"]["airQuality"]
+    ecmwf = payload["providers"].get("ecmwf", {})
     agronomy = payload["agronomy"]
 
     lines: list[str] = [
@@ -495,6 +532,27 @@ def build_report(payload: dict[str, Any]) -> str:
             f"{f'{tmin:.1f}' if tmin is not None else '--':>6} | {rain:>7.1f} | "
             f"{rain_prob:>5}% | {wind:>9.0f} | {wmo_label(daily['weather_code'][i]):<20} |"
         )
+    if ecmwf.get("enabled") and ecmwf.get("observation"):
+        obs = ecmwf["observation"]
+        e_temp = f"{obs['temperature_2m']:.1f} °C" if obs.get("temperature_2m") is not None else "--"
+        e_wind = f"{obs['wind_speed_10m']:.0f} km/h" if obs.get("wind_speed_10m") is not None else "--"
+        e_gust = f"{obs['wind_gusts_10m']:.0f} km/h" if obs.get("wind_gusts_10m") is not None else "--"
+        e_rain = f"{obs['precipitation']:.1f} mm" if obs.get("precipitation") is not None else "--"
+        e_pres = f"{obs['pressure_msl']:.0f} hPa" if obs.get("pressure_msl") is not None else "--"
+        lines += [
+            "",
+            "## ECMWF IFS 0.25° Model Verification",
+            f"Most recent ECMWF reading: {obs.get('time', 'unknown')}",
+            f"- Temperature: {e_temp}",
+            f"- Humidity: {obs.get('relative_humidity_2m', '--')}% | Wind: {e_wind} (gusts {e_gust})",
+            f"- Precipitation: {e_rain} | Cloud cover: {obs.get('cloud_cover', '--')}% | Pressure: {e_pres}",
+            f"- Condition: {wmo_label(obs.get('weather_code'))}",
+        ]
+        cur = forecast["current"]
+        if cur.get("temperature_2m") is not None and obs.get("temperature_2m") is not None:
+            delta = obs["temperature_2m"] - cur["temperature_2m"]
+            lines.append(f"- Model delta vs best_match: {delta:+.1f} °C temperature")
+
     air_cur = air["current"]
     lines += [
         "",
