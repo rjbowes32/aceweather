@@ -19,6 +19,7 @@ OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 OPEN_METEO_AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+NOMINATIM_GEOCODE_URL = "https://nominatim.openstreetmap.org/search"
 METEOMATICS_BASE_URL = "https://api.meteomatics.com"
 TIMEOUT_SECONDS = 20
 
@@ -140,9 +141,34 @@ def get_meteomatics_credentials() -> MeteomaticsCredentials | None:
     return None
 
 
+def _nominatim_geocoding(query: str) -> dict[str, Any]:
+    url = build_url(NOMINATIM_GEOCODE_URL, q=query, format="json", limit=6, addressdetails=1)
+    items = read_json(url, headers={"User-Agent": "AceWeather/1.0"})
+    results = []
+    for item in items:
+        addr = item.get("address", {})
+        name = (
+            addr.get("city") or addr.get("town") or addr.get("village")
+            or addr.get("hamlet") or addr.get("suburb")
+            or item.get("display_name", "").split(",")[0].strip()
+        )
+        results.append({
+            "name": name,
+            "admin1": addr.get("state") or addr.get("county") or "",
+            "country": addr.get("country") or "",
+            "latitude": float(item["lat"]),
+            "longitude": float(item["lon"]),
+            "timezone": "auto",
+        })
+    return {"results": results}
+
+
 def fetch_geocoding(query: str) -> dict[str, Any]:
     url = build_url(OPEN_METEO_GEOCODE_URL, name=query, count=8, language="en", format="json")
-    return read_json(url)
+    data = read_json(url)
+    if data.get("results"):
+        return data
+    return _nominatim_geocoding(query)
 
 
 def fetch_forecast(latitude: float, longitude: float, timezone: str) -> dict[str, Any]:
