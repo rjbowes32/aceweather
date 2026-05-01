@@ -1014,4 +1014,24 @@ elements.copyAiReport.addEventListener("click", async () => {
 initHistoryDefaults();
 hydrateSettings();
 renderSettings();
-loadWeather();
+
+if ("geolocation" in navigator) {
+  elements.heroLocation.textContent = "Detecting your location…";
+  elements.heroSummary.textContent = "Requesting GPS position.";
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      loadWeather({
+        name: "My Location",
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        timezone: "auto",
+      });
+    },
+    () => {
+      loadWeather();
+    },
+    { timeout: 8000, maximumAge: 60000 },
+  );
+} else {
+  loadWeather();
+}
