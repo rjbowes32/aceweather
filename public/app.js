@@ -1,5 +1,7 @@
 const DEFAULT_HISTORY_RANGE = "30";
 const STORAGE_KEY = "aceweather-settings-v1";
+const PULL_REFRESH_TRIGGER_PX = 84;
+const PULL_REFRESH_MAX_PX = 128;
 
 const state = {
   selectedLocation: {
@@ -10,7 +12,8 @@ const state = {
   },
   latestPayload: null,
   settings: {
-    unitSystem: "metric",
+    temperatureUnit: "c",
+    speedUnit: "kph",
     savedLocations: [],
   },
   history: {
@@ -18,6 +21,16 @@ const state = {
     days: 30,
     start: "",
     end: "",
+  },
+  ui: {
+    settingsTab: "preferences",
+  },
+  isRefreshing: false,
+  pullRefresh: {
+    active: false,
+    pulling: false,
+    startY: 0,
+    distance: 0,
   },
 };
 
@@ -123,10 +136,19 @@ const elements = {
   exportHistoryChart: $("#export-history-chart"),
   copyAiReport: $("#copy-ai-report"),
   exportStatus: $("#export-status"),
+  currentLocationButton: $("#current-location-button"),
   saveLocationButton: $("#save-location-button"),
+  refreshButton: $("#refresh-button"),
+  settingsButton: $("#settings-button"),
+  settingsCloseButton: $("#settings-close-button"),
+  settingsPopover: $("#settings-popover"),
   settingsStatus: $("#settings-status"),
-  unitToggle: $("#unit-toggle"),
+  settingsTabs: $("#settings-tabs"),
+  settingsPanels: document.querySelectorAll("[data-settings-panel]"),
+  tempUnitToggle: $("#temp-unit-toggle"),
+  speedUnitToggle: $("#speed-unit-toggle"),
   savedLocations: $("#saved-locations"),
+  documentsMenu: $("#documents-menu"),
   searchForm: $("#search-form"),
   searchInput: $("#search-input"),
   searchResults: $("#search-results"),
@@ -136,7 +158,52 @@ const elements = {
   modelVerifyStamp: $("#model-verify-stamp"),
   hourlyChart: $("#hourly-chart"),
   historyChart: $("#history-chart"),
+  pullRefreshIndicator: $("#pull-refresh-indicator"),
+  pullRefreshLabel: $("#pull-refresh-label"),
 };
+
+function isAtTopOfPage() {
+  return window.scrollY <= 0;
+}
+
+function updateRefreshUi(message = "", isRefreshing = false) {
+  if (elements.refreshButton) {
+    elements.refreshButton.disabled = isRefreshing;
+    elements.refreshButton.textContent = isRefreshing ? "Refreshing..." : "Refresh";
+  }
+  if (!elements.pullRefreshIndicator || !elements.pullRefreshLabel) {
+    return;
+  }
+  if (message) {
+    elements.pullRefreshIndicator.hidden = false;
+    elements.pullRefreshLabel.textContent = message;
+  } else if (!state.pullRefresh.pulling && !isRefreshing) {
+    elements.pullRefreshIndicator.hidden = true;
+    elements.pullRefreshLabel.textContent = "Pull to refresh";
+  }
+}
+
+function setPullRefreshDistance(distance) {
+  if (!elements.pullRefreshIndicator) {
+    return;
+  }
+  const boundedDistance = Math.max(0, Math.min(distance, PULL_REFRESH_MAX_PX));
+  elements.pullRefreshIndicator.style.setProperty("--pull-offset", `${boundedDistance}px`);
+}
+
+function resetPullRefreshUi() {
+  state.pullRefresh.active = false;
+  state.pullRefresh.pulling = false;
+  state.pullRefresh.startY = 0;
+  state.pullRefresh.distance = 0;
+  setPullRefreshDistance(0);
+  if (!state.isRefreshing && elements.pullRefreshIndicator) {
+    elements.pullRefreshIndicator.hidden = true;
+  }
+  if (elements.pullRefreshLabel && !state.isRefreshing) {
+    elements.pullRefreshLabel.textContent = "Pull to refresh";
+  }
+}
 
 function formatNumber(value, digits = 0) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -198,8 +265,15 @@ function loadSettings() {
       return;
     }
     const parsed = JSON.parse(raw);
-    if (parsed.unitSystem === "metric" || parsed.unitSystem === "imperial") {
-      state.settings.unitSystem = parsed.unitSystem;
+    if (parsed.temperatureUnit === "c" || parsed.temperatureUnit === "f") {
+      state.settings.temperatureUnit = parsed.temperatureUnit;
+    } else if (parsed.unitSystem === "metric" || parsed.unitSystem === "imperial") {
+      state.settings.temperatureUnit = parsed.unitSystem === "imperial" ? "f" : "c";
+    }
+    if (parsed.speedUnit === "kph" || parsed.speedUnit === "mph") {
+      state.settings.speedUnit = parsed.speedUnit;
+    } else if (parsed.unitSystem === "metric" || parsed.unitSystem === "imperial") {
+      state.settings.speedUnit = parsed.unitSystem === "imperial" ? "mph" : "kph";
     }
     if (Array.isArray(parsed.savedLocations)) {
       state.settings.savedLocations = parsed.savedLocations;
@@ -209,29 +283,45 @@ function loadSettings() {
   }
 }
 
-function isMetric() {
-  return state.settings.unitSystem === "metric";
+function usesCelsius() {
+  return state.settings.temperatureUnit === "c";
+}
+
+function usesMetricSpeed() {
+  return state.settings.speedUnit === "kph";
+}
+
+function usesMetricAuxiliaryUnits() {
+  return usesCelsius();
+}
+
+function temperatureUnitLabel() {
+  return usesCelsius() ? "°C" : "°F";
+}
+
+function speedUnitLabel() {
+  return usesMetricSpeed() ? "km/h" : "mph";
 }
 
 function formatTemperature(value, digits = 0) {
   if (value == null) {
     return "--";
   }
-  const converted = isMetric() ? value : (value * 9) / 5 + 32;
-  const suffix = isMetric() ? "C" : "F";
+  const converted = usesCelsius() ? value : (value * 9) / 5 + 32;
+  const suffix = usesCelsius() ? "C" : "F";
   return `${formatNumber(converted, digits)} ${suffix}`;
 }
 
 function temperatureSeries(values) {
-  return values.map((value) => (value == null ? null : isMetric() ? value : (value * 9) / 5 + 32));
+  return values.map((value) => (value == null ? null : usesCelsius() ? value : (value * 9) / 5 + 32));
 }
 
 function formatPrecip(value, digits = 1) {
   if (value == null) {
     return "--";
   }
-  const converted = isMetric() ? value : value / 25.4;
-  const suffix = isMetric() ? "mm" : "in";
+  const converted = usesMetricAuxiliaryUnits() ? value : value / 25.4;
+  const suffix = usesMetricAuxiliaryUnits() ? "mm" : "in";
   return `${formatNumber(converted, digits)} ${suffix}`;
 }
 
@@ -239,8 +329,8 @@ function formatSpeed(value, digits = 0) {
   if (value == null) {
     return "--";
   }
-  const converted = isMetric() ? value : value * 0.621371;
-  const suffix = isMetric() ? "km/h" : "mph";
+  const converted = usesMetricSpeed() ? value : value * 0.621371;
+  const suffix = usesMetricSpeed() ? "km/h" : "mph";
   return `${formatNumber(converted, digits)} ${suffix}`;
 }
 
@@ -248,7 +338,7 @@ function formatPressure(value, digits = 0) {
   if (value == null) {
     return "--";
   }
-  if (isMetric()) {
+  if (usesMetricAuxiliaryUnits()) {
     return `${formatNumber(value, digits)} hPa`;
   }
   return `${formatNumber(value * 0.0295299831, 2)} inHg`;
@@ -258,8 +348,8 @@ function formatDistance(valueMeters, digits = 1) {
   if (valueMeters == null) {
     return "--";
   }
-  const converted = isMetric() ? valueMeters / 1000 : valueMeters / 1609.344;
-  const suffix = isMetric() ? "km" : "mi";
+  const converted = usesMetricAuxiliaryUnits() ? valueMeters / 1000 : valueMeters / 1609.344;
+  const suffix = usesMetricAuxiliaryUnits() ? "km" : "mi";
   return `${formatNumber(converted, digits)} ${suffix}`;
 }
 
@@ -269,7 +359,13 @@ function drawLineChart(canvas, labels, series, options = {}) {
   if (!context) return;
   const width = canvas.width;
   const height = canvas.height;
-  const padding = { top: 24, right: 24, bottom: 36, left: 24 };
+  const hasAxisTitles = Boolean(options.xAxisTitle || options.yAxisTitle);
+  const padding = {
+    top: hasAxisTitles ? 34 : 24,
+    right: 24,
+    bottom: hasAxisTitles ? 50 : 36,
+    left: hasAxisTitles ? 34 : 24,
+  };
   const filteredSeries = series.map((value) => (value == null ? 0 : value));
   const min = Math.min(...filteredSeries);
   const max = Math.max(...filteredSeries);
@@ -327,6 +423,24 @@ function drawLineChart(canvas, labels, series, options = {}) {
       context.fillText(label, points[index].x - 12, height - 12);
     }
   });
+
+  if (options.yAxisTitle) {
+    context.save();
+    context.fillStyle = "rgba(169, 189, 217, 0.92)";
+    context.font = '11px "IBM Plex Mono"';
+    context.translate(12, height / 2);
+    context.rotate(-Math.PI / 2);
+    context.fillText(options.yAxisTitle, 0, 0);
+    context.restore();
+  }
+
+  if (options.xAxisTitle) {
+    context.fillStyle = "rgba(169, 189, 217, 0.92)";
+    context.font = '11px "IBM Plex Mono"';
+    context.textAlign = "right";
+    context.fillText(options.xAxisTitle, width - padding.right, height - 24);
+    context.textAlign = "left";
+  }
 }
 
 function syncHistoryPresetUi() {
@@ -337,9 +451,13 @@ function syncHistoryPresetUi() {
 }
 
 function syncUnitToggleUi() {
-  const buttons = elements.unitToggle.querySelectorAll("[data-unit-system]");
-  buttons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.unitSystem === state.settings.unitSystem);
+  const tempButtons = elements.tempUnitToggle.querySelectorAll("[data-temp-unit]");
+  tempButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.tempUnit === state.settings.temperatureUnit);
+  });
+  const speedButtons = elements.speedUnitToggle.querySelectorAll("[data-speed-unit]");
+  speedButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.speedUnit === state.settings.speedUnit);
   });
 }
 
@@ -362,6 +480,56 @@ function downloadCanvas(canvas, filename) {
   link.href = canvas.toDataURL("image/png");
   link.download = filename;
   link.click();
+}
+
+function dayKey(input) {
+  const date = new Date(input);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function buildHourlyPulse(data) {
+  const forecast = data.providers.openMeteo.forecast;
+  const current = forecast.current;
+  const hourly = forecast.hourly;
+  const now = new Date();
+  const firstFutureIndex = hourly.time.findIndex((time) => new Date(time) > now);
+  const currentHourIndex = Math.max(0, firstFutureIndex === -1 ? hourly.time.length - 1 : firstFutureIndex - 1);
+  const anchorTime = current.time || hourly.time[currentHourIndex];
+  const items = [
+    {
+      shortLabel: "Now",
+      timeLabel: formatDate(anchorTime, { hour: "numeric", minute: "2-digit" }),
+      dayLabel: "Today",
+      temperature: current.temperature_2m,
+      weatherCode: current.weather_code,
+      precipitationProbability: hourly.precipitation_probability[currentHourIndex] || 0,
+      precipitationAmount: current.precipitation ?? hourly.precipitation[currentHourIndex] ?? 0,
+      dayGroup: dayKey(anchorTime),
+      isNow: true,
+    },
+  ];
+
+  for (let index = currentHourIndex + 1; index < hourly.time.length && items.length < 24; index += 1) {
+    items.push({
+      shortLabel: formatDate(hourly.time[index], { hour: "2-digit" }),
+      timeLabel: formatDate(hourly.time[index], { hour: "numeric", minute: "2-digit" }),
+      dayLabel: formatDate(hourly.time[index], { weekday: "short" }),
+      temperature: hourly.temperature_2m[index],
+      weatherCode: hourly.weather_code[index],
+      precipitationProbability: hourly.precipitation_probability[index] || 0,
+      precipitationAmount: hourly.precipitation[index] || 0,
+      dayGroup: dayKey(hourly.time[index]),
+      isNow: false,
+    });
+  }
+
+  return items;
+}
+
+function getForecastDayStartIndex(forecast) {
+  const currentDay = (forecast.current.time || "").slice(0, 10);
+  const matchIndex = forecast.daily.time.findIndex((time) => time === currentDay);
+  return matchIndex >= 0 ? matchIndex : 0;
 }
 
 function renderSavedLocations() {
@@ -388,15 +556,99 @@ function renderSavedLocations() {
     .join("");
 }
 
+function buildReportParams(location) {
+  return new URLSearchParams({
+    lat: location.latitude,
+    lon: location.longitude,
+    timezone: location.timezone || "auto",
+    label: location.name,
+  });
+}
+
+function renderDocuments() {
+  if (!elements.documentsMenu) {
+    return;
+  }
+
+  const selectedLocation = state.selectedLocation;
+  const origin = window.location.origin;
+  const reportParams = buildReportParams(selectedLocation);
+  const reportUrl = `${origin}/api/report?${reportParams.toString()}`;
+  const searchReportUrl = `${origin}/api/report?query=${encodeURIComponent(selectedLocation.name)}`;
+  const explainerUrl = `${origin}/report-api.md`;
+
+  elements.documentsMenu.innerHTML = `
+    <article class="document-card">
+      <div class="document-card-header">
+        <div>
+          <p class="eyebrow">Weather report API</p>
+          <h4>Open the current place report</h4>
+        </div>
+      </div>
+      <p>Use the selected location in the app to open the full text weather report directly.</p>
+      <div class="document-link-list">
+        <a class="document-link" href="${reportUrl}" target="_blank" rel="noreferrer">
+          <strong>Current place report</strong>
+          <span>${escapeHtml(selectedLocation.name)}</span>
+        </a>
+        <a class="document-link" href="${searchReportUrl}" target="_blank" rel="noreferrer">
+          <strong>Query by place name</strong>
+          <span><code>/api/report?query=${escapeHtml(selectedLocation.name)}</code></span>
+        </a>
+      </div>
+    </article>
+    <article class="document-card">
+      <div class="document-card-header">
+        <div>
+          <p class="eyebrow">Explainer</p>
+          <h4>Markdown reference</h4>
+        </div>
+      </div>
+      <p>A short explainer for the report endpoint, examples, and how to swap in other places.</p>
+      <div class="document-link-list">
+        <a class="document-link" href="${explainerUrl}" target="_blank" rel="noreferrer">
+          <strong>Open report API explainer</strong>
+          <span><code>/report-api.md</code></span>
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+function syncSettingsTabUi() {
+  const activeTab = state.ui.settingsTab;
+  const buttons = elements.settingsTabs?.querySelectorAll("[data-settings-tab]") || [];
+  buttons.forEach((button) => {
+    const isActive = button.dataset.settingsTab === activeTab;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+
+  elements.settingsPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.settingsPanel !== activeTab;
+  });
+}
+
 function renderHero(data) {
   const forecast = data.providers.openMeteo.forecast;
   const current = forecast.current;
   const daily = forecast.daily;
-  const nextRain = forecast.hourly.precipitation_probability.slice(0, 12).reduce((max, item) => Math.max(max, item || 0), 0);
+  const dayStartIndex = getForecastDayStartIndex(forecast);
+  const nextRain = forecast.hourly.time
+    .map((time, index) => ({
+      time,
+      probability: forecast.hourly.precipitation_probability[index] || 0,
+      amount: forecast.hourly.precipitation[index] || 0,
+    }))
+    .find((entry) => entry.probability > 0 || entry.amount > 0);
+
+  const nextRainSummary = nextRain
+    ? `Next rain ${formatDate(nextRain.time, { hour: "numeric", minute: "2-digit" })} with ${formatNumber(nextRain.probability)}% chance and ${formatNumber(nextRain.amount, 1)} mm forecast.`
+    : "No rain currently forecast in the upcoming hours.";
 
   elements.heroEyebrow.textContent = current.is_day ? "Daytime now" : "Night watch";
   elements.heroLocation.textContent = data.location.name;
-  elements.heroSummary.textContent = `${weatherCodeToLabel(current.weather_code)} with ${formatNumber(nextRain)}% peak rain chance in the next 12 hours.`;
+  elements.heroSummary.textContent = `${weatherCodeToLabel(current.weather_code)}. ${nextRainSummary}`;
   elements.heroTemp.textContent = formatTemperature(current.temperature_2m, 0);
   elements.heroIcon.textContent = weatherCodeToIcon(current.weather_code);
 
@@ -405,8 +657,8 @@ function renderHero(data) {
     ["Humidity", `${formatNumber(current.relative_humidity_2m)}%`],
     ["Wind", formatSpeed(current.wind_speed_10m)],
     ["Pressure", formatPressure(current.pressure_msl)],
-    ["Sunrise", formatDate(daily.sunrise[0], { hour: "2-digit", minute: "2-digit" })],
-    ["Sunset", formatDate(daily.sunset[0], { hour: "2-digit", minute: "2-digit" })],
+    ["Sunrise", formatDate(daily.sunrise[dayStartIndex], { hour: "2-digit", minute: "2-digit" })],
+    ["Sunset", formatDate(daily.sunset[dayStartIndex], { hour: "2-digit", minute: "2-digit" })],
   ];
 
   elements.heroChips.innerHTML = chips
@@ -429,23 +681,28 @@ function renderHero(data) {
 }
 
 function renderHourly(data) {
-  const hourly = data.providers.openMeteo.forecast.hourly;
-  const times = hourly.time.slice(0, 12);
-  const temperatures = temperatureSeries(hourly.temperature_2m.slice(0, 12));
-  drawLineChart(elements.hourlyChart, times.map((time) => formatDate(time, { hour: "2-digit" })), temperatures, {
+  const items = buildHourlyPulse(data);
+  const temperatures = temperatureSeries(items.map((item) => item.temperature));
+  drawLineChart(elements.hourlyChart, items.map((item) => item.shortLabel), temperatures, {
     stroke: "#8ce7ff",
     strokeAlt: "#6e7dff",
+    xAxisTitle: "Next 24 hours",
+    yAxisTitle: `Temperature (${usesCelsius() ? "C" : "F"})`,
   });
 
-  elements.hourlyStrip.innerHTML = times
-    .map((time, index) => {
-      const code = hourly.weather_code[index];
+  elements.hourlyStrip.innerHTML = items
+    .map((item, index) => {
+      const previousDay = items[index - 1]?.dayGroup;
+      const showDayLabel = index === 0 || item.dayGroup !== previousDay;
       return `
-        <article class="hour-pill">
-          <time>${formatDate(time, { hour: "2-digit", minute: "2-digit" })}</time>
-          <div class="daily-icon">${weatherCodeToIcon(code)}</div>
-          <strong>${formatTemperature(hourly.temperature_2m[index], 0)}</strong>
-          <div class="daily-date">${formatNumber(hourly.precipitation_probability[index])}% rain</div>
+        <article class="hour-pill ${item.isNow ? "is-now" : ""}">
+          ${showDayLabel ? `<div class="hour-day-label">${item.dayLabel}</div>` : ""}
+          <time>${item.shortLabel}</time>
+          <div class="daily-date">${item.timeLabel}</div>
+          <div class="daily-icon">${weatherCodeToIcon(item.weatherCode)}</div>
+          <strong>${formatTemperature(item.temperature, 0)}</strong>
+          <div class="hour-rain">${formatNumber(item.precipitationProbability)}% rain</div>
+          <div class="daily-date">${formatNumber(item.precipitationAmount, 1)} mm forecast</div>
         </article>
       `;
     })
@@ -453,20 +710,25 @@ function renderHourly(data) {
 }
 
 function renderDaily(data) {
-  const daily = data.providers.openMeteo.forecast.daily;
+  const forecast = data.providers.openMeteo.forecast;
+  const daily = forecast.daily;
+  const dayStartIndex = getForecastDayStartIndex(forecast);
   elements.dailyGrid.innerHTML = daily.time
-    .slice(0, 14)
+    .slice(dayStartIndex, dayStartIndex + 14)
     .map(
-      (time, index) => `
+      (time, index) => {
+        const actualIndex = dayStartIndex + index;
+        return `
         <article class="daily-card">
           <div class="daily-date">${formatDate(time, { weekday: "short", day: "numeric", month: "short" })}</div>
-          <div class="daily-icon">${weatherCodeToIcon(daily.weather_code[index])}</div>
-          <div class="daily-temp">${formatTemperature(daily.temperature_2m_max[index], 0)} / ${formatTemperature(daily.temperature_2m_min[index], 0)}</div>
-          <p class="daily-date">${weatherCodeToLabel(daily.weather_code[index])}</p>
-          <p class="daily-date">${formatNumber(daily.precipitation_probability_max[index])}% rain | ${formatSpeed(daily.wind_speed_10m_max[index])} wind</p>
-          <p class="daily-date">${Math.round((daily.daylight_duration[index] || 0) / 3600)}h daylight</p>
+          <div class="daily-icon">${weatherCodeToIcon(daily.weather_code[actualIndex])}</div>
+          <div class="daily-temp">${formatTemperature(daily.temperature_2m_max[actualIndex], 0)} / ${formatTemperature(daily.temperature_2m_min[actualIndex], 0)}</div>
+          <p class="daily-date">${weatherCodeToLabel(daily.weather_code[actualIndex])}</p>
+          <p class="daily-date">${formatNumber(daily.precipitation_probability_max[actualIndex])}% rain | ${formatSpeed(daily.wind_speed_10m_max[actualIndex])} wind</p>
+          <p class="daily-date">${Math.round((daily.daylight_duration[actualIndex] || 0) / 3600)}h daylight</p>
         </article>
-      `
+      `;
+      }
     )
     .join("");
 }
@@ -476,6 +738,7 @@ function renderMetrics(data) {
   const current = forecast.current;
   const daily = forecast.daily;
   const hourly = forecast.hourly;
+  const dayStartIndex = getForecastDayStartIndex(forecast);
   const latestUv = hourly.uv_index.find((value) => value !== null && value !== undefined);
   const metrics = [
     ["Wind gusts", formatSpeed(current.wind_gusts_10m)],
@@ -484,8 +747,8 @@ function renderMetrics(data) {
     ["Surface pressure", formatPressure(current.surface_pressure)],
     ["UV index", formatNumber(latestUv, 1)],
     ["Soil moisture", `${formatNumber((hourly.soil_moisture_0_to_1cm[0] || 0) * 100, 0)}%`],
-    ["Sunshine today", `${Math.round((daily.sunshine_duration[0] || 0) / 3600)} h`],
-    ["Evapotranspiration", formatPrecip(daily.et0_fao_evapotranspiration[0], 1)],
+    ["Sunshine today", `${Math.round((daily.sunshine_duration[dayStartIndex] || 0) / 3600)} h`],
+    ["Evapotranspiration", formatPrecip(daily.et0_fao_evapotranspiration[dayStartIndex], 1)],
   ];
 
   elements.metricsGrid.innerHTML = metrics
@@ -580,23 +843,28 @@ function renderHistory(data) {
 }
 
 function renderClimate(data) {
-  const climate = data.providers.openMeteo.climateWindow.daily;
+  const climateWindow = data.providers.openMeteo.climateWindow;
+  const climate = climateWindow.daily;
+  const summary = climateWindow.summary || {};
   const highs = climate.temperature_2m_max.filter((value) => value !== null);
   const lows = climate.temperature_2m_min.filter((value) => value !== null);
   const rain = climate.precipitation_sum.filter((value) => value !== null);
   const avg = (values) => values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
-  const totalRain = rain.reduce((sum, value) => sum + value, 0);
+  const progressPct = summary.progressPct ?? 0;
+  const progressLabel = progressPct > 100 ? `${formatNumber(progressPct, 0)}% of average` : `${formatNumber(progressPct, 0)}% of average monthly rain`;
 
   const cards = [
     ["Average high", formatTemperature(avg(highs), 1)],
     ["Average low", formatTemperature(avg(lows), 1)],
     ["Mean daily rain", formatPrecip(avg(rain), 1)],
-    ["Total samples", `${climate.time.length} days`],
-    ["Cumulative rain", formatPrecip(totalRain, 1)],
+    ["Usual monthly rain", formatPrecip(summary.averageMonthlyRain, 1)],
+    ["Rain so far this month", formatPrecip(summary.currentMonthRain, 1)],
+    ["Observed days", `${summary.observedDays ?? 0} day${summary.observedDays === 1 ? "" : "s"}`],
+    ["Sample years", `${summary.sampleYears ?? 0} years`],
     ["Window", `${formatDate(climate.time[0], { month: "short", year: "numeric" })} to ${formatDate(climate.time.at(-1), { month: "short", year: "numeric" })}`],
   ];
 
-  elements.climateSummary.innerHTML = cards
+  const cardsHtml = cards
     .map(
       ([label, value]) => `
         <article class="climate-card">
@@ -606,6 +874,18 @@ function renderClimate(data) {
       `
     )
     .join("");
+
+  elements.climateSummary.innerHTML = `
+    <article class="climate-card climate-tracker-card">
+      <div class="metric-label">Monthly rainfall tracker</div>
+      <div class="climate-tracker-headline">${formatPrecip(summary.currentMonthRain, 1)} / ${formatPrecip(summary.averageMonthlyRain, 1)}</div>
+      <div class="climate-tracker-bar" aria-hidden="true">
+        <div class="climate-tracker-fill" style="width: ${summary.progressPctCapped ?? 0}%"></div>
+      </div>
+      <p class="daily-date">${progressLabel}</p>
+    </article>
+    ${cardsHtml}
+  `;
 }
 
 function renderModelVerification(data) {
@@ -745,7 +1025,9 @@ function renderAgronomy(data) {
 function renderSettings() {
   syncUnitToggleUi();
   renderSavedLocations();
-  setSettingsStatus(`${state.settings.unitSystem === "metric" ? "Metric" : "Imperial"} units | ${state.settings.savedLocations.length} saved location${state.settings.savedLocations.length === 1 ? "" : "s"}`);
+  renderDocuments();
+  syncSettingsTabUi();
+  setSettingsStatus(`${temperatureUnitLabel()} temp | ${speedUnitLabel()} wind | ${state.settings.savedLocations.length} saved location${state.settings.savedLocations.length === 1 ? "" : "s"}`);
 }
 
 function renderAll(data) {
@@ -775,7 +1057,12 @@ async function fetchJson(url) {
   return payload;
 }
 
-async function loadWeather(location = state.selectedLocation) {
+async function loadWeather(location = state.selectedLocation, options = {}) {
+  const { preserveScroll = false } = options;
+  if (state.isRefreshing) {
+    return;
+  }
+
   state.selectedLocation = location;
   const params = new URLSearchParams({
     lat: location.latitude,
@@ -785,16 +1072,63 @@ async function loadWeather(location = state.selectedLocation) {
   });
   buildHistoryParams(params);
 
+  const previousScrollY = window.scrollY;
+  state.isRefreshing = true;
+  updateRefreshUi("Refreshing weather...", true);
+
   try {
     const data = await fetchJson(`/api/weather?${params.toString()}`);
     state.latestPayload = data;
     renderAll(data);
     setExportStatus(`Ready to export charts for ${data.location.name}.`);
+    if (preserveScroll) {
+      window.scrollTo({ top: previousScrollY });
+    }
   } catch (error) {
     elements.heroLocation.textContent = "Unable to load weather";
     elements.heroSummary.textContent = error.message;
     setExportStatus(error.message);
+  } finally {
+    state.isRefreshing = false;
+    updateRefreshUi("", false);
+    resetPullRefreshUi();
   }
+}
+
+function handleManualRefresh() {
+  void loadWeather(state.selectedLocation, { preserveScroll: true });
+}
+
+function canUseGeolocation() {
+  return "geolocation" in navigator;
+}
+
+async function requestCurrentLocation(options = {}) {
+  const { preserveScroll = false, fallbackToSelected = false } = options;
+  if (!canUseGeolocation()) {
+    setSettingsStatus("Current location is not available in this browser.");
+    return;
+  }
+
+  elements.heroLocation.textContent = "Detecting your location…";
+  elements.heroSummary.textContent = "Requesting GPS position.";
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      const name = await reverseGeocode(latitude, longitude);
+      void loadWeather({ name, latitude, longitude, timezone: "auto" }, { preserveScroll });
+    },
+    () => {
+      elements.heroLocation.textContent = state.selectedLocation.name;
+      elements.heroSummary.textContent = "Could not get your current location.";
+      setSettingsStatus("Location access was denied or unavailable.");
+      if (fallbackToSelected) {
+        void loadWeather(state.selectedLocation, { preserveScroll });
+      }
+    },
+    { timeout: 8000, maximumAge: 60000 },
+  );
 }
 
 function clearResults() {
@@ -930,6 +1264,7 @@ function handleSavedLocationsClick(event) {
   if (loadButton) {
     const location = state.settings.savedLocations[Number(loadButton.dataset.savedLoad)];
     if (location) {
+      setSettingsPopoverOpen(false);
       void loadWeather(location);
     }
     return;
@@ -944,44 +1279,173 @@ function handleSavedLocationsClick(event) {
   }
 }
 
-function handleUnitToggleClick(event) {
-  const button = event.target.closest("[data-unit-system]");
-  if (!button) {
-    return;
-  }
-  const nextSystem = button.dataset.unitSystem;
-  if (!nextSystem || nextSystem === state.settings.unitSystem) {
-    return;
-  }
-
-  state.settings.unitSystem = nextSystem;
+function rerenderAfterSettingsChange(message) {
   saveSettings();
   if (state.latestPayload) {
     renderAll(state.latestPayload);
   } else {
     renderSettings();
   }
-  setSettingsStatus(`Switched to ${nextSystem} units.`);
+  setSettingsStatus(message);
+}
+
+function handleTempUnitToggleClick(event) {
+  const button = event.target.closest("[data-temp-unit]");
+  if (!button) {
+    return;
+  }
+  const nextUnit = button.dataset.tempUnit;
+  if (!nextUnit || nextUnit === state.settings.temperatureUnit) {
+    return;
+  }
+
+  state.settings.temperatureUnit = nextUnit;
+  rerenderAfterSettingsChange(`Switched temperature to ${temperatureUnitLabel()}.`);
+}
+
+function handleSpeedUnitToggleClick(event) {
+  const button = event.target.closest("[data-speed-unit]");
+  if (!button) {
+    return;
+  }
+  const nextUnit = button.dataset.speedUnit;
+  if (!nextUnit || nextUnit === state.settings.speedUnit) {
+    return;
+  }
+
+  state.settings.speedUnit = nextUnit;
+  rerenderAfterSettingsChange(`Switched wind speed to ${speedUnitLabel()}.`);
+}
+
+function handleSettingsTabClick(event) {
+  const button = event.target.closest("[data-settings-tab]");
+  if (!button) {
+    return;
+  }
+  const nextTab = button.dataset.settingsTab;
+  if (!nextTab || nextTab === state.ui.settingsTab) {
+    return;
+  }
+  state.ui.settingsTab = nextTab;
+  syncSettingsTabUi();
+}
+
+function setSettingsPopoverOpen(isOpen) {
+  if (!elements.settingsPopover || !elements.settingsButton) {
+    return;
+  }
+  elements.settingsPopover.hidden = !isOpen;
+  elements.settingsButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function toggleSettingsPopover() {
+  setSettingsPopoverOpen(elements.settingsPopover.hidden);
 }
 
 function hydrateSettings() {
   loadSettings();
   syncUnitToggleUi();
   renderSavedLocations();
+  renderDocuments();
+  syncSettingsTabUi();
+}
+
+function shouldPreferSavedDesktopLocation() {
+  return state.settings.savedLocations.length > 0
+    && window.matchMedia("(min-width: 761px) and (pointer:fine)").matches;
+}
+
+function loadInitialWeather() {
+  if (shouldPreferSavedDesktopLocation()) {
+    void loadWeather(state.settings.savedLocations[0]);
+    return;
+  }
+  if (canUseGeolocation()) {
+    void requestCurrentLocation({ fallbackToSelected: true });
+    return;
+  }
+  void loadWeather();
+}
+
+function handleTouchStart(event) {
+  if (state.isRefreshing || !isAtTopOfPage() || event.touches.length !== 1) {
+    resetPullRefreshUi();
+    return;
+  }
+  state.pullRefresh.active = true;
+  state.pullRefresh.startY = event.touches[0].clientY;
+  state.pullRefresh.distance = 0;
+}
+
+function handleTouchMove(event) {
+  if (!state.pullRefresh.active || state.isRefreshing || event.touches.length !== 1) {
+    return;
+  }
+
+  const distance = event.touches[0].clientY - state.pullRefresh.startY;
+  if (distance <= 0) {
+    if (!state.pullRefresh.pulling) {
+      resetPullRefreshUi();
+    }
+    return;
+  }
+
+  if (!isAtTopOfPage()) {
+    resetPullRefreshUi();
+    return;
+  }
+
+  state.pullRefresh.pulling = true;
+  state.pullRefresh.distance = distance;
+  setPullRefreshDistance(distance);
+  updateRefreshUi(distance >= PULL_REFRESH_TRIGGER_PX ? "Release to refresh" : "Pull to refresh", false);
+  event.preventDefault();
+}
+
+function handleTouchEnd() {
+  if (!state.pullRefresh.active && !state.pullRefresh.pulling) {
+    return;
+  }
+
+  const shouldRefresh = state.pullRefresh.distance >= PULL_REFRESH_TRIGGER_PX;
+  resetPullRefreshUi();
+  if (shouldRefresh) {
+    void loadWeather(state.selectedLocation, { preserveScroll: true });
+  }
 }
 
 document.addEventListener("click", (event) => {
   if (!elements.searchForm.contains(event.target)) {
     clearResults();
   }
+  if (elements.settingsPopover.hidden) {
+    return;
+  }
+  if (!elements.settingsPopover.contains(event.target) && !elements.settingsButton.contains(event.target)) {
+    setSettingsPopoverOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setSettingsPopoverOpen(false);
+  }
 });
 
 elements.searchForm.addEventListener("submit", handleSearch);
 elements.historyPresets.addEventListener("click", handleHistoryPresetClick);
 elements.historyCustomForm.addEventListener("submit", handleCustomHistorySubmit);
+elements.currentLocationButton.addEventListener("click", () => {
+  void requestCurrentLocation({ preserveScroll: true });
+});
 elements.saveLocationButton.addEventListener("click", handleSaveCurrentLocation);
+elements.refreshButton.addEventListener("click", handleManualRefresh);
+elements.settingsButton.addEventListener("click", toggleSettingsPopover);
+elements.settingsCloseButton.addEventListener("click", () => setSettingsPopoverOpen(false));
+elements.settingsTabs?.addEventListener("click", handleSettingsTabClick);
 elements.savedLocations.addEventListener("click", handleSavedLocationsClick);
-elements.unitToggle.addEventListener("click", handleUnitToggleClick);
+elements.tempUnitToggle.addEventListener("click", handleTempUnitToggleClick);
+elements.speedUnitToggle.addEventListener("click", handleSpeedUnitToggleClick);
 elements.exportHourlyChart.addEventListener("click", () => {
   downloadCanvas(elements.hourlyChart, "aceweather-24h-forecast.png");
   setExportStatus("Downloaded the 24-hour forecast chart.");
@@ -1014,6 +1478,12 @@ elements.copyAiReport.addEventListener("click", async () => {
 initHistoryDefaults();
 hydrateSettings();
 renderSettings();
+updateRefreshUi();
+
+document.addEventListener("touchstart", handleTouchStart, { passive: true });
+document.addEventListener("touchmove", handleTouchMove, { passive: false });
+document.addEventListener("touchend", handleTouchEnd, { passive: true });
+document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
 async function reverseGeocode(latitude, longitude) {
   try {
@@ -1030,20 +1500,4 @@ async function reverseGeocode(latitude, longitude) {
   }
 }
 
-if ("geolocation" in navigator) {
-  elements.heroLocation.textContent = "Detecting your location…";
-  elements.heroSummary.textContent = "Requesting GPS position.";
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const { latitude, longitude } = pos.coords;
-      const name = await reverseGeocode(latitude, longitude);
-      loadWeather({ name, latitude, longitude, timezone: "auto" });
-    },
-    () => {
-      loadWeather();
-    },
-    { timeout: 8000, maximumAge: 60000 },
-  );
-} else {
-  loadWeather();
-}
+loadInitialWeather();

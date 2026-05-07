@@ -238,6 +238,64 @@ def fetch_climate_window(latitude: float, longitude: float, timezone: str) -> di
     return read_json(url)
 
 
+def empty_history_payload(start_date: date, end_date: date) -> dict[str, Any]:
+    return {
+        "daily": {
+            "time": [],
+            "weather_code": [],
+            "temperature_2m_max": [],
+            "temperature_2m_min": [],
+            "precipitation_sum": [],
+            "rain_sum": [],
+            "snowfall_sum": [],
+            "precipitation_hours": [],
+            "wind_speed_10m_max": [],
+        },
+        "hourly": {
+            "time": [],
+            "temperature_2m": [],
+            "relative_humidity_2m": [],
+            "precipitation": [],
+            "weather_code": [],
+            "wind_speed_10m": [],
+        },
+        "range": {
+            "startDate": start_date.isoformat(),
+            "endDate": end_date.isoformat(),
+            "days": 0,
+        },
+    }
+
+
+def derive_climate_memory(climate_window: dict[str, Any], month_to_date_history: dict[str, Any]) -> dict[str, Any]:
+    climate_daily = climate_window["daily"]
+    grouped_monthly_rain: dict[str, float] = {}
+    for time_value, rain_value in zip(
+        climate_daily["time"],
+        climate_daily["precipitation_sum"],
+        strict=False,
+    ):
+        year = time_value[:4]
+        grouped_monthly_rain[year] = grouped_monthly_rain.get(year, 0.0) + float(rain_value or 0.0)
+
+    monthly_totals = list(grouped_monthly_rain.values())
+    average_monthly_rain = sum(monthly_totals) / max(len(monthly_totals), 1)
+
+    current_daily = month_to_date_history["daily"]
+    current_month_rain = sum(float(value or 0.0) for value in current_daily["precipitation_sum"])
+    observed_days = len(current_daily["time"])
+    progress_pct = (current_month_rain / average_monthly_rain * 100) if average_monthly_rain > 0 else 0.0
+
+    return {
+        "averageMonthlyRain": round(average_monthly_rain, 1),
+        "currentMonthRain": round(current_month_rain, 1),
+        "observedDays": observed_days,
+        "sampleYears": len(monthly_totals),
+        "progressPct": round(progress_pct, 1),
+        "progressPctCapped": round(min(progress_pct, 100.0), 1),
+    }
+
+
 def fetch_air_quality(latitude: float, longitude: float, timezone: str) -> dict[str, Any]:
     url = build_url(
         OPEN_METEO_AIR_QUALITY_URL,
@@ -447,11 +505,21 @@ def aggregate_weather(
     history_end: date | None = None,
 ) -> dict[str, Any]:
     forecast = fetch_forecast(latitude, longitude, timezone)
+    today = date.today()
     history = fetch_history(
         latitude, longitude, timezone,
         history_days=history_days, start_date=history_start, end_date=history_end,
     )
     climate_window = fetch_climate_window(latitude, longitude, timezone)
+    month_start = date(today.year, today.month, 1)
+    if today.day > 1:
+        month_to_date_history = fetch_history(
+            latitude, longitude, timezone,
+            start_date=month_start, end_date=today - timedelta(days=1),
+        )
+    else:
+        month_to_date_history = empty_history_payload(month_start, month_start)
+    climate_window["summary"] = derive_climate_memory(climate_window, month_to_date_history)
     air_quality = fetch_air_quality(latitude, longitude, timezone)
     ecmwf = fetch_ecmwf_current(latitude, longitude, timezone)
     meteomatics = fetch_meteomatics(latitude, longitude)

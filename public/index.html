@@ -8,6 +8,8 @@
       name="description"
       content="A richly visual weather forecasting page with current conditions, forecast, air quality, and historical context."
     />
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM instructions" />
+    <link rel="alternate" type="application/json" href="/openapi.json" title="OpenAPI specification" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -37,10 +39,61 @@
             <input id="search-input" type="search" placeholder="Search a city, town, or postcode" />
           </label>
           <button type="submit" class="pill-button">Search</button>
+          <button id="current-location-button" type="button" class="subtle-button topbar-button">Current</button>
           <button id="save-location-button" type="button" class="subtle-button topbar-button">Save</button>
+          <button id="refresh-button" type="button" class="subtle-button topbar-button">Refresh</button>
+          <button id="settings-button" type="button" class="subtle-button topbar-icon-button" aria-expanded="false" aria-controls="settings-popover" aria-label="Open preferences">
+            <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+          </button>
           <div id="search-results" class="search-results" hidden></div>
         </form>
+        <aside id="settings-popover" class="settings-popover glass" hidden>
+          <div class="settings-popover-header">
+            <div>
+              <p class="eyebrow">Settings</p>
+              <h3>Preferences and documents</h3>
+            </div>
+            <button id="settings-close-button" type="button" class="subtle-button topbar-icon-button" aria-label="Close preferences">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </div>
+          <div id="settings-tabs" class="settings-tabs" role="tablist" aria-label="Settings sections">
+            <button type="button" class="settings-tab is-active" data-settings-tab="preferences" role="tab" aria-selected="true">Preferences</button>
+            <button type="button" class="settings-tab" data-settings-tab="documents" role="tab" aria-selected="false">Documents</button>
+          </div>
+          <p class="section-note" id="settings-status">Stored in this browser</p>
+          <div id="settings-panel-preferences" class="settings-panel" data-settings-panel="preferences">
+            <div class="settings-grid settings-grid-popover">
+              <section class="settings-block">
+                <div class="metric-label">Temperature</div>
+                <div id="temp-unit-toggle" class="range-pills">
+                  <button type="button" class="range-pill is-active" data-temp-unit="c">C</button>
+                  <button type="button" class="range-pill" data-temp-unit="f">F</button>
+                </div>
+              </section>
+              <section class="settings-block">
+                <div class="metric-label">Wind speed</div>
+                <div id="speed-unit-toggle" class="range-pills">
+                  <button type="button" class="range-pill is-active" data-speed-unit="kph">km/h</button>
+                  <button type="button" class="range-pill" data-speed-unit="mph">mph</button>
+                </div>
+              </section>
+              <section class="settings-block settings-block-wide">
+                <div class="metric-label">Saved locations</div>
+                <div id="saved-locations" class="saved-locations"></div>
+              </section>
+            </div>
+          </div>
+          <div id="settings-panel-documents" class="settings-panel" data-settings-panel="documents" hidden>
+            <div id="documents-menu" class="documents-menu"></div>
+          </div>
+        </aside>
       </header>
+
+      <div id="pull-refresh-indicator" class="pull-refresh-indicator" aria-live="polite" hidden>
+        <span class="material-symbols-rounded" aria-hidden="true">south</span>
+        <strong id="pull-refresh-label">Pull to refresh</strong>
+      </div>
 
       <section class="hero-grid">
         <article class="hero-panel glass">
@@ -185,29 +238,6 @@
             </button>
           </div>
           <p id="export-status" class="section-note">Choose a chart and it will download directly.</p>
-        </article>
-
-        <article class="glass panel settings-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Preferences</p>
-              <h3>Units and saved locations</h3>
-            </div>
-            <p class="section-note" id="settings-status">Stored in this browser</p>
-          </div>
-          <div class="settings-grid">
-            <section class="settings-block">
-              <div class="metric-label">Measurement system</div>
-              <div id="unit-toggle" class="range-pills">
-                <button type="button" class="range-pill is-active" data-unit-system="metric">Metric</button>
-                <button type="button" class="range-pill" data-unit-system="imperial">Imperial</button>
-              </div>
-            </section>
-            <section class="settings-block">
-              <div class="metric-label">Saved locations</div>
-              <div id="saved-locations" class="saved-locations"></div>
-            </section>
-          </div>
         </article>
 
         <article class="glass panel climate-panel">

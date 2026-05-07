@@ -19,6 +19,28 @@ python server.py
 
 Then open [http://localhost:8000](http://localhost:8000).
 
+## Open It On Your Phone
+
+To make the local dev server reachable from your phone on the same Wi-Fi network, start it with:
+
+```powershell
+$env:ACEWEATHER_HOST="0.0.0.0"
+python server.py
+```
+
+The server will print both:
+
+- the local desktop URL
+- the LAN URL to open on your phone
+
+If you need a different port:
+
+```powershell
+$env:ACEWEATHER_HOST="0.0.0.0"
+$env:ACEWEATHER_PORT="8080"
+python server.py
+```
+
 ## Optional Meteomatics credentials
 
 Set these environment variables before starting the server:

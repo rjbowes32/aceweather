@@ -39,6 +39,7 @@ body {
 body {
   position: relative;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
 }
 
 .sky {
@@ -109,6 +110,8 @@ body {
   justify-content: space-between;
   padding: 24px 28px;
   border-radius: var(--radius-lg);
+  overflow: visible;
+  z-index: 12;
 }
 
 .topbar h1,
@@ -132,10 +135,41 @@ body {
 
 .search-form {
   position: relative;
-  width: min(520px, 100%);
+  flex: 1 1 640px;
+  width: min(640px, 100%);
+  max-width: 100%;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
   gap: 12px;
+}
+
+.pull-refresh-indicator {
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+  width: fit-content;
+  margin: 12px auto 0;
+  padding: 10px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  color: var(--text);
+  background: rgba(6, 14, 27, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow);
+  transform: translateY(calc(-120% + var(--pull-offset, 0px)));
+  transition: transform 180ms var(--ease), opacity 180ms var(--ease);
+  pointer-events: none;
+}
+
+.pull-refresh-indicator .material-symbols-rounded {
+  font-size: 1.15rem;
+}
+
+.pull-refresh-indicator strong {
+  display: none;
 }
 
 .search-field {
@@ -166,7 +200,21 @@ body {
 }
 
 .topbar-button {
-  min-width: 92px;
+  min-width: 84px;
+}
+
+.topbar-icon-button {
+  min-width: 58px;
+  width: 58px;
+  min-height: 58px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-icon-button .material-symbols-rounded {
+  font-size: 1.35rem;
 }
 
 .pill-button {
@@ -189,6 +237,7 @@ body {
 .search-results {
   position: absolute;
   inset: calc(100% + 10px) 0 auto;
+  z-index: 8;
   display: grid;
   gap: 8px;
   padding: 12px;
@@ -196,6 +245,125 @@ body {
   background: rgba(5, 13, 25, 0.96);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
+}
+
+.settings-popover {
+  position: absolute;
+  top: calc(100% + 16px);
+  right: 28px;
+  z-index: 9;
+  width: min(420px, calc(100vw - 48px));
+  padding: 18px;
+  border-radius: 24px;
+}
+
+.settings-popover-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.settings-grid-popover {
+  margin-top: 16px;
+}
+
+.settings-tabs {
+  display: inline-flex;
+  gap: 8px;
+  margin: 4px 0 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(6, 14, 27, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-tab {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-tab.is-active {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(140, 231, 255, 0.18), rgba(90, 167, 255, 0.14));
+}
+
+.settings-panel {
+  margin-top: 6px;
+}
+
+.settings-block-wide {
+  grid-column: 1 / -1;
+}
+
+.documents-menu {
+  display: grid;
+  gap: 12px;
+}
+
+.document-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.document-card-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.document-card h4 {
+  margin: 0;
+  font-family: "Sora", sans-serif;
+  font-size: 1rem;
+}
+
+.document-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.document-link-list {
+  display: grid;
+  gap: 8px;
+}
+
+.document-link {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.document-link strong,
+.document-link code {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.document-link span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  word-break: break-word;
 }
 
 .result-item {
@@ -324,7 +492,12 @@ body {
 }
 
 .hourly-strip {
-  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
   margin-top: 16px;
 }
 
@@ -347,6 +520,34 @@ body {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hour-pill.is-now {
+  background: linear-gradient(135deg, rgba(140, 231, 255, 0.12), rgba(90, 167, 255, 0.08));
+  border-color: rgba(140, 231, 255, 0.25);
+}
+
+.hour-pill {
+  flex: 0 0 120px;
+  min-height: 184px;
+  scroll-snap-align: start;
+}
+
+.hour-day-label {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--cyan);
+  background: rgba(140, 231, 255, 0.08);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hour-rain {
+  margin-top: 8px;
+  font-weight: 700;
 }
 
 .agro-card,
@@ -438,10 +639,6 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
-.settings-panel {
-  grid-column: span 6;
-}
-
 .settings-grid {
   display: grid;
   gap: 16px;
@@ -495,6 +692,32 @@ body {
   color: var(--text);
 }
 
+.climate-tracker-card {
+  display: grid;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(90, 167, 255, 0.16), rgba(140, 231, 255, 0.08));
+}
+
+.climate-tracker-headline {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.climate-tracker-bar {
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.climate-tracker-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cyan), var(--blue));
+}
+
 .history-toolbar {
   display: grid;
   gap: 14px;
@@ -520,6 +743,11 @@ body {
   min-height: 42px;
   padding: 0 14px;
   border-radius: 999px;
+}
+
+.subtle-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .range-pill.is-active {
@@ -669,7 +897,6 @@ input {
   .air-panel,
   .history-panel,
   .export-panel,
-  .settings-panel,
   .climate-panel,
   .provider-panel {
     grid-column: span 1;
@@ -697,12 +924,18 @@ input {
   /* Search form: input spans full width, buttons sit side-by-side below */
   .search-form {
     width: 100%;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
     gap: 10px;
   }
 
   .search-field {
     grid-column: 1 / -1;
+  }
+
+  .settings-popover {
+    right: 18px;
+    left: 18px;
+    width: auto;
   }
 
   /* Hero panel: single column, temp + icon in a row */

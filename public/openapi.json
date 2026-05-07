@@ -1,0 +1,217 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AceWeather API",
+    "version": "1.0.0",
+    "description": "AceWeather weather dashboard API with a plain-text report endpoint and a structured weather payload endpoint."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current host"
+    }
+  ],
+  "paths": {
+    "/api": {
+      "get": {
+        "summary": "API discovery index",
+        "description": "Returns a compact JSON index of the available AceWeather endpoints and documentation URLs.",
+        "responses": {
+          "200": {
+            "description": "API index"
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "summary": "Search for places",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            },
+            "description": "Place name or search query."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching locations as JSON"
+          },
+          "400": {
+            "description": "Invalid query"
+          }
+        }
+      }
+    },
+    "/api/weather": {
+      "get": {
+        "summary": "Get structured weather payload",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "auto"
+            },
+            "description": "IANA timezone name or auto."
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "history_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "history_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "history_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Structured weather payload as JSON"
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "502": {
+            "description": "Upstream provider unavailable"
+          }
+        }
+      }
+    },
+    "/api/report": {
+      "get": {
+        "summary": "Get plain-text weather report",
+        "description": "Returns the LLM-friendly weather report as text/plain. Use either query by place name or explicit coordinates.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            },
+            "description": "Place name. If provided, lat/lon are not required."
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "auto"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plain-text weather report",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "404": {
+            "description": "Location not found"
+          },
+          "502": {
+            "description": "Upstream provider unavailable"
+          }
+        }
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "summary": "Get provider availability",
+        "responses": {
+          "200": {
+            "description": "Provider status as JSON"
+          }
+        }
+      }
+    }
+  }
+}
