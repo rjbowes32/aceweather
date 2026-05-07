@@ -11,13 +11,33 @@ AceWeather is a visually rich weather dashboard powered by Open-Meteo by default
 - Same-period historical comparison across recent years
 - Optional Meteomatics provider panel through Python-side credentials
 
-## Run
+## Run The Python API
 
 ```bash
 python server.py
 ```
 
 Then open [http://localhost:8000](http://localhost:8000).
+
+## Run The Next.js Frontend
+
+Install dependencies and start the frontend:
+
+```bash
+npm install
+npm run dev
+```
+
+The Next.js app expects the Python weather API to be running. By default, Next proxies `/api/*` to the local Python server at `http://127.0.0.1:8000`, so the frontend can behave like one app on `http://localhost:3000`.
+
+Set `.env.local` from `.env.example` if you want to override the backend target or point the frontend at a different API host:
+
+```bash
+ACEWEATHER_API_PROXY_TARGET=http://127.0.0.1:8000
+NEXT_PUBLIC_ACEWEATHER_API_BASE=
+```
+
+Then open [http://localhost:3000](http://localhost:3000).
 
 ## Open It On Your Phone
 

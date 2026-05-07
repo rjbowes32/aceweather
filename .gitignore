@@ -15,6 +15,7 @@ env/
 # Node / npm
 node_modules/
 .npm-cache/
+.next/
 npm-debug.log*
 
 # OS

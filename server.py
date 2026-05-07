@@ -92,7 +92,15 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
                     return
                 label = params.get("label", [None])[0]
 
-            payload = lib.aggregate_weather(latitude, longitude, timezone, label, history_days=7)
+            observations_payload = self._parse_observations(params)
+            payload = lib.aggregate_weather(
+                latitude,
+                longitude,
+                timezone,
+                label,
+                history_days=7,
+                observations_payload=observations_payload,
+            )
             report_text = lib.build_report(payload, base_url=self._request_base_url())
             body = report_text.encode("utf-8")
             self.send_response(HTTPStatus.OK)
@@ -164,9 +172,11 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, "Custom history dates must use YYYY-MM-DD format.")
             return
         try:
+            observations_payload = self._parse_observations(params)
             payload = lib.aggregate_weather(
                 latitude, longitude, timezone, label,
                 history_days=history_days, history_start=history_start, history_end=history_end,
+                observations_payload=observations_payload,
             )
             self._send_json(payload)
         except ValueError as exc:
@@ -189,6 +199,51 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, *args: object) -> None:
         pass
+
+    def _parse_observations(self, params: dict[str, list[str]]) -> dict[str, Any] | None:
+        def parse_float(name: str) -> float | None:
+            raw_value = params.get(name, [None])[0]
+            if raw_value in (None, ""):
+                return None
+            try:
+                return float(raw_value)
+            except ValueError as exc:
+                raise ValueError(f"{name} must be numeric.") from exc
+
+        source_type = params.get("obs_source_type", [None])[0]
+        source_name = params.get("obs_source_name", [None])[0]
+        observed_at = params.get("obs_observed_at", [None])[0]
+        rain_24h_mm = parse_float("obs_rain_24h_mm")
+        rain_7d_mm = parse_float("obs_rain_7d_mm")
+        wind_kph = parse_float("obs_wind_kph")
+        gust_kph = parse_float("obs_gust_kph")
+        soil_moisture_surface = parse_float("obs_soil_moisture_surface")
+
+        if all(
+            value is None
+            for value in [
+                source_type,
+                source_name,
+                observed_at,
+                rain_24h_mm,
+                rain_7d_mm,
+                wind_kph,
+                gust_kph,
+                soil_moisture_surface,
+            ]
+        ):
+            return None
+
+        return lib.normalize_observations(
+            source_type=source_type or "manual",
+            source_name=source_name,
+            observed_at=observed_at,
+            rain_24h_mm=rain_24h_mm,
+            rain_7d_mm=rain_7d_mm,
+            wind_kph=wind_kph,
+            gust_kph=gust_kph,
+            soil_moisture_surface=soil_moisture_surface,
+        )
 
 
 def get_server_host() -> str:

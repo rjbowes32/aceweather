@@ -1,18 +1,12 @@
-const STATIC_CACHE = "aceweather-static-v2";
-const RUNTIME_CACHE = "aceweather-runtime-v2";
+const STATIC_CACHE = "aceweather-static-v3";
+const RUNTIME_CACHE = "aceweather-runtime-v3";
 const APP_SHELL = [
   "/",
-  "/index.html",
-  "/styles.css",
-  "/app.js",
-  "/manifest.webmanifest",
   "/offline.html",
-  "/llms.txt",
-  "/openapi.json",
-  "/report-api.md",
-  "/icons/icon-192.svg",
-  "/icons/icon-512.svg",
-  "/icons/icon-maskable.svg",
+  "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/icon-maskable-512.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -80,17 +74,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (
-    url.pathname === "/styles.css"
-    || url.pathname === "/app.js"
-    || url.pathname === "/manifest.webmanifest"
-    || url.pathname.startsWith("/icons/")
-  ) {
+  if (url.pathname === "/manifest.webmanifest" || url.pathname.startsWith("/icons/")) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  if (url.pathname === "/api/weather" || url.pathname === "/api/report") {
+  if (url.pathname.startsWith("/api/")) {
     event.respondWith(networkFirst(request));
   }
 });
