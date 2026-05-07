@@ -35,7 +35,14 @@ CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
         {"slug": "boroughbridge", "query": "Boroughbridge"},
         {"slug": "sleaford", "query": "Sleaford"},
         {"slug": "scotch-corner", "query": "Scotch Corner"},
-        {"slug": "longhirst", "query": "Longhirst"},
+        {
+            "slug": "longhirst",
+            "query": "Longhirst, Northumberland, England",
+            "latitude": "55.1774",
+            "longitude": "-1.6894",
+            "timezone": "Europe/London",
+            "label": "Longhirst, Northumberland, United Kingdom",
+        },
         {"slug": "berwick", "query": "Berwick-upon-Tweed"},
     ],
 }
@@ -218,6 +225,16 @@ def resolve_location_query(location_query: str) -> tuple[float, float, str, str]
     timezone = best.get("timezone") or "auto"
     label = ", ".join(filter(None, [best.get("name"), best.get("admin1"), best.get("country")]))
     return latitude, longitude, timezone, label
+
+
+def resolve_region_location(region: dict[str, str]) -> tuple[float, float, str, str]:
+    if region.get("latitude") and region.get("longitude"):
+        latitude = float(region["latitude"])
+        longitude = float(region["longitude"])
+        timezone = region.get("timezone") or "auto"
+        label = region.get("label") or region.get("query") or region.get("slug") or "Selected location"
+        return latitude, longitude, timezone, label
+    return resolve_location_query(region["query"])
 
 
 def public_base_url(base_url: str = "") -> str:
@@ -732,7 +749,7 @@ def build_report(payload: dict[str, Any], *, base_url: str = "", include_related
 
 
 def _build_region_brief(region: dict[str, str]) -> dict[str, Any]:
-    latitude, longitude, timezone, label = resolve_location_query(region["query"])
+    latitude, longitude, timezone, label = resolve_region_location(region)
     forecast = fetch_forecast(latitude, longitude, timezone)
     history = fetch_history(latitude, longitude, timezone, history_days=7)
     daily = forecast["daily"]
@@ -772,6 +789,12 @@ def build_brief_digest(set_name: str, *, base_url: str = "") -> str:
     for brief in briefs:
         history = brief["history"]
         daily = brief["daily"]
+        forecast_start = 0
+        today_iso = date.today().isoformat()
+        for index, day_value in enumerate(daily["time"]):
+            if day_value >= today_iso:
+                forecast_start = index
+                break
         lines += [
             "",
             f"### {brief['label']}",
@@ -784,7 +807,7 @@ def build_brief_digest(set_name: str, *, base_url: str = "") -> str:
                 f"rain {float(history['precipitation_sum'][index] or 0.0):.1f} mm"
             )
         lines.append("Forecast next 7 days:")
-        for index in range(min(7, len(daily["time"]))):
+        for index in range(forecast_start, min(forecast_start + 7, len(daily["time"]))):
             lines.append(
                 f"  - {daily['time'][index]}: high {float(daily['temperature_2m_max'][index] or 0.0):.1f} C, "
                 f"low {float(daily['temperature_2m_min'][index] or 0.0):.1f} C, "
@@ -824,7 +847,7 @@ def build_digest(set_name: str, *, base_url: str = "", mode: str = "brief") -> s
     ]
 
     for region in regions:
-        latitude, longitude, timezone, label = resolve_location_query(region["query"])
+        latitude, longitude, timezone, label = resolve_region_location(region)
         payload = aggregate_weather(latitude, longitude, timezone, label, history_days=7)
         lines += [
             f"---",
