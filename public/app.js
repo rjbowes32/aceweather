@@ -157,11 +157,10 @@ const elements = {
   agronomyGrid: $("#agronomy-grid"),
   diseaseGrid: $("#disease-grid"),
   agronomyDisclaimer: $("#agronomy-disclaimer"),
-  exportHourlyChart: $("#export-hourly-chart"),
+  exportReport: $("#export-report"),
   exportHistoryChart: $("#export-history-chart"),
   copyAiReport: $("#copy-ai-report"),
   exportStatus: $("#export-status"),
-  agronomyBrief: $("#agronomy-brief"),
   currentLocationButton: $("#current-location-button"),
   saveLocationButton: $("#save-location-button"),
   refreshButton: $("#refresh-button"),
@@ -1513,9 +1512,7 @@ function buildAgronomyText(data) {
   return lines.join("\n");
 }
 
-function renderAgronomyBrief(data) {
-  const el = elements.agronomyBrief;
-  if (!el) return;
+function buildAgronomyBriefHtml(data) {
   const loc = data.location;
   const forecast = data.providers.openMeteo.forecast;
   const agronomy = data.agronomy;
@@ -1618,8 +1615,7 @@ function renderAgronomyBrief(data) {
       </div>`;
   }).join("");
 
-  el.hidden = false;
-  el.innerHTML = `
+  return `
     <div class="agro-brief-head">
       <span class="agro-brief-place">${escapeHtml(loc.name)}</span>
       <span class="agro-brief-stamp">${escapeHtml(stamp)}</span>
@@ -1669,7 +1665,6 @@ function renderAll(data) {
   renderProviders(data);
   renderAgronomy(data);
   renderRainGauge(data);
-  renderAgronomyBrief(data);
   renderSettings();
 }
 
@@ -2086,9 +2081,48 @@ elements.settingsTabs?.addEventListener("click", handleSettingsTabClick);
 elements.savedLocations.addEventListener("click", handleSavedLocationsClick);
 elements.tempUnitToggle.addEventListener("click", handleTempUnitToggleClick);
 elements.speedUnitToggle.addEventListener("click", handleSpeedUnitToggleClick);
-elements.exportHourlyChart.addEventListener("click", () => {
-  downloadCanvas(elements.hourlyChart, "aceweather-24h-forecast.png");
-  setExportStatus("Downloaded the 24-hour forecast chart.");
+elements.exportReport.addEventListener("click", () => {
+  if (!state.latestPayload) {
+    setExportStatus("No data loaded yet.");
+    return;
+  }
+  const skyMode = elements.awRoot?.dataset.sky || "clear-day";
+  const briefInner = buildAgronomyBriefHtml(state.latestPayload);
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AceWeather · Agronomy Brief · ${escapeHtml(state.latestPayload.location.name)}</title>
+  <base href="${window.location.origin}/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { margin: 0; }
+    .report-page { max-width: 720px; margin: 0 auto; padding: 24px; }
+    .report-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 0.5px solid var(--rule); }
+    .report-header .brand { font-family: "Sora", sans-serif; font-size: 16px; font-weight: 700; }
+    .report-header .sub { font-size: 11px; color: var(--muted); }
+    .print-btn { position: fixed; top: 16px; right: 16px; background: var(--ink); color: var(--paper); border: none; padding: 8px 16px; font: 11px/1 "JetBrains Mono", monospace; letter-spacing: 0.08em; cursor: pointer; }
+    @media print { .print-btn { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="aw report-page" data-sky="${escapeHtml(skyMode)}">
+    <div class="report-header">
+      <span class="brand">AceWeather</span>
+      <span class="sub">/ Agronomy Brief</span>
+    </div>
+    <div class="agronomy-brief" style="display:block">${briefInner}</div>
+  </div>
+  <button class="print-btn" onclick="window.print()">PRINT / SAVE PDF</button>
+</body>
+</html>`);
+  w.document.close();
+  setExportStatus(`Opened agronomy brief for ${state.latestPayload.location.name}.`);
 });
 elements.exportHistoryChart.addEventListener("click", () => {
   const suffix = state.history.mode === "custom" ? `${state.history.start}-to-${state.history.end}` : `${state.history.days}d`;
