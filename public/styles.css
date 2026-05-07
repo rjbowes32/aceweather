@@ -550,7 +550,8 @@ html, body { margin: 0; height: 100%; background: #141210; }
 .daily-row {
   display: grid;
   grid-template-columns: 44px 28px 1fr 48px;
-  gap: 10px;
+  grid-template-rows: auto auto;
+  gap: 6px 10px;
   align-items: center;
   padding: 10px 10px;
   border-bottom: 0.5px solid var(--rule);
@@ -583,6 +584,17 @@ html, body { margin: 0; height: 100%; background: #141210; }
   white-space: nowrap;
 }
 .daily-temps small { color: var(--muted); font-weight: 400; }
+.daily-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  padding-bottom: 2px;
+}
+.daily-meta b { color: var(--ink); font-weight: 500; }
+.daily-meta .rain-pct { color: var(--accent); }
 
 /* === AGRONOMY === */
 .agro-grid {

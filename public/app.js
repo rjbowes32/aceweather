@@ -13,7 +13,7 @@ const state = {
   latestPayload: null,
   settings: {
     temperatureUnit: "c",
-    speedUnit: "kph",
+    speedUnit: "mph",
     savedLocations: [],
   },
   history: {
@@ -893,12 +893,19 @@ function renderDaily(data) {
       const width = ((hi - lo) / span) * 100;
       const dayAbbr = formatDate(time, { weekday: "short" }).toUpperCase().slice(0, 3);
       const dateNum = formatDate(time, { day: "2-digit" });
+      const precip = +(daily.precipitation_sum?.[ai] ?? 0).toFixed(1);
+      const precipPct = Math.round(daily.precipitation_probability_max?.[ai] ?? 0);
+      const wind = formatSpeed(daily.wind_speed_10m_max?.[ai] ?? 0);
       return `
         <div class="daily-row">
           <div class="daily-day">${escapeHtml(dayAbbr)}<b>${escapeHtml(dateNum)}</b></div>
           <div class="daily-icon">${weatherCodeToIcon(daily.weather_code[ai])}</div>
           <div class="daily-bar"><div class="daily-fill" style="left:${left.toFixed(1)}%;width:${Math.max(width, 2).toFixed(1)}%"></div></div>
           <div class="daily-temps">${Math.round(hi)}°<small> / ${Math.round(lo)}°</small></div>
+          <div class="daily-meta">
+            <span>💧 <span class="rain-pct">${precipPct}%</span> · <b>${precip} mm</b></span>
+            <span>💨 <b>${wind}</b></span>
+          </div>
         </div>
       `;
     })
