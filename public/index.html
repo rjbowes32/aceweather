@@ -4,264 +4,288 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AceWeather</title>
-    <meta
-      name="description"
-      content="A richly visual weather forecasting page with current conditions, forecast, air quality, and historical context."
-    />
+    <meta name="description" content="Sky-reactive farm weather instrument." />
     <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM instructions" />
     <link rel="alternate" type="application/json" href="/openapi.json" title="OpenAPI specification" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="sky sky-one"></div>
-    <div class="sky sky-two"></div>
-    <div class="grid-overlay"></div>
+    <div class="aw" id="aw-root" data-sky="clear-day">
 
-    <main class="app-shell">
-      <header class="topbar glass">
-        <div>
-          <p class="eyebrow">Atmospheric intelligence</p>
-          <h1>AceWeather</h1>
+      <!-- ===== HEADER ===== -->
+      <header class="aw-head">
+        <div class="aw-head-row">
+          <div class="brand">
+            <span class="brand-mark">AceWeather</span>
+            <span class="brand-sub">/ Mk II</span>
+          </div>
+          <div class="aw-head-actions">
+            <button id="current-location-button" type="button" class="aw-btn">GPS</button>
+            <button id="save-location-button" type="button" class="aw-btn">Save</button>
+            <button id="refresh-button" type="button" class="aw-btn">Refresh</button>
+            <button id="settings-button" type="button" class="aw-btn aw-btn-icon" aria-expanded="false" aria-controls="settings-popover" aria-label="Open preferences">⚙</button>
+          </div>
         </div>
-        <form id="search-form" class="search-form" autocomplete="off">
-          <label class="search-field">
-            <span class="material-symbols-rounded">search</span>
-            <input id="search-input" type="search" placeholder="Search a city, town, or postcode" />
-          </label>
-          <button type="submit" class="pill-button">Search</button>
-          <button id="current-location-button" type="button" class="subtle-button topbar-button">Current</button>
-          <button id="save-location-button" type="button" class="subtle-button topbar-button">Save</button>
-          <button id="refresh-button" type="button" class="subtle-button topbar-button">Refresh</button>
-          <button id="settings-button" type="button" class="subtle-button topbar-icon-button" aria-expanded="false" aria-controls="settings-popover" aria-label="Open preferences">
-            <span class="material-symbols-rounded" aria-hidden="true">settings</span>
-          </button>
-          <div id="search-results" class="search-results" hidden></div>
+
+        <div class="location-row">
+          <div class="location" id="hero-location">Loading weather…<small id="hero-coords"></small></div>
+          <div class="serial"><div>OBS <b id="update-stamp">--</b></div></div>
+        </div>
+
+        <form id="search-form" class="aw-search-row" autocomplete="off">
+          <div class="search-wrap">
+            <div class="search-field">
+              <input id="search-input" type="search" placeholder="Search a city, town, or postcode…" />
+            </div>
+            <div id="search-results" class="search-results" hidden></div>
+          </div>
+          <button type="submit" class="aw-btn">Search</button>
         </form>
-        <aside id="settings-popover" class="settings-popover glass" hidden>
-          <div class="settings-popover-header">
-            <div>
-              <p class="eyebrow">Settings</p>
-              <h3>Preferences and documents</h3>
-            </div>
-            <button id="settings-close-button" type="button" class="subtle-button topbar-icon-button" aria-label="Close preferences">
-              <span class="material-symbols-rounded" aria-hidden="true">close</span>
-            </button>
-          </div>
-          <div id="settings-tabs" class="settings-tabs" role="tablist" aria-label="Settings sections">
-            <button type="button" class="settings-tab is-active" data-settings-tab="preferences" role="tab" aria-selected="true">Preferences</button>
-            <button type="button" class="settings-tab" data-settings-tab="documents" role="tab" aria-selected="false">Documents</button>
-          </div>
-          <p class="section-note" id="settings-status">Stored in this browser</p>
-          <div id="settings-panel-preferences" class="settings-panel" data-settings-panel="preferences">
-            <div class="settings-grid settings-grid-popover">
-              <section class="settings-block">
-                <div class="metric-label">Temperature</div>
-                <div id="temp-unit-toggle" class="range-pills">
-                  <button type="button" class="range-pill is-active" data-temp-unit="c">C</button>
-                  <button type="button" class="range-pill" data-temp-unit="f">F</button>
-                </div>
-              </section>
-              <section class="settings-block">
-                <div class="metric-label">Wind speed</div>
-                <div id="speed-unit-toggle" class="range-pills">
-                  <button type="button" class="range-pill is-active" data-speed-unit="kph">km/h</button>
-                  <button type="button" class="range-pill" data-speed-unit="mph">mph</button>
-                </div>
-              </section>
-              <section class="settings-block settings-block-wide">
-                <div class="metric-label">Saved locations</div>
-                <div id="saved-locations" class="saved-locations"></div>
-              </section>
-            </div>
-          </div>
-          <div id="settings-panel-documents" class="settings-panel" data-settings-panel="documents" hidden>
-            <div id="documents-menu" class="documents-menu"></div>
-          </div>
-        </aside>
+
+        <div class="mode-switch" role="tablist" aria-label="Sky condition" id="sky-mode-switch">
+          <button data-sky-mode="clear-day" aria-pressed="true">Clear Day</button>
+          <button data-sky-mode="clear-night" aria-pressed="false">Clear Night</button>
+          <button data-sky-mode="storm" aria-pressed="false">Storm</button>
+          <button data-sky-mode="overcast" aria-pressed="false">Overcast</button>
+        </div>
       </header>
 
+      <!-- Pull to refresh -->
       <div id="pull-refresh-indicator" class="pull-refresh-indicator" aria-live="polite" hidden>
-        <span class="material-symbols-rounded" aria-hidden="true">south</span>
         <strong id="pull-refresh-label">Pull to refresh</strong>
       </div>
 
-      <section class="hero-grid">
-        <article class="hero-panel glass">
-          <div class="hero-copy">
-            <p class="eyebrow" id="hero-eyebrow">Live sky state</p>
-            <h2 id="hero-location">Loading weather...</h2>
-            <p id="hero-summary" class="hero-summary">Fetching forecast, air quality, and historical context.</p>
-          </div>
-          <div class="hero-temp-wrap">
-            <div class="hero-temp" id="hero-temp">--</div>
-            <div class="hero-icon" id="hero-icon">CLOUD</div>
-          </div>
-          <div class="chip-row" id="hero-chips"></div>
-        </article>
-
-        <article class="today-panel glass">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Now and next</p>
-              <h3>24-hour pulse</h3>
+      <!-- ===== 01 PRIMARY READOUT ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">01</span>
+          <span class="title">Primary readout</span>
+          <span id="hero-eyebrow">Live</span>
+        </div>
+        <div class="primary">
+          <div>
+            <div class="temp-block">
+              <div class="temp-figure" id="hero-temp">--</div>
+              <div class="temp-deg" id="hero-unit">°C</div>
             </div>
-            <p class="section-note" id="update-stamp">Waiting for data</p>
+            <div class="temp-feels">FEELS LIKE <b id="hero-feels">--</b></div>
           </div>
-          <div class="chart-wrap">
-            <canvas id="hourly-chart" width="800" height="320"></canvas>
+          <div class="condition-stamp">
+            <div class="glyph" id="hero-icon">--</div>
+            <div class="condition-text">
+              <b id="hero-condition">--</b>
+              <span>Observed</span>
+            </div>
           </div>
-          <div id="hourly-strip" class="hourly-strip"></div>
-        </article>
+        </div>
+        <p class="summary-line" id="hero-summary">Fetching forecast, air quality, and historical context.</p>
+        <div class="chips" id="hero-chips"></div>
+        <div id="rain-gauge-wrap"></div>
       </section>
 
-      <article class="glass panel model-verify-panel" id="model-verify-panel" hidden>
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Model verification</p>
-            <h3>ECMWF IFS 0.25° — independent cross-check</h3>
+      <!-- ===== 02 DEEP CONDITIONS ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">02</span>
+          <span class="title">Deep conditions</span>
+          <span>Atmosphere</span>
+        </div>
+        <div id="metrics-grid" class="metrics-grid"></div>
+      </section>
+
+      <!-- ===== 03 24-HOUR PULSE ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">03</span>
+          <span class="title">24-hour pulse</span>
+          <span>Δt 1h</span>
+        </div>
+        <div class="tape-wrap">
+          <div class="tape-legend">
+            <span><i></i>TEMP</span>
+            <span><i class="dashed"></i>WIND</span>
+            <span><i class="bar"></i>PRECIP</span>
           </div>
-          <p class="section-note" id="model-verify-stamp"></p>
+          <canvas id="hourly-chart" class="tape-canvas"></canvas>
+        </div>
+        <div id="hourly-strip" class="hourly-strip"></div>
+      </section>
+
+      <!-- ===== 04 FIELD DECISIONS ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">04</span>
+          <span class="title">Field decisions</span>
+          <span>Agronomy</span>
+        </div>
+        <div id="agronomy-grid" class="agro-grid"></div>
+        <div id="disease-grid" class="disease-grid"></div>
+        <p id="agronomy-disclaimer" class="agronomy-disclaimer"></p>
+      </section>
+
+      <!-- ===== 05 7-DAY OUTLOOK ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">05</span>
+          <span class="title">14-day outlook</span>
+          <span>HI · LO · mm</span>
+        </div>
+        <div id="daily-grid" class="daily"></div>
+      </section>
+
+      <!-- ===== 06 HISTORICAL LENS ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">06</span>
+          <span class="title" id="history-title">Historical lens</span>
+          <span id="history-subtitle">Archive</span>
+        </div>
+        <div class="history">
+          <div class="history-head">
+            <span>Daily mean · precip</span>
+            <div class="range-pills" id="history-presets" role="tablist">
+              <button type="button" class="is-active" data-range="7">7D</button>
+              <button type="button" data-range="14">14D</button>
+              <button type="button" data-range="30">30D</button>
+              <button type="button" data-range="90">90D</button>
+              <button type="button" data-range="custom">Custom</button>
+            </div>
+          </div>
+          <form id="history-custom-form" class="history-custom-form">
+            <label>
+              <span>From</span>
+              <input id="history-start" type="date" />
+            </label>
+            <label>
+              <span>To</span>
+              <input id="history-end" type="date" />
+            </label>
+            <button type="submit" class="aw-btn">Apply</button>
+          </form>
+          <canvas id="history-chart" class="history-canvas"></canvas>
+          <div id="history-stats" class="history-stats"></div>
+        </div>
+      </section>
+
+      <!-- ===== 07 AIR QUALITY ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">07</span>
+          <span class="title">Air quality</span>
+          <span>Air and light</span>
+        </div>
+        <div id="air-quality-current" class="air-quality-current"></div>
+        <div id="air-quality-list" class="air-quality-list"></div>
+      </section>
+
+      <!-- ===== 08 SEASONAL MEMORY ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">08</span>
+          <span class="title">Seasonal memory</span>
+          <span>Month comparison</span>
+        </div>
+        <div id="climate-summary" class="climate-summary"></div>
+      </section>
+
+      <!-- ===== MODEL VERIFICATION (conditionally visible) ===== -->
+      <article class="section" id="model-verify-panel" hidden>
+        <div class="section-head">
+          <span class="num">—</span>
+          <span class="title">Model verification</span>
+          <span id="model-verify-stamp"></span>
         </div>
         <div id="model-verify-grid" class="model-verify-grid"></div>
       </article>
 
-      <section class="dashboard-grid">
-        <article class="glass panel agronomy-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Agronomy focus</p>
-              <h3>Field decisions</h3>
-            </div>
-            <p class="section-note">Spray timing, soil signal, trafficability, and disease pressure</p>
-          </div>
-          <div id="agronomy-grid" class="agronomy-grid"></div>
-          <div id="disease-grid" class="disease-grid"></div>
-          <p id="agronomy-disclaimer" class="section-note"></p>
-        </article>
-
-        <article class="glass panel forecast-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Forward view</p>
-              <h3>14-day outlook</h3>
-            </div>
-            <p class="section-note">Temperature, precipitation, wind, and daylight</p>
-          </div>
-          <div id="daily-grid" class="daily-grid"></div>
-        </article>
-
-        <article class="glass panel metrics-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Atmosphere</p>
-              <h3>Deep conditions</h3>
-            </div>
-          </div>
-          <div id="metrics-grid" class="metrics-grid"></div>
-        </article>
-
-        <article class="glass panel air-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Air and light</p>
-              <h3>Air quality</h3>
-            </div>
-          </div>
-          <div id="air-quality-current" class="air-quality-current"></div>
-          <div id="air-quality-list" class="air-quality-list"></div>
-        </article>
-
-        <article class="glass panel history-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Historical lens</p>
-              <h3 id="history-title">Historical weather</h3>
-            </div>
-            <p class="section-note" id="history-subtitle">Recent actuals from archived weather data</p>
-          </div>
-          <div class="history-toolbar">
-            <div class="range-pills" id="history-presets">
-              <button type="button" class="range-pill is-active" data-range="7">7D</button>
-              <button type="button" class="range-pill" data-range="14">14D</button>
-              <button type="button" class="range-pill" data-range="30">30D</button>
-              <button type="button" class="range-pill" data-range="90">90D</button>
-              <button type="button" class="range-pill" data-range="custom">Custom</button>
-            </div>
-            <form id="history-custom-form" class="history-custom-form">
-              <label>
-                <span>From</span>
-                <input id="history-start" type="date" />
-              </label>
-              <label>
-                <span>To</span>
-                <input id="history-end" type="date" />
-              </label>
-              <button type="submit" class="subtle-button">Apply</button>
-            </form>
-          </div>
-          <div class="chart-wrap compact">
-            <canvas id="history-chart" width="800" height="280"></canvas>
-          </div>
-          <div id="history-stats" class="history-stats"></div>
-        </article>
-
-        <article class="glass panel export-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Presentation export</p>
-              <h3>Charts for slides</h3>
-            </div>
-            <p class="section-note">Download PNGs ready for decks and reports</p>
-          </div>
-          <div class="export-grid">
-            <button id="export-hourly-chart" type="button" class="export-card">
-              <strong>Export 24-hour forecast</strong>
-              <span>PNG from the pulse chart</span>
-            </button>
-            <button id="export-history-chart" type="button" class="export-card">
-              <strong>Export historical chart</strong>
-              <span>PNG using the selected historic range</span>
-            </button>
-            <button id="copy-ai-report" type="button" class="export-card">
-              <strong>Copy AI weather report</strong>
-              <span>Paste into Claude for a full analysis</span>
-            </button>
-          </div>
-          <p id="export-status" class="section-note">Choose a chart and it will download directly.</p>
-        </article>
-
-        <article class="glass panel climate-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Seasonal memory</p>
-              <h3>Month-of-year comparison</h3>
-            </div>
-            <p class="section-note">How this month usually behaves over recent years</p>
-          </div>
-          <div id="climate-summary" class="climate-summary"></div>
-        </article>
-
-        <article class="glass panel provider-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Providers</p>
-              <h3>Source status</h3>
-            </div>
-          </div>
-          <div id="provider-list" class="provider-list"></div>
-        </article>
+      <!-- ===== 09 SOURCE STATUS ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">09</span>
+          <span class="title">Source status</span>
+          <span>Providers</span>
+        </div>
+        <div id="provider-list" class="provider-list"></div>
       </section>
-    </main>
+
+      <!-- ===== 10 EXPORT ===== -->
+      <section class="section">
+        <div class="section-head">
+          <span class="num">10</span>
+          <span class="title">Export</span>
+          <span>Charts for slides</span>
+        </div>
+        <div class="export-grid">
+          <button id="export-hourly-chart" type="button" class="export-card">
+            <strong>Export 24-hour forecast</strong>
+            <span>PNG from the pulse chart</span>
+          </button>
+          <button id="export-history-chart" type="button" class="export-card">
+            <strong>Export historical chart</strong>
+            <span>PNG using selected historic range</span>
+          </button>
+          <button id="copy-ai-report" type="button" class="export-card">
+            <strong>Copy AI weather report</strong>
+            <span>Paste into Claude for full analysis</span>
+          </button>
+        </div>
+        <p id="export-status" class="export-status">Choose a chart and it will download directly.</p>
+      </section>
+
+      <!-- ===== FOOTER ===== -->
+      <footer class="aw-foot">
+        <div class="signature">An instrument for reading sky.</div>
+        <div>AceWeather Mk II · ECMWF · UKMO · OpenMeteo</div>
+      </footer>
+
+      <!-- ===== SETTINGS POPOVER ===== -->
+      <aside id="settings-popover" class="settings-popover" hidden>
+        <div class="settings-popover-header">
+          <div>
+            <p class="eyebrow">Settings</p>
+            <h3>Preferences and documents</h3>
+          </div>
+          <button id="settings-close-button" type="button" class="aw-btn aw-btn-icon" aria-label="Close preferences">✕</button>
+        </div>
+        <div id="settings-tabs" class="settings-tabs" role="tablist" aria-label="Settings sections">
+          <button type="button" class="settings-tab is-active" data-settings-tab="preferences" role="tab" aria-selected="true">Preferences</button>
+          <button type="button" class="settings-tab" data-settings-tab="documents" role="tab" aria-selected="false">Documents</button>
+        </div>
+        <p class="section-note" id="settings-status">Stored in this browser</p>
+        <div id="settings-panel-preferences" class="settings-panel" data-settings-panel="preferences">
+          <div class="settings-grid">
+            <section class="settings-block">
+              <div class="metric-label">Temperature</div>
+              <div id="temp-unit-toggle" class="range-pills">
+                <button type="button" class="is-active" data-temp-unit="c">°C</button>
+                <button type="button" data-temp-unit="f">°F</button>
+              </div>
+            </section>
+            <section class="settings-block">
+              <div class="metric-label">Wind speed</div>
+              <div id="speed-unit-toggle" class="range-pills">
+                <button type="button" class="is-active" data-speed-unit="kph">km/h</button>
+                <button type="button" data-speed-unit="mph">mph</button>
+              </div>
+            </section>
+            <section class="settings-block">
+              <div class="metric-label">Saved locations</div>
+              <div id="saved-locations" class="saved-locations"></div>
+            </section>
+          </div>
+        </div>
+        <div id="settings-panel-documents" class="settings-panel" data-settings-panel="documents" hidden>
+          <div id="documents-menu" class="documents-menu"></div>
+        </div>
+      </aside>
+
+    </div><!-- /.aw -->
 
     <template id="result-template">
       <button class="result-item" type="button"></button>
