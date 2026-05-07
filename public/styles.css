@@ -872,6 +872,95 @@ html, body { margin: 0; height: 100%; background: #141210; }
   text-transform: uppercase; margin-top: 4px;
 }
 
+/* === AGRONOMY BRIEF === */
+.agronomy-brief {
+  margin-top: 14px;
+  border: 0.5px solid var(--rule);
+  font-size: 11px;
+}
+.agro-brief-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 10px 12px; border-bottom: 0.5px solid var(--rule);
+  background: var(--paper-2);
+}
+.agro-brief-place {
+  font-family: "Sora", sans-serif; font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+}
+.agro-brief-stamp { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; }
+.agro-brief-block { padding: 12px; border-bottom: 0.5px solid var(--rule); }
+.agro-brief-block:last-child { border-bottom: 0; }
+.agro-brief-label {
+  font-size: 9px; letter-spacing: 0.12em; color: var(--muted);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.agro-brief-chips {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.agro-brief-chip { display: flex; flex-direction: column; gap: 1px; }
+.agro-brief-chip .k { font-size: 8px; letter-spacing: 0.10em; color: var(--muted); text-transform: uppercase; }
+.agro-brief-chip .v { font-size: 13px; font-family: "Sora", sans-serif; font-weight: 500; }
+
+/* 24h table */
+.agro-24h-wrap { overflow-x: auto; }
+.agro-24h-table {
+  width: 100%; border-collapse: collapse; font-size: 10px;
+}
+.agro-24h-table th {
+  text-align: left; padding: 4px 8px;
+  font-size: 8px; letter-spacing: 0.10em; color: var(--muted);
+  border-bottom: 0.5px solid var(--rule); white-space: nowrap;
+}
+.agro-24h-table td {
+  padding: 5px 8px; border-bottom: 0.5px solid var(--tick-faint);
+  white-space: nowrap; vertical-align: middle;
+}
+.agro-24h-table tr:last-child td { border-bottom: 0; }
+.agro-24h-table tr.is-now td { background: var(--paper-2); }
+.agro-24h-table .day-sep td {
+  font-size: 8px; letter-spacing: 0.10em; color: var(--muted);
+  background: var(--paper-2); padding: 3px 8px;
+  text-transform: uppercase; border-bottom: 0.5px solid var(--rule);
+}
+.agro-24h-table .col-icon { font-size: 14px; text-align: center; }
+.agro-24h-table .col-temp { font-family: "Sora", sans-serif; font-weight: 500; }
+.agro-24h-table .col-pct { color: var(--accent); }
+.agro-24h-table .col-mm { color: var(--muted); }
+
+/* field row inside brief */
+.agro-brief-field-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.agro-brief-field {
+  border: 0.5px solid var(--rule); padding: 8px; display: flex; flex-direction: column; gap: 3px;
+}
+.agro-brief-field .label { font-size: 8px; letter-spacing: 0.10em; color: var(--muted); text-transform: uppercase; }
+.agro-brief-field .value { font-size: 13px; font-family: "Sora", sans-serif; font-weight: 500; }
+.agro-brief-field .badge { display: inline-block; font-size: 8px; letter-spacing: 0.06em; padding: 1px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.agro-brief-field[data-lvl="go"] .badge { background: rgba(80,180,90,0.15); color: #3a8f40; }
+.agro-brief-field[data-lvl="caution"] .badge { background: rgba(220,160,40,0.15); color: #a07010; }
+.agro-brief-field[data-lvl="hold"] .badge { background: rgba(210,70,60,0.15); color: #b03028; }
+
+/* 7-day inside brief */
+.agro-brief-daily { display: flex; flex-direction: column; }
+.agro-brief-day {
+  display: grid; grid-template-columns: 44px 20px 36px auto auto auto;
+  gap: 8px; align-items: center; padding: 5px 0;
+  border-bottom: 0.5px solid var(--tick-faint); font-size: 10px;
+}
+.agro-brief-day:last-child { border-bottom: 0; }
+.agro-brief-day .temps { font-family: "Sora", sans-serif; font-weight: 500; font-size: 11px; }
+.agro-brief-day .temps small { color: var(--muted); font-weight: 400; }
+.agro-brief-day .meta { color: var(--muted); font-size: 9px; }
+.agro-brief-day .meta b { color: var(--ink); }
+
+/* footer */
+.agro-brief-footer {
+  padding: 8px 12px; text-align: right;
+  font-size: 8px; color: var(--tick); letter-spacing: 0.08em;
+}
+.agro-brief-footer a { color: inherit; text-decoration: none; }
+.agro-brief-footer a:hover { color: var(--muted); }
+
 /* === SETTINGS POPOVER === */
 .settings-popover {
   position: fixed; top: 0; right: 0;

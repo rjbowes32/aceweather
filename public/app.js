@@ -161,6 +161,7 @@ const elements = {
   exportHistoryChart: $("#export-history-chart"),
   copyAiReport: $("#copy-ai-report"),
   exportStatus: $("#export-status"),
+  agronomyBrief: $("#agronomy-brief"),
   currentLocationButton: $("#current-location-button"),
   saveLocationButton: $("#save-location-button"),
   refreshButton: $("#refresh-button"),
@@ -1410,6 +1411,252 @@ function renderRainGauge(data) {
     </div>`;
 }
 
+function buildAgronomyText(data) {
+  const loc = data.location;
+  const forecast = data.providers.openMeteo.forecast;
+  const agronomy = data.agronomy;
+  const cur = forecast.current;
+  const hourlyItems = buildHourlyPulse(data);
+  const hourly = forecast.hourly;
+  const daily = forecast.daily;
+  const dayStartIndex = getForecastDayStartIndex(forecast);
+  const now = new Date();
+  const stamp = now.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const toTemp = (v) => v == null ? "--" : (usesCelsius() ? `${Math.round(v)}°C` : `${Math.round(v * 9 / 5 + 32)}°F`);
+  const ag = agronomy.summary;
+  const spray = agronomy.sprayWindow;
+  const disease = agronomy.diseaseModels;
+  const SEP = "─".repeat(52);
+
+  const lines = [
+    `ACEWEATHER · AGRONOMY BRIEF`,
+    `${loc.name}`,
+    `${stamp} | ${loc.latitude.toFixed(4)}°N ${Math.abs(loc.longitude).toFixed(4)}°${loc.longitude >= 0 ? "E" : "W"}`,
+    ``,
+    SEP,
+    `CURRENT CONDITIONS`,
+    SEP,
+    `Temp:      ${toTemp(cur.temperature_2m)}  (feels ${toTemp(cur.apparent_temperature)})`,
+    `Condition: ${weatherCodeToLabel(cur.weather_code)}`,
+    `Wind:      ${formatSpeed(cur.wind_speed_10m)}  (gusts ${formatSpeed(cur.wind_gusts_10m)})`,
+    `Humidity:  ${cur.relative_humidity_2m}%   Pressure: ${Math.round(cur.pressure_msl)} hPa`,
+    `Rain now:  ${(cur.precipitation ?? 0).toFixed(1)} mm`,
+    ``,
+    SEP,
+    `24-HOUR OUTLOOK`,
+    SEP,
+    `${"TIME".padEnd(7)} ${"".padEnd(3)} ${"TEMP".padEnd(7)} ${"WIND".padEnd(10)} ${"RAIN%".padEnd(7)} MM`,
+  ];
+
+  let lastDay = null;
+  hourlyItems.slice(0, 25).forEach((item, i) => {
+    const wind = hourly.wind_speed_10m?.[i] ?? 0;
+    if (item.dayGroup !== lastDay && !item.isNow) {
+      lines.push(`── ${item.dayLabel.toUpperCase()} ────────────────────────────────────`);
+      lastDay = item.dayGroup;
+    } else if (item.isNow) {
+      lastDay = item.dayGroup;
+    }
+    const time = item.shortLabel.padEnd(7);
+    const icon = weatherCodeToIcon(item.weatherCode).padEnd(3);
+    const temp = toTemp(item.temperature).padEnd(7);
+    const windFmt = formatSpeed(wind).padEnd(10);
+    const pct = `${Math.round(item.precipitationProbability)}%`.padEnd(7);
+    const mm = item.precipitationAmount.toFixed(1);
+    lines.push(`${time} ${icon} ${temp} ${windFmt} ${pct} ${mm}`);
+  });
+
+  lines.push(``);
+  lines.push(SEP);
+  lines.push(`FIELD DECISIONS`);
+  lines.push(SEP);
+  lines.push(`Spray window:  ${spray.riskLabel || "–"} — ${formatNumber(spray.openHoursNext24)} h open / ${formatNumber(spray.longestBlockHours)} h longest block`);
+  lines.push(`Field access:  ${ag.fieldAccessLabel || "–"} — score ${Math.round(ag.fieldAccessScore ?? 0)}/100`);
+  lines.push(`Rain last 7d:  ${formatPrecip(ag.rainLast7Days, 1)} observed`);
+  lines.push(`Rain next 7d:  ${formatPrecip(ag.rainNext7Days, 1)} forecast`);
+  lines.push(`Soil moisture: ${Math.round((ag.soilMoistureSurface || 0) * 100)}%  (surface 0–1 cm)`);
+  lines.push(`Soil temp:     ${formatTemperature(ag.soilTemperature0cm, 1)}`);
+  lines.push(``);
+  lines.push(SEP);
+  lines.push(`DISEASE RISK`);
+  lines.push(SEP);
+  lines.push(`General fungal: ${disease.generalFungalPressure.label} (score ${formatNumber(disease.generalFungalPressure.score, 2)})`);
+  lines.push(`Late blight:    ${disease.lateBlightSmithProxy.triggered ? "TRIGGERED" : "Not triggered"} — ${disease.lateBlightSmithProxy.basis || ""}`);
+  lines.push(`Septoria:       ${disease.septoriaProxy.label} (score ${formatNumber(disease.septoriaProxy.score, 2)})`);
+  lines.push(`Spray risk:     ${spray.riskLabel || "–"}`);
+  lines.push(``);
+  lines.push(SEP);
+  lines.push(`7-DAY FORECAST`);
+  lines.push(SEP);
+  lines.push(`${"DATE".padEnd(7)} ${"CONDITION".padEnd(22)} ${"HI".padEnd(6)} ${"LO".padEnd(6)} ${"RAIN%".padEnd(7)} ${"MM".padEnd(6)} WIND`);
+
+  for (let i = 0; i < Math.min(7, daily.time.length - dayStartIndex); i++) {
+    const ai = dayStartIndex + i;
+    const d = daily.time[ai];
+    const dayAbbr = formatDate(d, { weekday: "short" });
+    const dateNum = formatDate(d, { day: "2-digit" });
+    const cond = weatherCodeToLabel(daily.weather_code[ai]).slice(0, 22);
+    const hi = toTemp(daily.temperature_2m_max[ai]);
+    const lo = toTemp(daily.temperature_2m_min[ai]);
+    const pct = `${Math.round(daily.precipitation_probability_max?.[ai] ?? 0)}%`;
+    const mm = (daily.precipitation_sum?.[ai] ?? 0).toFixed(1);
+    const wind = formatSpeed(daily.wind_speed_10m_max?.[ai] ?? 0);
+    lines.push(`${(dayAbbr + " " + dateNum).padEnd(7)} ${cond.padEnd(22)} ${hi.padEnd(6)} ${lo.padEnd(6)} ${pct.padEnd(7)} ${mm.padEnd(6)} ${wind}`);
+  }
+
+  lines.push(``);
+  lines.push(SEP);
+  lines.push(`${agronomy.disclaimer}`);
+  lines.push(``);
+  lines.push(`Generated by AceWeather — aceweather.app`);
+
+  return lines.join("\n");
+}
+
+function renderAgronomyBrief(data) {
+  const el = elements.agronomyBrief;
+  if (!el) return;
+  const loc = data.location;
+  const forecast = data.providers.openMeteo.forecast;
+  const agronomy = data.agronomy;
+  const cur = forecast.current;
+  const hourlyItems = buildHourlyPulse(data);
+  const hourly = forecast.hourly;
+  const daily = forecast.daily;
+  const dayStartIndex = getForecastDayStartIndex(forecast);
+  const now = new Date();
+  const stamp = now.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const toTemp = (v) => v == null ? "--" : (usesCelsius() ? `${Math.round(v)}°C` : `${Math.round(v * 9 / 5 + 32)}°F`);
+  const ag = agronomy.summary;
+  const spray = agronomy.sprayWindow;
+  const disease = agronomy.diseaseModels;
+
+  // Current conditions chips
+  const currentChips = [
+    { k: "TEMP", v: toTemp(cur.temperature_2m) },
+    { k: "FEELS", v: toTemp(cur.apparent_temperature) },
+    { k: "WIND", v: formatSpeed(cur.wind_speed_10m) },
+    { k: "GUSTS", v: formatSpeed(cur.wind_gusts_10m) },
+    { k: "HUMIDITY", v: `${cur.relative_humidity_2m}%` },
+    { k: "PRESSURE", v: `${Math.round(cur.pressure_msl)} hPa` },
+    { k: "RAIN NOW", v: `${(cur.precipitation ?? 0).toFixed(1)} mm` },
+    { k: "CONDITION", v: weatherCodeToLabel(cur.weather_code).toUpperCase() },
+  ];
+
+  // 24h table rows
+  let lastDay = null;
+  const tableRows = hourlyItems.slice(0, 25).map((item, i) => {
+    const wind = hourly.wind_speed_10m?.[i] ?? 0;
+    let daySep = "";
+    if (item.dayGroup !== lastDay && !item.isNow) {
+      daySep = `<tr class="day-sep"><td colspan="6">${escapeHtml(item.dayLabel.toUpperCase())}</td></tr>`;
+      lastDay = item.dayGroup;
+    } else if (item.isNow) {
+      lastDay = item.dayGroup;
+    }
+    const pctClass = item.precipitationProbability >= 70 ? ' style="color:var(--accent)"' : "";
+    return `${daySep}<tr${item.isNow ? ' class="is-now"' : ""}>
+      <td>${escapeHtml(item.shortLabel)}</td>
+      <td class="col-icon">${weatherCodeToIcon(item.weatherCode)}</td>
+      <td class="col-temp">${escapeHtml(toTemp(item.temperature))}</td>
+      <td>${escapeHtml(formatSpeed(wind))}</td>
+      <td class="col-pct"${pctClass}>${Math.round(item.precipitationProbability)}%</td>
+      <td class="col-mm">${item.precipitationAmount.toFixed(1)} mm</td>
+    </tr>`;
+  }).join("");
+
+  // Field decisions
+  const fieldItems = [
+    { label: "Spray window", value: `${formatNumber(spray.openHoursNext24)} h open`, badge: spray.riskLabel || "–", lvl: riskToLevel(spray.riskLabel) },
+    { label: "Field access", value: `Score ${Math.round(ag.fieldAccessScore ?? 0)}/100`, badge: ag.fieldAccessLabel || "–", lvl: riskToLevel(ag.fieldAccessLabel) },
+    { label: "Soil moisture", value: `${Math.round((ag.soilMoistureSurface || 0) * 100)}%`, badge: "Surface", lvl: (ag.soilMoistureSurface || 0) > 0.8 ? "hold" : (ag.soilMoistureSurface || 0) > 0.5 ? "caution" : "go" },
+    { label: "Rain last 7d", value: formatPrecip(ag.rainLast7Days, 1), badge: "Observed", lvl: "go" },
+    { label: "Rain next 7d", value: formatPrecip(ag.rainNext7Days, 1), badge: "Forecast", lvl: (ag.rainNext7Days ?? 0) > 20 ? "hold" : (ag.rainNext7Days ?? 0) > 8 ? "caution" : "go" },
+    { label: "Soil temp", value: formatTemperature(ag.soilTemperature0cm, 1), badge: "0 cm", lvl: "go" },
+  ];
+
+  const fieldHtml = fieldItems.map(f => `
+    <div class="agro-brief-field" data-lvl="${f.lvl}">
+      <span class="label">${escapeHtml(f.label)}</span>
+      <span class="value">${escapeHtml(f.value)}</span>
+      <span class="badge">${escapeHtml(f.badge)}</span>
+    </div>`).join("");
+
+  // Disease
+  const diseaseItems = [
+    { label: "General fungal", badge: disease.generalFungalPressure.label, detail: `Score ${formatNumber(disease.generalFungalPressure.score, 2)}` },
+    { label: "Late blight", badge: disease.lateBlightSmithProxy.triggered ? "TRIGGERED" : "Not triggered", detail: disease.lateBlightSmithProxy.triggered ? (disease.lateBlightSmithProxy.basis || "").split(".")[0] : "Smith Period not met" },
+    { label: "Septoria", badge: disease.septoriaProxy.label, detail: `Score ${formatNumber(disease.septoriaProxy.score, 2)}` },
+    { label: "Spray risk", badge: spray.riskLabel || "–", detail: "Wind · rain · temp next 24h" },
+  ];
+
+  const diseaseHtml = diseaseItems.map(d => `
+    <div class="agro-brief-field" data-lvl="${riskToLevel(d.badge)}">
+      <span class="label">${escapeHtml(d.label)}</span>
+      <span class="value">${escapeHtml(d.badge || "–")}</span>
+      <span class="badge">${escapeHtml(d.detail)}</span>
+    </div>`).join("");
+
+  // 7-day
+  const dailyHtml = Array.from({ length: Math.min(7, daily.time.length - dayStartIndex) }, (_, i) => {
+    const ai = dayStartIndex + i;
+    const d = daily.time[ai];
+    const dayAbbr = formatDate(d, { weekday: "short" }).toUpperCase().slice(0, 3);
+    const dateNum = formatDate(d, { day: "2-digit" });
+    const hi = toTemp(daily.temperature_2m_max[ai]);
+    const lo = toTemp(daily.temperature_2m_min[ai]);
+    const pct = Math.round(daily.precipitation_probability_max?.[ai] ?? 0);
+    const mm = (daily.precipitation_sum?.[ai] ?? 0).toFixed(1);
+    const wind = formatSpeed(daily.wind_speed_10m_max?.[ai] ?? 0);
+    return `
+      <div class="agro-brief-day">
+        <span>${escapeHtml(dayAbbr)}<br><b>${escapeHtml(dateNum)}</b></span>
+        <span>${weatherCodeToIcon(daily.weather_code[ai])}</span>
+        <span class="temps">${escapeHtml(hi)}<br><small>${escapeHtml(lo)}</small></span>
+        <span class="meta">💧 <span style="color:var(--accent)">${pct}%</span> · <b>${mm} mm</b></span>
+        <span class="meta">💨 <b>${escapeHtml(wind)}</b></span>
+      </div>`;
+  }).join("");
+
+  el.hidden = false;
+  el.innerHTML = `
+    <div class="agro-brief-head">
+      <span class="agro-brief-place">${escapeHtml(loc.name)}</span>
+      <span class="agro-brief-stamp">${escapeHtml(stamp)}</span>
+    </div>
+    <div class="agro-brief-block">
+      <div class="agro-brief-label">Current conditions</div>
+      <div class="agro-brief-chips">${currentChips.map(c => `
+        <div class="agro-brief-chip"><span class="k">${escapeHtml(c.k)}</span><span class="v">${escapeHtml(c.v)}</span></div>`).join("")}
+      </div>
+    </div>
+    <div class="agro-brief-block">
+      <div class="agro-brief-label">24-hour outlook</div>
+      <div class="agro-24h-wrap">
+        <table class="agro-24h-table">
+          <thead><tr><th>TIME</th><th></th><th>TEMP</th><th>WIND</th><th>RAIN%</th><th>MM</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="agro-brief-block">
+      <div class="agro-brief-label">Field decisions</div>
+      <div class="agro-brief-field-grid">${fieldHtml}</div>
+    </div>
+    <div class="agro-brief-block">
+      <div class="agro-brief-label">Disease risk</div>
+      <div class="agro-brief-field-grid">${diseaseHtml}</div>
+    </div>
+    <div class="agro-brief-block">
+      <div class="agro-brief-label">7-day forecast</div>
+      <div class="agro-brief-daily">${dailyHtml}</div>
+    </div>
+    <div class="agro-brief-footer">
+      <a href="https://aceweather.app" target="_blank" rel="noopener">aceweather.app</a>
+    </div>
+  `;
+}
+
 function renderAll(data) {
   renderHero(data);
   renderHourly(data);
@@ -1422,6 +1669,7 @@ function renderAll(data) {
   renderProviders(data);
   renderAgronomy(data);
   renderRainGauge(data);
+  renderAgronomyBrief(data);
   renderSettings();
 }
 
@@ -1849,19 +2097,15 @@ elements.exportHistoryChart.addEventListener("click", () => {
 });
 
 elements.copyAiReport.addEventListener("click", async () => {
-  const loc = state.selectedLocation;
-  const params = new URLSearchParams({
-    lat: loc.latitude,
-    lon: loc.longitude,
-    timezone: loc.timezone || "auto",
-    label: loc.name,
-  });
-  setExportStatus("Generating AI report…");
+  if (!state.latestPayload) {
+    setExportStatus("No data loaded yet — wait for weather to load.");
+    return;
+  }
+  setExportStatus("Building report…");
   try {
-    const response = await fetch(`/api/report?${params.toString()}`);
-    const text = await response.text();
+    const text = buildAgronomyText(state.latestPayload);
     await navigator.clipboard.writeText(text);
-    setExportStatus(`Copied report for ${loc.name} — paste it into Claude.`);
+    setExportStatus(`Copied agronomy brief for ${state.latestPayload.location.name} — paste into Claude.`);
   } catch {
     setExportStatus("Could not copy report. Try again.");
   }
