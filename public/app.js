@@ -163,7 +163,8 @@ const elements = {
   exportStatus: $("#export-status"),
   currentLocationButton: $("#current-location-button"),
   saveLocationButton: $("#save-location-button"),
-  refreshButton: $("#refresh-button"),
+  shareButton: $("#share-button"),
+  shareMenu: $("#share-menu"),
   settingsButton: $("#settings-button"),
   settingsCloseButton: $("#settings-close-button"),
   settingsPopover: $("#settings-popover"),
@@ -192,9 +193,8 @@ function isAtTopOfPage() {
 }
 
 function updateRefreshUi(message = "", isRefreshing = false) {
-  if (elements.refreshButton) {
-    elements.refreshButton.disabled = isRefreshing;
-    elements.refreshButton.textContent = isRefreshing ? "Refreshing..." : "Refresh";
+  if (elements.shareButton) {
+    elements.shareButton.disabled = isRefreshing;
   }
   if (!elements.pullRefreshIndicator || !elements.pullRefreshLabel) {
     return;
@@ -2074,8 +2074,44 @@ elements.currentLocationButton.addEventListener("click", () => {
   void requestCurrentLocation({ preserveScroll: true });
 });
 elements.saveLocationButton.addEventListener("click", handleSaveCurrentLocation);
-elements.refreshButton.addEventListener("click", handleManualRefresh);
 elements.settingsButton.addEventListener("click", toggleSettingsPopover);
+
+// Share menu
+function setShareMenuOpen(open) {
+  elements.shareMenu.hidden = !open;
+  if (open) {
+    const rect = elements.shareButton.getBoundingClientRect();
+    elements.shareMenu.style.setProperty("top", `${rect.bottom + 6}px`);
+    elements.shareMenu.style.setProperty("right", `${document.documentElement.clientWidth - rect.right}px`);
+  }
+}
+elements.shareButton.addEventListener("click", (e) => {
+  e.stopPropagation();
+  setShareMenuOpen(elements.shareMenu.hidden);
+});
+document.addEventListener("click", (e) => {
+  if (!elements.shareMenu.hidden && !elements.shareMenu.contains(e.target)) {
+    setShareMenuOpen(false);
+  }
+});
+
+// Bottom tab bar
+const tabPanels = document.querySelectorAll(".tab-panel");
+const tabButtons = document.querySelectorAll(".aw-tab");
+function switchTab(tabName) {
+  tabPanels.forEach(p => { p.hidden = p.dataset.panel !== tabName; });
+  tabButtons.forEach(b => {
+    const active = b.dataset.tab === tabName;
+    b.classList.toggle("is-active", active);
+    b.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  // Redraw canvases that may have been hidden
+  window.dispatchEvent(new Event("resize"));
+}
+document.querySelector(".aw-tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".aw-tab");
+  if (btn) switchTab(btn.dataset.tab);
+});
 elements.settingsCloseButton.addEventListener("click", () => setSettingsPopoverOpen(false));
 elements.settingsTabs?.addEventListener("click", handleSettingsTabClick);
 elements.savedLocations.addEventListener("click", handleSavedLocationsClick);
@@ -2128,6 +2164,7 @@ elements.exportHistoryChart.addEventListener("click", () => {
   const suffix = state.history.mode === "custom" ? `${state.history.start}-to-${state.history.end}` : `${state.history.days}d`;
   downloadCanvas(elements.historyChart, `aceweather-history-${suffix}.png`);
   setExportStatus("Downloaded the historical weather chart.");
+  setShareMenuOpen(false);
 });
 
 elements.copyAiReport.addEventListener("click", async () => {
@@ -2140,6 +2177,7 @@ elements.copyAiReport.addEventListener("click", async () => {
     const text = buildAgronomyText(state.latestPayload);
     await navigator.clipboard.writeText(text);
     setExportStatus(`Copied agronomy brief for ${state.latestPayload.location.name} — paste into Claude.`);
+    setShareMenuOpen(false);
   } catch {
     setExportStatus("Could not copy report. Try again.");
   }

@@ -28,12 +28,16 @@
         <div class="aw-head-row">
           <div class="brand">
             <span class="brand-mark">AceWeather</span>
-            <span class="brand-sub">/ Mk II</span>
           </div>
           <div class="aw-head-actions">
             <button id="current-location-button" type="button" class="aw-btn">GPS</button>
             <button id="save-location-button" type="button" class="aw-btn">Save</button>
-            <button id="refresh-button" type="button" class="aw-btn">Refresh</button>
+            <button id="share-button" type="button" class="aw-btn aw-btn-icon" aria-label="Export and share">
+              <svg width="13" height="15" viewBox="0 0 13 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6.5 1v9.5M3 4.5l3.5-3.5 3.5 3.5"/>
+                <path d="M1 11v2.5h11V11"/>
+              </svg>
+            </button>
             <button id="settings-button" type="button" class="aw-btn aw-btn-icon" aria-expanded="false" aria-controls="settings-popover" aria-label="Open preferences">⚙</button>
           </div>
         </div>
@@ -61,193 +65,218 @@
         </div>
       </header>
 
+      <!-- Share menu -->
+      <div id="share-menu" class="share-menu" hidden>
+        <button id="export-report" type="button" class="share-menu-item">
+          <span class="share-item-title">Export report</span>
+          <span class="share-item-sub">Printable agronomy brief</span>
+        </button>
+        <button id="export-history-chart" type="button" class="share-menu-item">
+          <span class="share-item-title">Export historical chart</span>
+          <span class="share-item-sub">PNG for current date range</span>
+        </button>
+        <button id="copy-ai-report" type="button" class="share-menu-item">
+          <span class="share-item-title">Copy AI weather report</span>
+          <span class="share-item-sub">Paste into Claude</span>
+        </button>
+        <p id="export-status" class="share-status"></p>
+      </div>
+
       <!-- Pull to refresh -->
       <div id="pull-refresh-indicator" class="pull-refresh-indicator" aria-live="polite" hidden>
         <strong id="pull-refresh-label">Pull to refresh</strong>
       </div>
 
-      <!-- ===== 01 PRIMARY READOUT ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">01</span>
-          <span class="title">Primary readout</span>
-          <span id="hero-eyebrow">Live</span>
-        </div>
-        <div class="primary">
-          <div>
-            <div class="temp-block">
-              <div class="temp-figure" id="hero-temp">--</div>
-              <div class="temp-deg" id="hero-unit">°C</div>
+      <!-- ===== TAB PANELS ===== -->
+
+      <!-- NOW -->
+      <div class="tab-panel" data-panel="now">
+        <section class="section">
+          <div class="section-head">
+            <span class="num">01</span>
+            <span class="title">Primary readout</span>
+            <span id="hero-eyebrow">Live</span>
+          </div>
+          <div class="primary">
+            <div>
+              <div class="temp-block">
+                <div class="temp-figure" id="hero-temp">--</div>
+                <div class="temp-deg" id="hero-unit">°C</div>
+              </div>
+              <div class="temp-feels">FEELS LIKE <b id="hero-feels">--</b></div>
             </div>
-            <div class="temp-feels">FEELS LIKE <b id="hero-feels">--</b></div>
-          </div>
-          <div class="condition-stamp">
-            <div class="glyph" id="hero-icon">--</div>
-            <div class="condition-text">
-              <b id="hero-condition">--</b>
-              <span>Observed</span>
+            <div class="condition-stamp">
+              <div class="glyph" id="hero-icon">--</div>
+              <div class="condition-text">
+                <b id="hero-condition">--</b>
+                <span>Observed</span>
+              </div>
             </div>
           </div>
-        </div>
-        <p class="summary-line" id="hero-summary">Fetching forecast, air quality, and historical context.</p>
-        <div class="chips" id="hero-chips"></div>
-        <div id="rain-gauge-wrap"></div>
-      </section>
+          <p class="summary-line" id="hero-summary">Fetching forecast, air quality, and historical context.</p>
+          <div class="chips" id="hero-chips"></div>
+          <div id="rain-gauge-wrap"></div>
+        </section>
 
-      <!-- ===== 02 DEEP CONDITIONS ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">02</span>
-          <span class="title">Deep conditions</span>
-          <span>Atmosphere</span>
-        </div>
-        <div id="metrics-grid" class="metrics-grid"></div>
-      </section>
-
-      <!-- ===== 03 24-HOUR PULSE ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">03</span>
-          <span class="title">24-hour pulse</span>
-          <span>Δt 1h</span>
-        </div>
-        <div class="tape-wrap">
-          <div class="tape-legend">
-            <span><i></i>TEMP</span>
-            <span><i class="dashed"></i>WIND</span>
-            <span><i class="bar"></i>PRECIP</span>
+        <section class="section">
+          <div class="section-head">
+            <span class="num">02</span>
+            <span class="title">Deep conditions</span>
+            <span>Atmosphere</span>
           </div>
-          <canvas id="hourly-chart" class="tape-canvas"></canvas>
-        </div>
-        <div id="hourly-strip" class="hourly-strip"></div>
-      </section>
+          <div id="metrics-grid" class="metrics-grid"></div>
+        </section>
 
-      <!-- ===== 04 FIELD DECISIONS ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">04</span>
-          <span class="title">Field decisions</span>
+        <section class="section">
+          <div class="section-head">
+            <span class="num">07</span>
+            <span class="title">Air quality</span>
+            <span>Air and light</span>
+          </div>
+          <div id="air-quality-current" class="air-quality-current"></div>
+          <div id="air-quality-list" class="air-quality-list"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <span class="num">08</span>
+            <span class="title">Seasonal memory</span>
+            <span>Month comparison</span>
+          </div>
+          <div id="climate-summary" class="climate-summary"></div>
+        </section>
+
+        <footer class="aw-foot">
+          <div class="signature">An instrument for reading sky.</div>
+          <div>AceWeather · ECMWF · UKMO · OpenMeteo</div>
+        </footer>
+      </div>
+
+      <!-- FORECAST -->
+      <div class="tab-panel" data-panel="forecast" hidden>
+        <section class="section">
+          <div class="section-head">
+            <span class="num">03</span>
+            <span class="title">24-hour pulse</span>
+            <span>Δt 1h</span>
+          </div>
+          <div class="tape-wrap">
+            <div class="tape-legend">
+              <span><i></i>TEMP</span>
+              <span><i class="dashed"></i>WIND</span>
+              <span><i class="bar"></i>PRECIP</span>
+            </div>
+            <canvas id="hourly-chart" class="tape-canvas"></canvas>
+          </div>
+          <div id="hourly-strip" class="hourly-strip"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <span class="num">05</span>
+            <span class="title">14-day outlook</span>
+            <span>HI · LO · mm</span>
+          </div>
+          <div id="daily-grid" class="daily"></div>
+        </section>
+      </div>
+
+      <!-- AGRONOMY -->
+      <div class="tab-panel" data-panel="agronomy" hidden>
+        <section class="section">
+          <div class="section-head">
+            <span class="num">04</span>
+            <span class="title">Field decisions</span>
+            <span>Agronomy</span>
+          </div>
+          <div id="agronomy-grid" class="agro-grid"></div>
+          <div id="disease-grid" class="disease-grid"></div>
+          <p id="agronomy-disclaimer" class="agronomy-disclaimer"></p>
+        </section>
+
+        <article class="section" id="model-verify-panel" hidden>
+          <div class="section-head">
+            <span class="num">—</span>
+            <span class="title">Model verification</span>
+            <span id="model-verify-stamp"></span>
+          </div>
+          <div id="model-verify-grid" class="model-verify-grid"></div>
+        </article>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="tab-panel" data-panel="history" hidden>
+        <section class="section">
+          <div class="section-head">
+            <span class="num">06</span>
+            <span class="title" id="history-title">Historical lens</span>
+            <span id="history-subtitle">Archive</span>
+          </div>
+          <div class="history">
+            <div class="history-head">
+              <span>Daily mean · precip</span>
+              <div class="range-pills" id="history-presets" role="tablist">
+                <button type="button" class="is-active" data-range="7">7D</button>
+                <button type="button" data-range="14">14D</button>
+                <button type="button" data-range="30">30D</button>
+                <button type="button" data-range="90">90D</button>
+                <button type="button" data-range="custom">Custom</button>
+              </div>
+            </div>
+            <form id="history-custom-form" class="history-custom-form">
+              <label>
+                <span>From</span>
+                <input id="history-start" type="date" />
+              </label>
+              <label>
+                <span>To</span>
+                <input id="history-end" type="date" />
+              </label>
+              <button type="submit" class="aw-btn">Apply</button>
+            </form>
+            <canvas id="history-chart" class="history-canvas"></canvas>
+            <div id="history-stats" class="history-stats"></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <span class="num">09</span>
+            <span class="title">Source status</span>
+            <span>Providers</span>
+          </div>
+          <div id="provider-list" class="provider-list"></div>
+        </section>
+      </div>
+
+      <!-- ===== BOTTOM TAB BAR ===== -->
+      <nav class="aw-tabs" role="tablist" aria-label="Navigation">
+        <button class="aw-tab is-active" data-tab="now" role="tab" aria-selected="true">
+          <svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/>
+          </svg>
+          <span>Now</span>
+        </button>
+        <button class="aw-tab" data-tab="forecast" role="tab" aria-selected="false">
+          <svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <polyline points="3 17 8 11 13 14 21 6"/><line x1="3" y1="20" x2="21" y2="20"/>
+          </svg>
+          <span>Forecast</span>
+        </button>
+        <button class="aw-tab" data-tab="agronomy" role="tab" aria-selected="false">
+          <svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M12 22V12M12 12C12 7 7 4 3 5c0 5 3 9 9 7M12 12c0-5 5-8 9-7-1 5-4 9-9 7"/>
+          </svg>
           <span>Agronomy</span>
-        </div>
-        <div id="agronomy-grid" class="agro-grid"></div>
-        <div id="disease-grid" class="disease-grid"></div>
-        <p id="agronomy-disclaimer" class="agronomy-disclaimer"></p>
-      </section>
-
-      <!-- ===== 05 7-DAY OUTLOOK ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">05</span>
-          <span class="title">14-day outlook</span>
-          <span>HI · LO · mm</span>
-        </div>
-        <div id="daily-grid" class="daily"></div>
-      </section>
-
-      <!-- ===== 06 HISTORICAL LENS ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">06</span>
-          <span class="title" id="history-title">Historical lens</span>
-          <span id="history-subtitle">Archive</span>
-        </div>
-        <div class="history">
-          <div class="history-head">
-            <span>Daily mean · precip</span>
-            <div class="range-pills" id="history-presets" role="tablist">
-              <button type="button" class="is-active" data-range="7">7D</button>
-              <button type="button" data-range="14">14D</button>
-              <button type="button" data-range="30">30D</button>
-              <button type="button" data-range="90">90D</button>
-              <button type="button" data-range="custom">Custom</button>
-            </div>
-          </div>
-          <form id="history-custom-form" class="history-custom-form">
-            <label>
-              <span>From</span>
-              <input id="history-start" type="date" />
-            </label>
-            <label>
-              <span>To</span>
-              <input id="history-end" type="date" />
-            </label>
-            <button type="submit" class="aw-btn">Apply</button>
-          </form>
-          <canvas id="history-chart" class="history-canvas"></canvas>
-          <div id="history-stats" class="history-stats"></div>
-        </div>
-      </section>
-
-      <!-- ===== 07 AIR QUALITY ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">07</span>
-          <span class="title">Air quality</span>
-          <span>Air and light</span>
-        </div>
-        <div id="air-quality-current" class="air-quality-current"></div>
-        <div id="air-quality-list" class="air-quality-list"></div>
-      </section>
-
-      <!-- ===== 08 SEASONAL MEMORY ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">08</span>
-          <span class="title">Seasonal memory</span>
-          <span>Month comparison</span>
-        </div>
-        <div id="climate-summary" class="climate-summary"></div>
-      </section>
-
-      <!-- ===== MODEL VERIFICATION (conditionally visible) ===== -->
-      <article class="section" id="model-verify-panel" hidden>
-        <div class="section-head">
-          <span class="num">—</span>
-          <span class="title">Model verification</span>
-          <span id="model-verify-stamp"></span>
-        </div>
-        <div id="model-verify-grid" class="model-verify-grid"></div>
-      </article>
-
-      <!-- ===== 09 SOURCE STATUS ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">09</span>
-          <span class="title">Source status</span>
-          <span>Providers</span>
-        </div>
-        <div id="provider-list" class="provider-list"></div>
-      </section>
-
-      <!-- ===== 10 EXPORT ===== -->
-      <section class="section">
-        <div class="section-head">
-          <span class="num">10</span>
-          <span class="title">Export</span>
-          <span>Reports and charts</span>
-        </div>
-        <div class="export-grid">
-          <button id="export-report" type="button" class="export-card">
-            <strong>Export agronomy report</strong>
-            <span>Opens a printable full report</span>
-          </button>
-          <button id="export-history-chart" type="button" class="export-card">
-            <strong>Export historical chart</strong>
-            <span>PNG using selected historic range</span>
-          </button>
-          <button id="copy-ai-report" type="button" class="export-card">
-            <strong>Copy AI weather report</strong>
-            <span>Paste into Claude for full analysis</span>
-          </button>
-        </div>
-        <p id="export-status" class="export-status">Choose an export and it will open or download directly.</p>
-      </section>
-
-      <!-- ===== FOOTER ===== -->
-      <footer class="aw-foot">
-        <div class="signature">An instrument for reading sky.</div>
-        <div>AceWeather Mk II · ECMWF · UKMO · OpenMeteo</div>
-      </footer>
+        </button>
+        <button class="aw-tab" data-tab="history" role="tab" aria-selected="false">
+          <svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="1"/>
+            <polyline points="7 17 10 13 13 15 17 9"/>
+          </svg>
+          <span>History</span>
+        </button>
+      </nav>
 
       <!-- ===== SETTINGS POPOVER ===== -->
       <aside id="settings-popover" class="settings-popover" hidden>

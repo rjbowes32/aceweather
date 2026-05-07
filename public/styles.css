@@ -132,6 +132,7 @@ html, body { margin: 0; height: 100%; background: #141210; }
   background: var(--paper);
   position: sticky; top: 0; z-index: 10;
   transition: background 800ms ease;
+  isolation: isolate;
 }
 .aw-head-row {
   display: flex; justify-content: space-between; align-items: flex-start;
@@ -847,26 +848,58 @@ html, body { margin: 0; height: 100%; background: #141210; }
   margin: 0;
 }
 
-/* === EXPORT PANEL === */
-.export-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.export-card {
+/* === SHARE MENU === */
+.share-menu {
+  position: fixed; top: var(--share-menu-top, 52px); right: var(--pad);
+  width: 240px; z-index: 300;
+  background: var(--paper);
   border: 0.5px solid var(--rule);
-  background: var(--inset);
-  padding: 12px;
-  text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; gap: 4px;
-  font: inherit;
-  color: var(--ink);
-  transition: background 0.3s ease;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
 }
-.export-card:hover { background: var(--paper-2); }
-.export-card strong { font-family: "Sora", sans-serif; font-size: 13px; font-weight: 600; }
-.export-card span { font-size: 9px; color: var(--muted); letter-spacing: 0.06em; }
+.share-menu-item {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 100%; text-align: left; padding: 12px 14px;
+  background: none; border: none; border-bottom: 0.5px solid var(--rule);
+  font: inherit; color: var(--ink); cursor: pointer;
+  transition: background 0.15s;
+}
+.share-menu-item:last-of-type { border-bottom: 0; }
+.share-menu-item:hover { background: var(--paper-2); }
+.share-item-title { font-family: "Sora", sans-serif; font-size: 12px; font-weight: 600; }
+.share-item-sub { font-size: 9px; color: var(--muted); letter-spacing: 0.06em; }
+.share-status {
+  font-size: 9px; color: var(--muted); letter-spacing: 0.10em;
+  text-transform: uppercase; padding: 8px 14px; margin: 0;
+  border-top: 0.5px solid var(--rule);
+}
+
+/* === BOTTOM TAB BAR === */
+.aw-tabs {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--paper); border-top: 0.5px solid var(--rule);
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.aw-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 4px 8px;
+  background: none; border: none; color: var(--muted);
+  font: 9px/1 "JetBrains Mono", monospace; letter-spacing: 0.08em;
+  text-transform: uppercase; cursor: pointer;
+  transition: color 0.2s;
+}
+.aw-tab.is-active { color: var(--ink); }
+.aw-tab .tab-icon { opacity: 0.5; transition: opacity 0.2s; }
+.aw-tab.is-active .tab-icon { opacity: 1; }
+
+/* Tab panel visibility */
+.tab-panel[hidden] { display: none !important; }
+
+/* Body padding to clear tab bar */
+.aw { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+
+/* === EXPORT PANEL (legacy, kept for report page) === */
 .export-status {
   font-size: 9px; color: var(--muted); letter-spacing: 0.10em;
   text-transform: uppercase; margin-top: 4px;

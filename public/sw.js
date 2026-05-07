@@ -1,4 +1,4 @@
-const CACHE = "aceweather-v4";
+const CACHE = "aceweather-v5";
 const PRECACHE = ["/", "/app.js", "/styles.css", "/manifest.json"];
 
 self.addEventListener("install", (e) => {
