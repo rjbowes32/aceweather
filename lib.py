@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import concurrent.futures
 import json
 import logging
 import os
@@ -241,6 +242,10 @@ def canonical_region_set_urls(set_name: str, base_url: str = "") -> list[str]:
 
 def digest_url(set_name: str, base_url: str = "") -> str:
     return absolute_public_url(f"/api/digest?set={urllib.parse.quote(set_name)}", base_url)
+
+
+def full_digest_url(set_name: str, base_url: str = "") -> str:
+    return absolute_public_url(f"/api/digest?set={urllib.parse.quote(set_name)}&mode=full", base_url)
 
 
 def fetch_forecast(latitude: float, longitude: float, timezone: str) -> dict[str, Any]:
@@ -720,16 +725,89 @@ def build_report(payload: dict[str, Any], *, base_url: str = "", include_related
             "",
             "## Regional Digest URL",
             f"- {digest_url('cropdynamics', base_url)}",
+            f"- Full version: {full_digest_url('cropdynamics', base_url)}",
             "",
         ]
     return "\n".join(lines)
 
 
-def build_digest(set_name: str, *, base_url: str = "") -> str:
+def _build_region_brief(region: dict[str, str]) -> dict[str, Any]:
+    latitude, longitude, timezone, label = resolve_location_query(region["query"])
+    forecast = fetch_forecast(latitude, longitude, timezone)
+    history = fetch_history(latitude, longitude, timezone, history_days=7)
+    daily = forecast["daily"]
+    return {
+        "label": label,
+        "query": region["query"],
+        "history": history["daily"],
+        "daily": daily,
+    }
+
+
+def build_brief_digest(set_name: str, *, base_url: str = "") -> str:
     regions = CANONICAL_REGION_SETS.get(set_name)
     if not regions:
         supported = ", ".join(sorted(CANONICAL_REGION_SETS))
         raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
+
+    digest_link = digest_url(set_name, base_url)
+    report_links = canonical_region_set_urls(set_name, base_url)
+    lines = [
+        f"# AceWeather Bundle: {set_name}",
+        f"Generated: {datetime.utcnow().isoformat(timespec='seconds')}Z",
+        "",
+        "This is the fast plain-text bundle intended for LLM fetching and interpretation.",
+        f"Fixed bundle URL: {digest_link}",
+        f"Full bundle URL: {full_digest_url(set_name, base_url)}",
+        "",
+        "## Direct Report URLs",
+        *[f"- {url}" for url in report_links],
+        "",
+        "## Regional Snapshot",
+    ]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, len(regions))) as executor:
+        briefs = list(executor.map(_build_region_brief, regions))
+
+    for brief in briefs:
+        history = brief["history"]
+        daily = brief["daily"]
+        lines += [
+            "",
+            f"### {brief['label']}",
+            "Observed last 7 days:",
+        ]
+        for index in range(min(7, len(history["time"]))):
+            lines.append(
+                f"  - {history['time'][index]}: high {float(history['temperature_2m_max'][index] or 0.0):.1f} C, "
+                f"low {float(history['temperature_2m_min'][index] or 0.0):.1f} C, "
+                f"rain {float(history['precipitation_sum'][index] or 0.0):.1f} mm"
+            )
+        lines.append("Forecast next 7 days:")
+        for index in range(min(7, len(daily["time"]))):
+            lines.append(
+                f"  - {daily['time'][index]}: high {float(daily['temperature_2m_max'][index] or 0.0):.1f} C, "
+                f"low {float(daily['temperature_2m_min'][index] or 0.0):.1f} C, "
+                f"rain {float(daily['precipitation_sum'][index] or 0.0):.1f} mm"
+            )
+
+    lines += [
+        "",
+        "## Agent Instruction",
+        "Read this text bundle directly, then interpret rainfall and temperature patterns region by region.",
+    ]
+    return "\n".join(lines)
+
+
+def build_digest(set_name: str, *, base_url: str = "", mode: str = "brief") -> str:
+    regions = CANONICAL_REGION_SETS.get(set_name)
+    if not regions:
+        supported = ", ".join(sorted(CANONICAL_REGION_SETS))
+        raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
+    if mode == "brief":
+        return build_brief_digest(set_name, base_url=base_url)
+    if mode != "full":
+        raise ValueError("Unknown digest mode. Supported modes: brief, full.")
 
     digest_link = digest_url(set_name, base_url)
     report_links = canonical_region_set_urls(set_name, base_url)

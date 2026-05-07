@@ -9,6 +9,12 @@ Preferred endpoint for report text:
 Canonical regional digest:
 - GET https://aceweather.app/api/digest?set=cropdynamics
 
+The Crop Dynamics digest is intentionally minimal:
+- observed rainfall for the last 7 days
+- observed temperature highs and lows for the last 7 days
+- forecast rainfall for the next 7 days
+- forecast temperature highs and lows for the next 7 days
+
 Crop Dynamics direct report URLs:
 - https://aceweather.app/api/report?query=Pocklington
 - https://aceweather.app/api/report?query=Boroughbridge
@@ -38,4 +44,5 @@ Examples:
 Notes:
 - /api/report returns text/plain.
 - /api/weather returns application/json.
+- /api/digest?set=cropdynamics returns the slim regional text bundle for LLM reading.
 - For the simplest workflow, fetch https://aceweather.app/api/digest?set=cropdynamics once or call https://aceweather.app/api/report directly with ?query=...

@@ -112,8 +112,9 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
     def _handle_digest(self, query_string: str) -> None:
         params = urllib.parse.parse_qs(query_string)
         set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
+        mode = (params.get("mode", ["brief"])[0] or "brief").strip().lower()
         try:
-            digest_text = lib.build_digest(set_name, base_url=self._request_base_url())
+            digest_text = lib.build_digest(set_name, base_url=self._request_base_url(), mode=mode)
             body = digest_text.encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/plain; charset=utf-8")

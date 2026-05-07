@@ -206,7 +206,7 @@
     "/api/digest": {
       "get": {
         "summary": "Get canonical regional digest",
-        "description": "Returns a bundled plain-text digest for a named regional set such as cropdynamics.",
+        "description": "Returns a bundled plain-text digest for a named regional set such as cropdynamics. The default brief mode is optimized for LLM use and includes only last-7 and next-7 rainfall and temperature highs/lows per region.",
         "parameters": [
           {
             "name": "set",
@@ -216,6 +216,17 @@
               "type": "string",
               "default": "cropdynamics"
             }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "brief",
+              "enum": ["brief", "full"]
+            },
+            "description": "Use brief for the smaller LLM-oriented bundle or full for the full multi-section digest."
           }
         ],
         "responses": {

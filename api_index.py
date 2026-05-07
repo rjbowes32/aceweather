@@ -22,6 +22,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
         "regionalDigests": {
             "cropdynamics": {
                 "digest": absolute("/api/digest?set=cropdynamics"),
+                "fullDigest": absolute("/api/digest?set=cropdynamics&mode=full"),
                 "reportUrls": [
                     absolute("/api/report?query=Pocklington"),
                     absolute("/api/report?query=Boroughbridge"),
@@ -87,9 +88,9 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "path": "/api/digest",
                 "method": "GET",
                 "responseFormat": "text/plain",
-                "optionalParams": ["set"],
-                "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics.",
+                "optionalParams": ["set", "mode"],
+                "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics. Default mode is a faster brief bundle.",
             },
         ],
-        "agentHint": "If you need one standard regional bundle, call /api/digest?set=cropdynamics. If you need a single place, call /api/report directly. The direct report URLs for the cropdynamics set are listed above so one successful fetch can unlock the rest.",
+        "agentHint": "If you need one standard regional bundle, call /api/digest?set=cropdynamics. It defaults to a faster brief text bundle. If you need a single place, call /api/report directly.",
     }

@@ -6,6 +6,13 @@ For agent workflows that need a standard regional bundle from one unlocked URL, 
 
 - `https://aceweather.app/api/digest?set=cropdynamics`
 
+That Crop Dynamics bundle is intentionally slim. It returns, for each region:
+
+- observed rainfall for the last 7 days
+- observed temperature highs and lows for the last 7 days
+- forecast rainfall for the next 7 days
+- forecast temperature highs and lows for the next 7 days
+
 Machine-readable discovery is also available at:
 
 - `/api`
@@ -43,6 +50,12 @@ Local development:
 - Forecast guidance
 - Air quality
 - Agronomy summary
+
+## Crop Dynamics Bundle
+
+`https://aceweather.app/api/digest?set=cropdynamics`
+
+This is the fixed LLM-friendly bundle endpoint. It is shorter than the full report flow and is meant to reduce timeouts.
 
 ## Related Endpoint
 
