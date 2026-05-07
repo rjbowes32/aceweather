@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+import socket
 import urllib.error
 import urllib.parse
 from datetime import date, datetime
@@ -10,12 +12,13 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from api_index import build_api_index
 import lib
 
 ROOT = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT / "public"
-HOST = "127.0.0.1"
-PORT = 8000
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8000
 
 
 class AceWeatherHandler(SimpleHTTPRequestHandler):
@@ -26,6 +29,9 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/api/search":
             self._handle_search(parsed.query)
+            return
+        if parsed.path == "/api":
+            self._send_json(build_api_index())
             return
         if parsed.path == "/api/report":
             self._handle_report(parsed.query)
@@ -164,9 +170,44 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         self._send_json({"error": True, "message": message}, status=status)
 
 
+def get_server_host() -> str:
+    return os.environ.get("ACEWEATHER_HOST", DEFAULT_HOST)
+
+
+def get_server_port() -> int:
+    raw_port = os.environ.get("ACEWEATHER_PORT", str(DEFAULT_PORT))
+    try:
+        return int(raw_port)
+    except ValueError as exc:
+        raise ValueError("ACEWEATHER_PORT must be a valid integer.") from exc
+
+
+def get_lan_ip() -> str | None:
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("8.8.8.8", 80))
+        return probe.getsockname()[0]
+    except OSError:
+        return None
+    finally:
+        probe.close()
+
+
+def print_startup_urls(host: str, port: int) -> None:
+    print(f"AceWeather running at http://{host}:{port}")
+    if host == "0.0.0.0":
+        print(f"Open on this computer: http://localhost:{port}")
+        lan_ip = get_lan_ip()
+        if lan_ip:
+            print(f"Open on your phone (same Wi-Fi): http://{lan_ip}:{port}")
+
+
 def run() -> None:
-    server = ThreadingHTTPServer((HOST, PORT), AceWeatherHandler)
-    print(f"AceWeather running at http://{HOST}:{PORT}")
+    host = get_server_host()
+    port = get_server_port()
+    server = ThreadingHTTPServer((host, port), AceWeatherHandler)
+    server.allow_reuse_address = True
+    print_startup_urls(host, port)
     server.serve_forever()
 
 

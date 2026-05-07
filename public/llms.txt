@@ -1,0 +1,29 @@
+AceWeather
+
+AceWeather exposes a plain-text weather report endpoint that is intended to be easy for language models to fetch and read.
+
+Preferred endpoint for report text:
+- GET /api/report?query=<place name>
+- GET /api/report?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
+
+Structured JSON endpoint:
+- GET /api/weather?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
+
+Place search endpoint:
+- GET /api/search?query=<place name>
+
+Provider status endpoint:
+- GET /api/providers
+
+Machine-readable API discovery:
+- GET /api
+- GET /openapi.json
+
+Examples:
+- /api/report?query=Pocklington
+- /api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom
+
+Notes:
+- /api/report returns text/plain.
+- /api/weather returns application/json.
+- For the simplest workflow, search with /api/search or call /api/report directly with ?query=...
