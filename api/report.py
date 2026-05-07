@@ -13,6 +13,12 @@ import lib
 from helpers import send_error, send_json
 
 
+def request_base_url(handler: BaseHTTPRequestHandler) -> str:
+    host = handler.headers.get("x-forwarded-host") or handler.headers.get("host") or ""
+    proto = handler.headers.get("x-forwarded-proto", "https")
+    return f"{proto}://{host}" if host else ""
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -20,20 +26,7 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             if location_query:
-                location_query = location_query.strip()
-                if len(location_query) < 2:
-                    send_error(self, HTTPStatus.BAD_REQUEST, "Location query must be at least 2 characters.")
-                    return
-                geo = lib.fetch_geocoding(location_query)
-                results = geo.get("results") or []
-                if not results:
-                    send_error(self, HTTPStatus.NOT_FOUND, f"No location found for '{location_query}'.")
-                    return
-                best = results[0]
-                latitude = float(best["latitude"])
-                longitude = float(best["longitude"])
-                timezone = best.get("timezone") or "auto"
-                label = ", ".join(filter(None, [best.get("name"), best.get("admin1"), best.get("country")]))
+                latitude, longitude, timezone, label = lib.resolve_location_query(location_query)
             else:
                 try:
                     latitude = float(params.get("lat", [""])[0])
@@ -54,7 +47,7 @@ class handler(BaseHTTPRequestHandler):
                 label = params.get("label", [None])[0]
 
             payload = lib.aggregate_weather(latitude, longitude, timezone, label, history_days=7)
-            report_text = lib.build_report(payload)
+            report_text = lib.build_report(payload, base_url=request_base_url(self))
             body = report_text.encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -63,6 +56,8 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
+        except LookupError as exc:
+            send_error(self, HTTPStatus.NOT_FOUND, str(exc))
         except ValueError as exc:
             send_error(self, HTTPStatus.BAD_REQUEST, str(exc))
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:

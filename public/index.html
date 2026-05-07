@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AceWeather</title>
+    <meta name="theme-color" content="#050505" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AceWeather" />
     <meta
       name="description"
       content="A richly visual weather forecasting page with current conditions, forecast, air quality, and historical context."
     />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
     <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM instructions" />
     <link rel="alternate" type="application/json" href="/openapi.json" title="OpenAPI specification" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -89,6 +95,39 @@
           </div>
         </aside>
       </header>
+
+      <section class="app-meta-bar glass" aria-label="App status and install">
+        <div class="meta-cluster">
+          <span id="network-status-badge" class="meta-badge">Online</span>
+          <span id="snapshot-status-badge" class="meta-badge meta-badge-muted" hidden>Live data</span>
+        </div>
+        <p id="app-mode-note" class="app-mode-note">Install AceWeather for fast reopen and resilient weak-signal use.</p>
+        <div class="meta-actions">
+          <button id="install-app-button" type="button" class="subtle-button install-button" hidden>Install app</button>
+        </div>
+      </section>
+
+      <section class="agent-access glass" aria-label="Agent access">
+        <div class="section-heading agent-access-heading">
+          <div>
+            <p class="eyebrow">Agent access</p>
+            <h3>Direct endpoints for trusted fetchers</h3>
+          </div>
+          <p class="section-note">These exact URLs are embedded in the HTML so one fetch can unlock the full regional set.</p>
+        </div>
+        <div class="agent-link-grid">
+          <a class="agent-link" href="https://aceweather.app/api">https://aceweather.app/api</a>
+          <a class="agent-link" href="https://aceweather.app/openapi.json">https://aceweather.app/openapi.json</a>
+          <a class="agent-link" href="https://aceweather.app/llms.txt">https://aceweather.app/llms.txt</a>
+          <a class="agent-link" href="https://aceweather.app/api/digest?set=cropdynamics">https://aceweather.app/api/digest?set=cropdynamics</a>
+          <a class="agent-link" href="https://aceweather.app/api/report?query=Pocklington">https://aceweather.app/api/report?query=Pocklington</a>
+          <a class="agent-link" href="https://aceweather.app/api/report?query=Boroughbridge">https://aceweather.app/api/report?query=Boroughbridge</a>
+          <a class="agent-link" href="https://aceweather.app/api/report?query=Sleaford">https://aceweather.app/api/report?query=Sleaford</a>
+          <a class="agent-link" href="https://aceweather.app/api/report?query=Scotch%20Corner">https://aceweather.app/api/report?query=Scotch%20Corner</a>
+          <a class="agent-link" href="https://aceweather.app/api/report?query=Longhirst">https://aceweather.app/api/report?query=Longhirst</a>
+          <a class="agent-link" href="https://aceweather.app/api/report?query=Berwick-upon-Tweed">https://aceweather.app/api/report?query=Berwick-upon-Tweed</a>
+        </div>
+      </section>
 
       <div id="pull-refresh-indicator" class="pull-refresh-indicator" aria-live="polite" hidden>
         <span class="material-symbols-rounded" aria-hidden="true">south</span>
@@ -267,6 +306,6 @@
       <button class="result-item" type="button"></button>
     </template>
 
-    <script src="/app.js" defer></script>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>

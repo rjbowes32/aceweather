@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AceWeather">
+  <title>AceWeather</title>
+  <defs>
+    <radialGradient id="paperM" cx="32%" cy="22%" r="80%">
+      <stop offset="0%" stop-color="#f3ede1"></stop>
+      <stop offset="55%" stop-color="#ece6da"></stop>
+      <stop offset="100%" stop-color="#d6cfbe"></stop>
+    </radialGradient>
+  </defs>
+  
+  <rect width="1024" height="1024" fill="url(#paperM)"></rect>
+
+  
+  <g transform="translate(512 512)">
+    <circle r="304" fill="none" stroke="#141210" stroke-opacity="0.30" stroke-width="2"></circle>
+    <circle r="328" fill="none" stroke="#141210" stroke-opacity="0.18" stroke-width="2"></circle>
+    
+    <g stroke="#141210" stroke-opacity="0.55" stroke-width="4" stroke-linecap="square">
+      <line x1="0" y1="-348" x2="0" y2="-322"></line>
+      <line x1="174" y1="-301.4" x2="161" y2="-278.7"></line>
+      <line x1="301.4" y1="-174" x2="278.7" y2="-161"></line>
+      <line x1="348" y1="0" x2="322" y2="0"></line>
+      <line x1="301.4" y1="174" x2="278.7" y2="161"></line>
+      <line x1="174" y1="301.4" x2="161" y2="278.7"></line>
+      <line x1="0" y1="348" x2="0" y2="322"></line>
+      <line x1="-174" y1="301.4" x2="-161" y2="278.7"></line>
+      <line x1="-301.4" y1="174" x2="-278.7" y2="161"></line>
+      <line x1="-348" y1="0" x2="-322" y2="0"></line>
+      <line x1="-301.4" y1="-174" x2="-278.7" y2="-161"></line>
+      <line x1="-174" y1="-301.4" x2="-161" y2="-278.7"></line>
+    </g>
+    
+    <path d="M 0 -328 A 328 328 0 0 1 231.9 -231.9" fill="none" stroke="#b8722b" stroke-width="20" stroke-linecap="butt"></path>
+  </g>
+
+  
+  <g transform="translate(512 538)" font-family="&#39;Sora&#39;, &#39;Helvetica Neue&#39;, Arial, sans-serif" font-weight="700" font-size="400" text-anchor="middle" fill="#141210" letter-spacing="-26">
+    <text dominant-baseline="middle" y="0">AW</text>
+  </g>
+</svg>

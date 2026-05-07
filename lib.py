@@ -5,6 +5,8 @@ import json
 import logging
 import os
 import re
+import socket
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,6 +24,20 @@ OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 NOMINATIM_GEOCODE_URL = "https://nominatim.openstreetmap.org/search"
 METEOMATICS_BASE_URL = "https://api.meteomatics.com"
 TIMEOUT_SECONDS = 20
+DEFAULT_PUBLIC_BASE_URL = os.getenv("ACEWEATHER_PUBLIC_BASE_URL", "https://aceweather.app")
+READ_JSON_ATTEMPTS = 2
+READ_JSON_RETRY_DELAY_SECONDS = 0.35
+
+CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
+    "cropdynamics": [
+        {"slug": "pocklington", "query": "Pocklington"},
+        {"slug": "boroughbridge", "query": "Boroughbridge"},
+        {"slug": "sleaford", "query": "Sleaford"},
+        {"slug": "scotch-corner", "query": "Scotch Corner"},
+        {"slug": "longhirst", "query": "Longhirst"},
+        {"slug": "berwick", "query": "Berwick-upon-Tweed"},
+    ],
+}
 
 FORECAST_CURRENT = [
     "temperature_2m", "relative_humidity_2m", "apparent_temperature", "is_day",
@@ -124,9 +140,20 @@ class MeteomaticsCredentials:
 
 
 def read_json(url: str, *, headers: dict[str, str] | None = None) -> Any:
-    request = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-        return json.loads(response.read().decode("utf-8"))
+    last_error: Exception | None = None
+    for attempt in range(READ_JSON_ATTEMPTS):
+        request = urllib.request.Request(url, headers=headers or {})
+        try:
+            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, socket.timeout, json.JSONDecodeError, OSError) as exc:
+            last_error = exc
+            if attempt == READ_JSON_ATTEMPTS - 1:
+                raise
+            time.sleep(READ_JSON_RETRY_DELAY_SECONDS)
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("read_json failed without raising an explicit error.")
 
 
 def build_url(base: str, **params: Any) -> str:
@@ -174,6 +201,46 @@ def fetch_geocoding(query: str) -> dict[str, Any]:
     if data.get("results"):
         return data
     return _nominatim_geocoding(query)
+
+
+def resolve_location_query(location_query: str) -> tuple[float, float, str, str]:
+    cleaned_query = location_query.strip()
+    if len(cleaned_query) < 2:
+        raise ValueError("Location query must be at least 2 characters.")
+    geo = fetch_geocoding(cleaned_query)
+    results = geo.get("results") or []
+    if not results:
+        raise LookupError(f"No location found for '{cleaned_query}'.")
+    best = results[0]
+    latitude = float(best["latitude"])
+    longitude = float(best["longitude"])
+    timezone = best.get("timezone") or "auto"
+    label = ", ".join(filter(None, [best.get("name"), best.get("admin1"), best.get("country")]))
+    return latitude, longitude, timezone, label
+
+
+def public_base_url(base_url: str = "") -> str:
+    normalized = (base_url or DEFAULT_PUBLIC_BASE_URL).rstrip("/")
+    return normalized or DEFAULT_PUBLIC_BASE_URL
+
+
+def absolute_public_url(path: str, base_url: str = "") -> str:
+    return f"{public_base_url(base_url)}{path}"
+
+
+def canonical_region_set_urls(set_name: str, base_url: str = "") -> list[str]:
+    regions = CANONICAL_REGION_SETS.get(set_name, [])
+    return [
+        absolute_public_url(
+            f"/api/report?query={urllib.parse.quote(region['query'])}",
+            base_url,
+        )
+        for region in regions
+    ]
+
+
+def digest_url(set_name: str, base_url: str = "") -> str:
+    return absolute_public_url(f"/api/digest?set={urllib.parse.quote(set_name)}", base_url)
 
 
 def fetch_forecast(latitude: float, longitude: float, timezone: str) -> dict[str, Any]:
@@ -545,7 +612,7 @@ def aggregate_weather(
     }
 
 
-def build_report(payload: dict[str, Any]) -> str:
+def build_report(payload: dict[str, Any], *, base_url: str = "", include_related: bool = True) -> str:
     location = payload["location"]
     forecast = payload["providers"]["openMeteo"]["forecast"]
     history = payload["providers"]["openMeteo"]["history"]
@@ -644,4 +711,48 @@ def build_report(payload: dict[str, Any]) -> str:
         f"- Disclaimer: {agronomy['disclaimer']}",
         "",
     ]
+    if include_related:
+        related_urls = canonical_region_set_urls("cropdynamics", base_url)
+        lines += [
+            "## Direct Report URLs",
+            "If an agent can fetch this report, it can also fetch the following exact report URLs:",
+            *[f"- {url}" for url in related_urls],
+            "",
+            "## Regional Digest URL",
+            f"- {digest_url('cropdynamics', base_url)}",
+            "",
+        ]
+    return "\n".join(lines)
+
+
+def build_digest(set_name: str, *, base_url: str = "") -> str:
+    regions = CANONICAL_REGION_SETS.get(set_name)
+    if not regions:
+        supported = ", ".join(sorted(CANONICAL_REGION_SETS))
+        raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
+
+    digest_link = digest_url(set_name, base_url)
+    report_links = canonical_region_set_urls(set_name, base_url)
+    lines = [
+        f"# AceWeather Digest: {set_name}",
+        f"Generated: {datetime.utcnow().isoformat(timespec='seconds')}Z",
+        "",
+        "## Digest URL",
+        f"- {digest_link}",
+        "",
+        "## Direct Report URLs",
+        *[f"- {url}" for url in report_links],
+        "",
+    ]
+
+    for region in regions:
+        latitude, longitude, timezone, label = resolve_location_query(region["query"])
+        payload = aggregate_weather(latitude, longitude, timezone, label, history_days=7)
+        lines += [
+            f"---",
+            "",
+            build_report(payload, base_url=base_url, include_related=False),
+            "",
+        ]
+
     return "\n".join(lines)

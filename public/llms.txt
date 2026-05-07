@@ -3,27 +3,39 @@ AceWeather
 AceWeather exposes a plain-text weather report endpoint that is intended to be easy for language models to fetch and read.
 
 Preferred endpoint for report text:
-- GET /api/report?query=<place name>
-- GET /api/report?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
+- GET https://aceweather.app/api/report?query=<place name>
+- GET https://aceweather.app/api/report?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
+
+Canonical regional digest:
+- GET https://aceweather.app/api/digest?set=cropdynamics
+
+Crop Dynamics direct report URLs:
+- https://aceweather.app/api/report?query=Pocklington
+- https://aceweather.app/api/report?query=Boroughbridge
+- https://aceweather.app/api/report?query=Sleaford
+- https://aceweather.app/api/report?query=Scotch%20Corner
+- https://aceweather.app/api/report?query=Longhirst
+- https://aceweather.app/api/report?query=Berwick-upon-Tweed
 
 Structured JSON endpoint:
-- GET /api/weather?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
+- GET https://aceweather.app/api/weather?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
 
 Place search endpoint:
-- GET /api/search?query=<place name>
+- GET https://aceweather.app/api/search?query=<place name>
 
 Provider status endpoint:
-- GET /api/providers
+- GET https://aceweather.app/api/providers
 
 Machine-readable API discovery:
-- GET /api
-- GET /openapi.json
+- GET https://aceweather.app/api
+- GET https://aceweather.app/openapi.json
 
 Examples:
-- /api/report?query=Pocklington
-- /api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom
+- https://aceweather.app/api/report?query=Pocklington
+- https://aceweather.app/api/digest?set=cropdynamics
+- https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom
 
 Notes:
 - /api/report returns text/plain.
 - /api/weather returns application/json.
-- For the simplest workflow, search with /api/search or call /api/report directly with ?query=...
+- For the simplest workflow, fetch https://aceweather.app/api/digest?set=cropdynamics once or call https://aceweather.app/api/report directly with ?query=...

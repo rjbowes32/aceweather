@@ -19,6 +19,19 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
             "llms": absolute("/llms.txt"),
             "openapi": absolute("/openapi.json"),
         },
+        "regionalDigests": {
+            "cropdynamics": {
+                "digest": absolute("/api/digest?set=cropdynamics"),
+                "reportUrls": [
+                    absolute("/api/report?query=Pocklington"),
+                    absolute("/api/report?query=Boroughbridge"),
+                    absolute("/api/report?query=Sleaford"),
+                    absolute("/api/report?query=Scotch%20Corner"),
+                    absolute("/api/report?query=Longhirst"),
+                    absolute("/api/report?query=Berwick-upon-Tweed"),
+                ],
+            },
+        },
         "reportEndpoint": {
             "path": "/api/report",
             "method": "GET",
@@ -70,6 +83,13 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "responseFormat": "application/json",
                 "description": "Reports optional provider availability such as Meteomatics credentials.",
             },
+            {
+                "path": "/api/digest",
+                "method": "GET",
+                "responseFormat": "text/plain",
+                "optionalParams": ["set"],
+                "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics.",
+            },
         ],
-        "agentHint": "If you need the report text, call /api/report directly. If you need structured fields first, call /api/weather and then /api/report using the same coordinates.",
+        "agentHint": "If you need one standard regional bundle, call /api/digest?set=cropdynamics. If you need a single place, call /api/report directly. The direct report URLs for the cropdynamics set are listed above so one successful fetch can unlock the rest.",
     }

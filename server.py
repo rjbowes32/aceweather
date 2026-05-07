@@ -31,7 +31,10 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
             self._handle_search(parsed.query)
             return
         if parsed.path == "/api":
-            self._send_json(build_api_index())
+            self._send_json(build_api_index(self._request_base_url()))
+            return
+        if parsed.path == "/api/digest":
+            self._handle_digest(parsed.query)
             return
         if parsed.path == "/api/report":
             self._handle_report(parsed.query)
@@ -46,6 +49,11 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
             })
             return
         super().do_GET()
+
+    def _request_base_url(self) -> str:
+        host = self.headers.get("x-forwarded-host") or self.headers.get("host") or ""
+        proto = self.headers.get("x-forwarded-proto", "http")
+        return f"{proto}://{host}" if host else ""
 
     def _handle_search(self, query_string: str) -> None:
         params = urllib.parse.parse_qs(query_string)
@@ -64,20 +72,7 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         location_query = params.get("query", [None])[0]
         try:
             if location_query:
-                location_query = location_query.strip()
-                if len(location_query) < 2:
-                    self._send_error(HTTPStatus.BAD_REQUEST, "Location query must be at least 2 characters.")
-                    return
-                geo = lib.fetch_geocoding(location_query)
-                results = geo.get("results") or []
-                if not results:
-                    self._send_error(HTTPStatus.NOT_FOUND, f"No location found for '{location_query}'.")
-                    return
-                best = results[0]
-                latitude = float(best["latitude"])
-                longitude = float(best["longitude"])
-                timezone = best.get("timezone") or "auto"
-                label = ", ".join(filter(None, [best.get("name"), best.get("admin1"), best.get("country")]))
+                latitude, longitude, timezone, label = lib.resolve_location_query(location_query)
             else:
                 try:
                     latitude = float(params.get("lat", [""])[0])
@@ -98,7 +93,7 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
                 label = params.get("label", [None])[0]
 
             payload = lib.aggregate_weather(latitude, longitude, timezone, label, history_days=7)
-            report_text = lib.build_report(payload)
+            report_text = lib.build_report(payload, base_url=self._request_base_url())
             body = report_text.encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -106,11 +101,33 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+        except LookupError as exc:
+            self._send_error(HTTPStatus.NOT_FOUND, str(exc))
         except ValueError as exc:
             self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Report generation failed: %s", exc)
             self._send_error(HTTPStatus.BAD_GATEWAY, "Report generation is temporarily unavailable.")
+
+    def _handle_digest(self, query_string: str) -> None:
+        params = urllib.parse.parse_qs(query_string)
+        set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
+        try:
+            digest_text = lib.build_digest(set_name, base_url=self._request_base_url())
+            body = digest_text.encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+        except LookupError as exc:
+            self._send_error(HTTPStatus.NOT_FOUND, str(exc))
+        except ValueError as exc:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
+            lib._log.error("Digest generation failed: %s", exc)
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Digest generation is temporarily unavailable.")
 
     def _handle_weather(self, query_string: str) -> None:
         params = urllib.parse.parse_qs(query_string)
@@ -168,6 +185,9 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
 
     def _send_error(self, status: HTTPStatus, message: str) -> None:
         self._send_json({"error": True, "message": message}, status=status)
+
+    def log_message(self, *args: object) -> None:
+        pass
 
 
 def get_server_host() -> str:

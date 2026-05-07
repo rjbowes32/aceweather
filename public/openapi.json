@@ -203,6 +203,37 @@
         }
       }
     },
+    "/api/digest": {
+      "get": {
+        "summary": "Get canonical regional digest",
+        "description": "Returns a bundled plain-text digest for a named regional set such as cropdynamics.",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "cropdynamics"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plain-text bundled digest",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "400": {
+            "description": "Unknown digest set"
+          },
+          "502": {
+            "description": "Upstream provider unavailable"
+          }
+        }
+      }
+    },
     "/api/providers": {
       "get": {
         "summary": "Get provider availability",

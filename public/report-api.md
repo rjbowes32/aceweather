@@ -2,6 +2,10 @@
 
 AceWeather exposes a plain-text weather report endpoint for any searched or saved place.
 
+For agent workflows that need a standard regional bundle from one unlocked URL, use:
+
+- `https://aceweather.app/api/digest?set=cropdynamics`
+
 Machine-readable discovery is also available at:
 
 - `/api`
@@ -10,7 +14,7 @@ Machine-readable discovery is also available at:
 
 ## Endpoint
 
-`/api/report`
+`https://aceweather.app/api/report`
 
 ## Query Options
 
@@ -23,8 +27,9 @@ Use either:
 
 Current deployed site:
 
-- `https://aceweather.vercel.app/api/report?query=Pocklington`
-- `https://aceweather.vercel.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom`
+- `https://aceweather.app/api/report?query=Pocklington`
+- `https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom`
+- `https://aceweather.app/api/digest?set=cropdynamics`
 
 Local development:
 
@@ -45,8 +50,21 @@ If you need the JSON payload that powers the dashboard, use:
 
 `/api/weather`
 
+## Crop Dynamics Set
+
+The canonical Crop Dynamics regional URLs are:
+
+- `https://aceweather.app/api/report?query=Pocklington`
+- `https://aceweather.app/api/report?query=Boroughbridge`
+- `https://aceweather.app/api/report?query=Sleaford`
+- `https://aceweather.app/api/report?query=Scotch%20Corner`
+- `https://aceweather.app/api/report?query=Longhirst`
+- `https://aceweather.app/api/report?query=Berwick-upon-Tweed`
+
+If a fetcher requires exact URLs to appear in a previous response before it can call them, fetching `https://aceweather.app/api`, `https://aceweather.app/api/digest?set=cropdynamics`, or the AceWeather homepage first will expose the whole set.
+
 ## Good LLM Prompt
 
 If you are giving the site to an LLM or agent, a reliable instruction is:
 
-`Open /api or /openapi.json first, then call /api/report for the place I ask about.`
+`Open https://aceweather.app/api or https://aceweather.app/openapi.json first, then call https://aceweather.app/api/report for the place I ask about.`
