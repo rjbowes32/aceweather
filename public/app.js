@@ -34,6 +34,26 @@ const state = {
   },
 };
 
+// === SKY MODE ===
+let manualSkyOverride = false;
+
+function deriveSkyMode(code, isDay) {
+  if (code >= 95) return "storm";
+  if (code === 82 || (code >= 85 && code <= 86)) return "storm";
+  if (code >= 51 && code <= 82) return "overcast";
+  if (code >= 45 && code <= 48) return "overcast";
+  if (code === 3) return "overcast";
+  return isDay ? "clear-day" : "clear-night";
+}
+
+function setSkyMode(mode) {
+  if (elements.awRoot) elements.awRoot.dataset.sky = mode;
+  const buttons = document.querySelectorAll("#sky-mode-switch [data-sky-mode]");
+  buttons.forEach((btn) => {
+    btn.setAttribute("aria-pressed", btn.dataset.skyMode === mode ? "true" : "false");
+  });
+}
+
 const weatherIcons = {
   0: "\u2600",
   1: "\u26C5",
@@ -108,11 +128,16 @@ function escapeHtml(str) {
 }
 
 const elements = {
+  awRoot: $("#aw-root"),
   heroEyebrow: $("#hero-eyebrow"),
   heroLocation: $("#hero-location"),
+  heroCoords: $("#hero-coords"),
   heroSummary: $("#hero-summary"),
   heroTemp: $("#hero-temp"),
+  heroUnit: $("#hero-unit"),
+  heroFeels: $("#hero-feels"),
   heroIcon: $("#hero-icon"),
+  heroCondition: $("#hero-condition"),
   heroChips: $("#hero-chips"),
   updateStamp: $("#update-stamp"),
   hourlyStrip: $("#hourly-strip"),
@@ -353,101 +378,197 @@ function formatDistance(valueMeters, digits = 1) {
   return `${formatNumber(converted, digits)} ${suffix}`;
 }
 
+function getCssVar(element, name) {
+  return getComputedStyle(element).getPropertyValue(name).trim();
+}
+
+function drawHourlyTape(canvas, data) {
+  if (!canvas || !data.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 400;
+  const H = canvas.clientHeight || 200;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const ink = getCssVar(canvas, "--ink") || "#141210";
+  const muted = getCssVar(canvas, "--muted") || "#756f63";
+  const tickFaint = getCssVar(canvas, "--tick-faint") || "rgba(20,18,16,0.10)";
+  const accent = getCssVar(canvas, "--accent") || "#b8722b";
+
+  const padL = 28, padR = 12, padT = 16, padB = 28;
+  const w = W - padL - padR;
+  const h = H - padT - padB;
+
+  const temps = data.map((d) => d.temperature ?? 0);
+  const tMin = Math.floor(Math.min(...temps) - 1);
+  const tMax = Math.ceil(Math.max(...temps) + 1);
+  const pMax = Math.max(1, Math.max(...data.map((d) => d.precipitationAmount || 0)) * 1.4);
+  const wMax = Math.max(1, Math.max(...data.map((d) => d.wind || 0)) * 1.1);
+
+  // grid lines
+  ctx.strokeStyle = tickFaint; ctx.lineWidth = 0.5;
+  ctx.font = "9px JetBrains Mono"; ctx.fillStyle = muted;
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (h * i) / 4;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    const v = tMax - ((tMax - tMin) * i) / 4;
+    ctx.fillText(Math.round(v) + "°", 2, y + 3);
+  }
+
+  const bw = w / data.length;
+
+  // precip bars
+  data.forEach((d, i) => {
+    if ((d.precipitationAmount || 0) > 0) {
+      const bh = ((d.precipitationAmount || 0) / pMax) * h * 0.5;
+      const x = padL + i * bw + bw * 0.25;
+      const y = padT + h - bh;
+      ctx.fillStyle = ink; ctx.globalAlpha = 0.15;
+      ctx.fillRect(x, y, bw * 0.5, bh);
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  // temp line
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  data.forEach((d, i) => {
+    const x = padL + i * bw + bw / 2;
+    const y = padT + h - ((( d.temperature ?? 0) - tMin) / (tMax - tMin)) * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // temp dots
+  data.forEach((d, i) => {
+    const x = padL + i * bw + bw / 2;
+    const y = padT + h - (((d.temperature ?? 0) - tMin) / (tMax - tMin)) * h;
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // wind dashed line
+  if (wMax > 1) {
+    ctx.strokeStyle = accent; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      const x = padL + i * bw + bw / 2;
+      const y = padT + h - ((d.wind || 0) / wMax) * h * 0.7;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // x ticks every 4h
+  ctx.fillStyle = muted; ctx.font = "9px JetBrains Mono";
+  data.forEach((d, i) => {
+    if (i % 4 === 0) {
+      const x = padL + i * bw + bw / 2;
+      ctx.fillText(d.shortLabel || String(i), x - 6, H - 10);
+      ctx.strokeStyle = tickFaint; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(x, padT + h); ctx.lineTo(x, padT + h + 3); ctx.stroke();
+    }
+  });
+}
+
+function drawHistoryTape(canvas, labels, temps, precips) {
+  if (!canvas || !temps.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 400;
+  const H = canvas.clientHeight || 140;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d"); ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const ink = getCssVar(canvas, "--ink") || "#141210";
+  const muted = getCssVar(canvas, "--muted") || "#756f63";
+  const tick = getCssVar(canvas, "--tick") || "rgba(20,18,16,0.30)";
+  const tickFaint = getCssVar(canvas, "--tick-faint") || "rgba(20,18,16,0.10)";
+
+  const padL = 24, padR = 10, padT = 12, padB = 22;
+  const w = W - padL - padR; const h = H - padT - padB;
+
+  const filtered = temps.map((v) => v ?? 0);
+  const tMin = Math.floor(Math.min(...filtered) - 1);
+  const tMax = Math.ceil(Math.max(...filtered) + 1);
+  const pMax = Math.max(1, Math.max(...(precips || [0])) * 1.3);
+  const mean = filtered.reduce((a, b) => a + b, 0) / filtered.length;
+  const meanY = padT + h - ((mean - tMin) / (tMax - tMin)) * h;
+
+  // mean reference
+  ctx.strokeStyle = tick; ctx.lineWidth = 0.5; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); ctx.moveTo(padL, meanY); ctx.lineTo(W - padR, meanY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = muted; ctx.font = "8px JetBrains Mono";
+  ctx.fillText("μ " + mean.toFixed(1) + "°", padL + 3, meanY - 3);
+  ctx.fillText(tMax + "°", 2, padT + 6);
+  ctx.fillText(tMin + "°", 2, padT + h);
+
+  const bw = w / filtered.length;
+
+  // precip bars
+  (precips || []).forEach((p, i) => {
+    if ((p || 0) > 0) {
+      const bh = (p / pMax) * h * 0.5;
+      const x = padL + i * bw + bw * 0.2;
+      ctx.fillStyle = ink; ctx.globalAlpha = 0.18;
+      ctx.fillRect(x, padT + h - bh, bw * 0.6, bh);
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  // area fill
+  ctx.beginPath();
+  filtered.forEach((t, i) => {
+    const x = padL + i * bw + bw / 2;
+    const y = padT + h - ((t - tMin) / (tMax - tMin)) * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padL + (filtered.length - 1) * bw + bw / 2, padT + h);
+  ctx.lineTo(padL + bw / 2, padT + h);
+  ctx.closePath();
+  ctx.fillStyle = ink; ctx.globalAlpha = 0.06; ctx.fill(); ctx.globalAlpha = 1;
+
+  // temp line
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  filtered.forEach((t, i) => {
+    const x = padL + i * bw + bw / 2;
+    const y = padT + h - ((t - tMin) / (tMax - tMin)) * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // x labels
+  ctx.fillStyle = muted; ctx.font = "8px JetBrains Mono";
+  const step = Math.max(1, Math.floor(filtered.length / 6));
+  labels.forEach((label, i) => {
+    if (i % step === 0) {
+      const x = padL + i * bw + bw / 2;
+      ctx.fillText(label, x - 8, H - 6);
+    }
+  });
+}
+
+// Keep for compatibility — no longer used for main charts
 function drawLineChart(canvas, labels, series, options = {}) {
   if (!canvas) return;
-  const context = canvas.getContext("2d");
-  if (!context) return;
-  const width = canvas.width;
-  const height = canvas.height;
-  const hasAxisTitles = Boolean(options.xAxisTitle || options.yAxisTitle);
-  const padding = {
-    top: hasAxisTitles ? 34 : 24,
-    right: 24,
-    bottom: hasAxisTitles ? 50 : 36,
-    left: hasAxisTitles ? 34 : 24,
-  };
-  const filteredSeries = series.map((value) => (value == null ? 0 : value));
-  const min = Math.min(...filteredSeries);
-  const max = Math.max(...filteredSeries);
-  const range = max - min || 1;
-
-  context.clearRect(0, 0, width, height);
-  context.fillStyle = "rgba(7, 14, 27, 0.88)";
-  context.fillRect(0, 0, width, height);
-
-  for (let index = 0; index < 4; index += 1) {
-    const y = padding.top + ((height - padding.top - padding.bottom) / 3) * index;
-    context.strokeStyle = "rgba(255,255,255,0.08)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(padding.left, y);
-    context.lineTo(width - padding.right, y);
-    context.stroke();
-  }
-
-  const points = filteredSeries.map((value, index) => {
-    const x = padding.left + (index / Math.max(filteredSeries.length - 1, 1)) * (width - padding.left - padding.right);
-    const y = padding.top + ((max - value) / range) * (height - padding.top - padding.bottom);
-    return { x, y };
-  });
-
-  const gradient = context.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, options.stroke || "#8ce7ff");
-  gradient.addColorStop(1, options.strokeAlt || "#ffb86a");
-
-  context.strokeStyle = gradient;
-  context.lineWidth = 4;
-  context.beginPath();
-  points.forEach((point, index) => {
-    if (index === 0) {
-      context.moveTo(point.x, point.y);
-    } else {
-      context.lineTo(point.x, point.y);
-    }
-  });
-  context.stroke();
-
-  context.fillStyle = options.fill || "rgba(140, 231, 255, 0.16)";
-  context.beginPath();
-  context.moveTo(points[0].x, height - padding.bottom);
-  points.forEach((point) => context.lineTo(point.x, point.y));
-  context.lineTo(points[points.length - 1].x, height - padding.bottom);
-  context.closePath();
-  context.fill();
-
-  context.fillStyle = "#edf4ff";
-  context.font = '12px "IBM Plex Mono"';
-  const step = Math.max(Math.floor(labels.length / 6), 1);
-  labels.forEach((label, index) => {
-    if (index % step === 0 || index === labels.length - 1) {
-      context.fillText(label, points[index].x - 12, height - 12);
-    }
-  });
-
-  if (options.yAxisTitle) {
-    context.save();
-    context.fillStyle = "rgba(169, 189, 217, 0.92)";
-    context.font = '11px "IBM Plex Mono"';
-    context.translate(12, height / 2);
-    context.rotate(-Math.PI / 2);
-    context.fillText(options.yAxisTitle, 0, 0);
-    context.restore();
-  }
-
-  if (options.xAxisTitle) {
-    context.fillStyle = "rgba(169, 189, 217, 0.92)";
-    context.font = '11px "IBM Plex Mono"';
-    context.textAlign = "right";
-    context.fillText(options.xAxisTitle, width - padding.right, height - 24);
-    context.textAlign = "left";
-  }
+  drawHistoryTape(canvas, labels, series, []);
 }
 
 function syncHistoryPresetUi() {
   const buttons = elements.historyPresets.querySelectorAll("[data-range]");
   buttons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.range === state.history.mode);
+    const active = button.dataset.range === state.history.mode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
   });
+  if (elements.historyCustomForm) {
+    elements.historyCustomForm.classList.toggle("is-visible", state.history.mode === "custom");
+  }
 }
 
 function syncUnitToggleUi() {
@@ -634,6 +755,12 @@ function renderHero(data) {
   const current = forecast.current;
   const daily = forecast.daily;
   const dayStartIndex = getForecastDayStartIndex(forecast);
+
+  // Auto-derive sky mode unless manually overridden
+  if (!manualSkyOverride) {
+    setSkyMode(deriveSkyMode(current.weather_code, current.is_day));
+  }
+
   const nextRain = forecast.hourly.time
     .map((time, index) => ({
       time,
@@ -646,63 +773,92 @@ function renderHero(data) {
     ? `Next rain ${formatDate(nextRain.time, { hour: "numeric", minute: "2-digit" })} with ${formatNumber(nextRain.probability)}% chance and ${formatNumber(nextRain.amount, 1)} mm forecast.`
     : "No rain currently forecast in the upcoming hours.";
 
-  elements.heroEyebrow.textContent = current.is_day ? "Daytime now" : "Night watch";
+  if (elements.heroEyebrow) elements.heroEyebrow.textContent = current.is_day ? "Daytime" : "Night watch";
   elements.heroLocation.textContent = data.location.name;
+  if (elements.heroCoords) {
+    const lat = formatNumber(Math.abs(data.location.latitude), 4);
+    const lon = formatNumber(Math.abs(data.location.longitude), 4);
+    const ns = data.location.latitude >= 0 ? "N" : "S";
+    const ew = data.location.longitude >= 0 ? "E" : "W";
+    elements.heroCoords.textContent = ` ${lat}° ${ns} · ${lon}° ${ew}`;
+  }
   elements.heroSummary.textContent = `${weatherCodeToLabel(current.weather_code)}. ${nextRainSummary}`;
-  elements.heroTemp.textContent = formatTemperature(current.temperature_2m, 0);
+
+  // Temperature — number only, unit separately
+  const tempVal = usesCelsius()
+    ? Math.round(current.temperature_2m)
+    : Math.round(current.temperature_2m * 9 / 5 + 32);
+  elements.heroTemp.textContent = tempVal;
+  if (elements.heroUnit) elements.heroUnit.textContent = usesCelsius() ? "°C" : "°F";
+
+  // Feels like
+  if (elements.heroFeels) {
+    const feelsVal = usesCelsius()
+      ? Math.round(current.apparent_temperature)
+      : Math.round(current.apparent_temperature * 9 / 5 + 32);
+    elements.heroFeels.textContent = `${feelsVal}${usesCelsius() ? "°" : "°F"}`;
+  }
+
   elements.heroIcon.textContent = weatherCodeToIcon(current.weather_code);
+  if (elements.heroCondition) elements.heroCondition.textContent = weatherCodeToLabel(current.weather_code).toUpperCase();
 
   const chips = [
-    ["Feels like", formatTemperature(current.apparent_temperature, 0)],
-    ["Humidity", `${formatNumber(current.relative_humidity_2m)}%`],
-    ["Wind", formatSpeed(current.wind_speed_10m)],
-    ["Pressure", formatPressure(current.pressure_msl)],
-    ["Sunrise", formatDate(daily.sunrise[dayStartIndex], { hour: "2-digit", minute: "2-digit" })],
-    ["Sunset", formatDate(daily.sunset[dayStartIndex], { hour: "2-digit", minute: "2-digit" })],
+    { k: "Wind", v: formatSpeed(current.wind_speed_10m) },
+    { k: "Humidity", v: `${formatNumber(current.relative_humidity_2m)}%` },
+    { k: "Pressure", v: formatPressure(current.pressure_msl) },
+    { k: "UV Index", v: formatNumber(forecast.hourly.uv_index?.[0], 1) },
   ];
 
   elements.heroChips.innerHTML = chips
-    .map(
-      ([label, value]) => `
-        <div class="chip">
-          <span>${label}</span>
-          <strong>${value}</strong>
-        </div>
-      `
-    )
+    .map((c) => `
+      <div class="chip">
+        <div class="chip-k">${c.k}</div>
+        <div class="chip-v">${c.v}</div>
+      </div>
+    `)
     .join("");
 
-  elements.updateStamp.textContent = `Updated ${formatDate(data.generatedAt, {
+  elements.updateStamp.textContent = formatDate(data.generatedAt, {
     hour: "2-digit",
     minute: "2-digit",
-    day: "2-digit",
-    month: "short",
-  })}`;
+  });
 }
 
 function renderHourly(data) {
   const items = buildHourlyPulse(data);
-  const temperatures = temperatureSeries(items.map((item) => item.temperature));
-  drawLineChart(elements.hourlyChart, items.map((item) => item.shortLabel), temperatures, {
-    stroke: "#8ce7ff",
-    strokeAlt: "#6e7dff",
-    xAxisTitle: "Next 24 hours",
-    yAxisTitle: `Temperature (${usesCelsius() ? "C" : "F"})`,
-  });
+  const forecast = data.providers.openMeteo.forecast;
+
+  // Map items to tape format (wind from hourly data)
+  const tapeData = items.map((item, index) => ({
+    shortLabel: item.shortLabel,
+    temperature: usesCelsius() ? item.temperature : (item.temperature * 9 / 5 + 32),
+    precipitationAmount: item.precipitationAmount,
+    wind: forecast.hourly.wind_speed_10m?.[index] ?? 0,
+  }));
+
+  const cnv = elements.hourlyChart;
+  if (cnv) {
+    drawHourlyTape(cnv, tapeData);
+    const ro = cnv._resizeObserver;
+    if (ro) ro.disconnect();
+    cnv._resizeObserver = new ResizeObserver(() => drawHourlyTape(cnv, tapeData));
+    cnv._resizeObserver.observe(cnv);
+  }
 
   elements.hourlyStrip.innerHTML = items
     .map((item, index) => {
       const previousDay = items[index - 1]?.dayGroup;
       const showDayLabel = index === 0 || item.dayGroup !== previousDay;
+      const tempFormatted = usesCelsius()
+        ? `${Math.round(item.temperature ?? 0)}°`
+        : `${Math.round((item.temperature ?? 0) * 9 / 5 + 32)}°`;
       return `
         <article class="hour-pill ${item.isNow ? "is-now" : ""}">
-          ${showDayLabel ? `<div class="hour-day-label">${item.dayLabel}</div>` : ""}
-          <time>${item.shortLabel}</time>
-          <div class="daily-date">${item.timeLabel}</div>
-          <div class="daily-icon">${weatherCodeToIcon(item.weatherCode)}</div>
-          <strong>${formatTemperature(item.temperature, 0)}</strong>
-          <div class="hour-rain">${formatNumber(item.precipitationProbability)}% rain</div>
-          <div class="daily-date">${formatNumber(item.precipitationAmount, 1)} mm forecast</div>
+          ${showDayLabel ? `<div class="hour-day-label">${escapeHtml(item.dayLabel)}</div>` : ""}
+          <time>${escapeHtml(item.shortLabel)}</time>
+          <div class="hour-icon">${weatherCodeToIcon(item.weatherCode)}</div>
+          <div class="hour-temp">${tempFormatted}</div>
+          <div class="hour-rain">${formatNumber(item.precipitationProbability)}%</div>
         </article>
       `;
     })
@@ -713,23 +869,39 @@ function renderDaily(data) {
   const forecast = data.providers.openMeteo.forecast;
   const daily = forecast.daily;
   const dayStartIndex = getForecastDayStartIndex(forecast);
-  elements.dailyGrid.innerHTML = daily.time
-    .slice(dayStartIndex, dayStartIndex + 14)
-    .map(
-      (time, index) => {
-        const actualIndex = dayStartIndex + index;
-        return `
-        <article class="daily-card">
-          <div class="daily-date">${formatDate(time, { weekday: "short", day: "numeric", month: "short" })}</div>
-          <div class="daily-icon">${weatherCodeToIcon(daily.weather_code[actualIndex])}</div>
-          <div class="daily-temp">${formatTemperature(daily.temperature_2m_max[actualIndex], 0)} / ${formatTemperature(daily.temperature_2m_min[actualIndex], 0)}</div>
-          <p class="daily-date">${weatherCodeToLabel(daily.weather_code[actualIndex])}</p>
-          <p class="daily-date">${formatNumber(daily.precipitation_probability_max[actualIndex])}% rain | ${formatSpeed(daily.wind_speed_10m_max[actualIndex])} wind</p>
-          <p class="daily-date">${Math.round((daily.daylight_duration[actualIndex] || 0) / 3600)}h daylight</p>
-        </article>
+  const days = daily.time.slice(dayStartIndex, dayStartIndex + 14);
+
+  // Compute temp range across all days for the range bars
+  const allLo = days.map((_, i) => {
+    const v = daily.temperature_2m_min[dayStartIndex + i];
+    return usesCelsius() ? v : (v * 9 / 5 + 32);
+  });
+  const allHi = days.map((_, i) => {
+    const v = daily.temperature_2m_max[dayStartIndex + i];
+    return usesCelsius() ? v : (v * 9 / 5 + 32);
+  });
+  const overallMin = Math.min(...allLo);
+  const overallMax = Math.max(...allHi);
+  const span = Math.max(overallMax - overallMin, 1);
+
+  elements.dailyGrid.innerHTML = days
+    .map((time, index) => {
+      const ai = dayStartIndex + index;
+      const lo = allLo[index];
+      const hi = allHi[index];
+      const left = ((lo - overallMin) / span) * 100;
+      const width = ((hi - lo) / span) * 100;
+      const dayAbbr = formatDate(time, { weekday: "short" }).toUpperCase().slice(0, 3);
+      const dateNum = formatDate(time, { day: "2-digit" });
+      return `
+        <div class="daily-row">
+          <div class="daily-day">${escapeHtml(dayAbbr)}<b>${escapeHtml(dateNum)}</b></div>
+          <div class="daily-icon">${weatherCodeToIcon(daily.weather_code[ai])}</div>
+          <div class="daily-bar"><div class="daily-fill" style="left:${left.toFixed(1)}%;width:${Math.max(width, 2).toFixed(1)}%"></div></div>
+          <div class="daily-temps">${Math.round(hi)}°<small> / ${Math.round(lo)}°</small></div>
+        </div>
       `;
-      }
-    )
+    })
     .join("");
 }
 
@@ -805,40 +977,40 @@ function renderHistory(data) {
   const range = history.range || {};
   const labels = history.daily.time.map((time) => formatDate(time, { day: "numeric", month: "short" }));
   const temps = temperatureSeries(history.daily.temperature_2m_max);
-  drawLineChart(elements.historyChart, labels, temps, {
-    stroke: "#ffb86a",
-    strokeAlt: "#8ce7ff",
-    fill: "rgba(255, 184, 106, 0.14)",
-  });
+  const precips = history.daily.precipitation_sum;
+
+  const cnv = elements.historyChart;
+  if (cnv) {
+    drawHistoryTape(cnv, labels, temps, precips);
+    const ro = cnv._resizeObserver;
+    if (ro) ro.disconnect();
+    cnv._resizeObserver = new ResizeObserver(() => drawHistoryTape(cnv, labels, temps, precips));
+    cnv._resizeObserver.observe(cnv);
+  }
 
   const maxTemp = Math.max(...history.daily.temperature_2m_max);
   const minTemp = Math.min(...history.daily.temperature_2m_min);
-  const wettest = Math.max(...history.daily.precipitation_sum);
-  const windiest = Math.max(...history.daily.wind_speed_10m_max);
   const totalRain = history.daily.precipitation_sum.reduce((sum, value) => sum + (value || 0), 0);
+  const meanTemp = history.daily.temperature_2m_max.reduce((s, v) => s + (v || 0), 0) / Math.max(history.daily.temperature_2m_max.length, 1);
 
-  elements.historyTitle.textContent = range.days ? `${range.days}-day history` : "Historical weather";
+  elements.historyTitle.textContent = range.days ? `${range.days}-day history` : "Historical lens";
   elements.historySubtitle.textContent = range.startDate && range.endDate
-    ? `${formatDate(range.startDate, { day: "numeric", month: "short", year: "numeric" })} to ${formatDate(range.endDate, { day: "numeric", month: "short", year: "numeric" })}`
-    : "Archived weather observations";
+    ? `${formatDate(range.startDate, { day: "numeric", month: "short" })} – ${formatDate(range.endDate, { day: "numeric", month: "short" })}`
+    : "Archive";
 
   const stats = [
-    ["Warmest day", `${formatTemperature(maxTemp, 0)} max`],
-    ["Coolest night", `${formatTemperature(minTemp, 0)} min`],
-    ["Wettest day", formatPrecip(wettest, 1)],
-    ["Rain in range", formatPrecip(totalRain, 1)],
-    ["Strongest wind", formatSpeed(windiest)],
+    { k: "Mean", v: formatTemperature(meanTemp, 1) },
+    { k: "Range", v: `${Math.round(usesCelsius() ? minTemp : (minTemp * 9/5 + 32))}–${Math.round(usesCelsius() ? maxTemp : (maxTemp * 9/5 + 32))}°` },
+    { k: "Σ Precip", v: formatPrecip(totalRain, 1) },
   ];
 
   elements.historyStats.innerHTML = stats
-    .map(
-      ([label, value]) => `
-        <article class="history-card">
-          <div class="metric-label">${label}</div>
-          <div class="metric-value">${value}</div>
-        </article>
-      `
-    )
+    .map((s) => `
+      <div class="history-stat">
+        <div class="k">${escapeHtml(s.k)}</div>
+        <div class="v">${escapeHtml(s.v)}</div>
+      </div>
+    `)
     .join("");
 }
 
@@ -973,50 +1145,98 @@ function renderProviders(data) {
   elements.providerList.innerHTML = openMeteoCard + meteomaticsCard;
 }
 
+function riskToLevel(label) {
+  const l = (label || "").toLowerCase();
+  if (l.includes("low") || l.includes("good") || l.includes("firm") || l.includes("open")) return "go";
+  if (l.includes("high") || l.includes("very") || l.includes("severe") || l.includes("closed")) return "hold";
+  return "caution";
+}
+
 function renderAgronomy(data) {
   const agronomy = data.agronomy;
   const summary = agronomy.summary;
   const spray = agronomy.sprayWindow;
   const disease = agronomy.diseaseModels;
 
-  const summaryCards = [
-    ["Surface soil temp", formatTemperature(summary.soilTemperature0cm, 1), "0 cm soil layer"],
-    ["Surface soil moisture", `${formatNumber((summary.soilMoistureSurface || 0) * 100, 0)}%`, "Top 1 cm"],
-    ["Rain last 7 days", formatPrecip(summary.rainLast7Days, 1), "Observed archive total"],
-    ["Rain next 7 days", formatPrecip(summary.rainNext7Days, 1), "Forecast total"],
-    ["Field access score", `${formatNumber(summary.fieldAccessScore)} / 100`, summary.fieldAccessLabel],
-    ["Sprayable hours", `${formatNumber(spray.openHoursNext24)} h`, `${formatNumber(spray.longestBlockHours)} h longest block`],
+  const fieldScore = Math.round(summary.fieldAccessScore ?? 0);
+  const sprayScore = spray.openHoursNext24 != null ? Math.round((spray.openHoursNext24 / 24) * 100) : 0;
+  const soilMoisturePct = Math.round((summary.soilMoistureSurface || 0) * 100);
+  const rainNext7 = summary.rainNext7Days ?? 0;
+
+  const agroItems = [
+    {
+      name: "Spray window",
+      lvl: riskToLevel(spray.riskLabel),
+      val: sprayScore,
+      k: spray.riskLabel || "–",
+      v: `${formatNumber(spray.openHoursNext24)} h open next 24h`,
+    },
+    {
+      name: "Field access",
+      lvl: riskToLevel(summary.fieldAccessLabel),
+      val: fieldScore,
+      k: summary.fieldAccessLabel || "–",
+      v: `Score ${fieldScore} / 100`,
+    },
+    {
+      name: "Soil moisture",
+      lvl: soilMoisturePct > 80 ? "hold" : soilMoisturePct > 50 ? "caution" : "go",
+      val: soilMoisturePct,
+      k: "Top 1 cm surface",
+      v: `${soilMoisturePct}%`,
+    },
+    {
+      name: "Rain next 7d",
+      lvl: rainNext7 > 20 ? "hold" : rainNext7 > 8 ? "caution" : "go",
+      val: Math.min(100, Math.round(rainNext7 * 3)),
+      k: "Forecast total",
+      v: formatPrecip(rainNext7, 1),
+    },
+    {
+      name: "Soil temp",
+      lvl: "go",
+      val: 50,
+      k: "0 cm layer",
+      v: formatTemperature(summary.soilTemperature0cm, 1),
+    },
+    {
+      name: "Rain last 7d",
+      lvl: "go",
+      val: 50,
+      k: "Observed archive",
+      v: formatPrecip(summary.rainLast7Days, 1),
+    },
   ];
 
-  elements.agronomyGrid.innerHTML = summaryCards
-    .map(
-      ([label, value, detail]) => `
-        <article class="agro-card">
-          <div class="metric-label">${label}</div>
-          <div class="metric-value">${value}</div>
-          <div class="daily-date">${detail}</div>
-        </article>
-      `
-    )
+  elements.agronomyGrid.innerHTML = agroItems
+    .map((a) => `
+      <div class="agro">
+        <div class="agro-head">
+          <span>${escapeHtml(a.name)}</span>
+          <span class="lvl" data-lvl="${a.lvl}">${a.lvl}</span>
+        </div>
+        <div class="agro-name">${escapeHtml(a.v)}</div>
+        <div class="agro-meter"><div class="agro-meter-fill" style="width:${a.val}%"></div></div>
+        <div class="agro-foot"><span>${escapeHtml(a.k)}</span><b>${a.val}</b></div>
+      </div>
+    `)
     .join("");
 
   const diseaseCards = [
-    ["General fungal pressure", disease.generalFungalPressure.label, `Score ${formatNumber(disease.generalFungalPressure.score, 2)} | ${disease.generalFungalPressure.basis}`],
-    ["Late blight Smith proxy", disease.lateBlightSmithProxy.label, disease.lateBlightSmithProxy.basis],
-    ["Septoria proxy", disease.septoriaProxy.label, `Score ${formatNumber(disease.septoriaProxy.score, 2)} | ${disease.septoriaProxy.basis}`],
-    ["Spray window risk", spray.riskLabel, "Uses wind, gust, rain chance, rain amount, and temperature over the next 24 hours."],
+    ["General fungal", disease.generalFungalPressure.label, `Score ${formatNumber(disease.generalFungalPressure.score, 2)}`],
+    ["Late blight", disease.lateBlightSmithProxy.label, disease.lateBlightSmithProxy.basis],
+    ["Septoria", disease.septoriaProxy.label, `Score ${formatNumber(disease.septoriaProxy.score, 2)}`],
+    ["Spray risk", spray.riskLabel, "Wind · rain · temp next 24h"],
   ];
 
   elements.diseaseGrid.innerHTML = diseaseCards
-    .map(
-      ([label, badge, detail]) => `
-        <article class="disease-card">
-          <div class="metric-label">${label}</div>
-          <div class="risk-badge">${badge}</div>
-          <p class="daily-date">${detail}</p>
-        </article>
-      `
-    )
+    .map(([label, badge, detail]) => `
+      <article class="disease-card">
+        <div class="metric-label">${escapeHtml(label)}</div>
+        <div class="risk-badge">${escapeHtml(badge || "–")}</div>
+        <p class="daily-date">${escapeHtml(detail || "")}</p>
+      </article>
+    `)
     .join("");
 
   elements.agronomyDisclaimer.textContent = agronomy.disclaimer;
@@ -1030,6 +1250,159 @@ function renderSettings() {
   setSettingsStatus(`${temperatureUnitLabel()} temp | ${speedUnitLabel()} wind | ${state.settings.savedLocations.length} saved location${state.settings.savedLocations.length === 1 ? "" : "s"}`);
 }
 
+function precipStatus(code) {
+  if (code >= 95) return "STORM";
+  if (code >= 80) return "SHOWERS";
+  if (code >= 61) return "RAIN";
+  if (code >= 51) return "DRIZZLE";
+  return "DRY";
+}
+
+function renderRainGauge(data) {
+  const wrap = document.getElementById("rain-gauge-wrap");
+  if (!wrap) return;
+
+  const forecast = data.providers.openMeteo.forecast;
+  const current = forecast.current;
+  const hourly = forecast.hourly;
+  const daily = forecast.daily;
+  const history = data.providers.openMeteo.history;
+  const climate = data.providers.openMeteo.climateWindow;
+
+  // Current conditions
+  const nowMm = current.precipitation ?? 0;
+  const dayStartIndex = getForecastDayStartIndex(forecast);
+  const now = new Date();
+  const currentHourIndex = Math.max(0, hourly.time.findIndex((t) => new Date(t) > now) - 1);
+  const nowProb = hourly.precipitation_probability?.[currentHourIndex] ?? 0;
+  const nowRate = hourly.precipitation?.[currentHourIndex] ?? 0;
+  const status = precipStatus(current.weather_code);
+
+  // 24h total — sum next 24 hourly values
+  const next24 = hourly.precipitation?.slice(currentHourIndex, currentHourIndex + 24) ?? [];
+  const last24Mm = next24.reduce((s, v) => s + (v || 0), 0);
+
+  // Month totals
+  const monthMm = Math.round(data.agronomy?.summary?.rainLast7Days ?? 0); // rough proxy
+  const monthNorm = Math.round(climate?.summary?.averageMonthlyRain ?? 42);
+  const currentMonthMm = Math.round(climate?.summary?.currentMonthRain ?? monthMm);
+
+  // Past 7 days from history
+  const DAY_ABBR = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+  const past7 = [];
+  if (history?.daily?.time) {
+    const days = history.daily.time.slice(-7);
+    days.forEach((t, i) => {
+      const idx = history.daily.time.length - 7 + i;
+      past7.push({
+        d: DAY_ABBR[new Date(t).getDay()].slice(0, 1),
+        mm: +(history.daily.precipitation_sum?.[idx] ?? 0).toFixed(1),
+      });
+    });
+  }
+  while (past7.length < 7) past7.unshift({ d: "–", mm: 0 });
+
+  // Next 7 days from forecast
+  const next7 = daily.time.slice(dayStartIndex, dayStartIndex + 7).map((t, i) => {
+    const ai = dayStartIndex + i;
+    return {
+      d: DAY_ABBR[new Date(t).getDay()].slice(0, 1),
+      mm: +(daily.precipitation_sum?.[ai] ?? 0).toFixed(1),
+      pct: daily.precipitation_probability_max?.[ai] ?? 0,
+    };
+  });
+
+  const SCALE = 25;
+  const fillPct = Math.min(100, (last24Mm / SCALE) * 100);
+  const past7Max = Math.max(1, ...past7.map((p) => p.mm));
+  const next7Max = Math.max(1, ...next7.map((p) => p.mm));
+  const past7Sum = past7.reduce((a, b) => a + b.mm, 0).toFixed(1);
+  const next7Sum = next7.reduce((a, b) => a + b.mm, 0).toFixed(1);
+
+  // SVG cylinder ticks
+  const ticks = Array.from({ length: 26 }, (_, i) => {
+    const isMajor = i % 5 === 0;
+    const x2 = isMajor ? 8 : 4;
+    const sw = isMajor ? 0.6 : 0.3;
+    return `<line x1="0" x2="${x2}" y1="${i * 4}" y2="${i * 4}" stroke="var(--tick)" stroke-width="${sw}"/>`;
+  }).join("");
+  const tickLabels = [0, 5, 10, 15, 20, 25].map((v) =>
+    `<text x="11" y="${(SCALE - v) * 4 + 2.5}" font-size="5" fill="var(--muted)" font-family="JetBrains Mono">${v}</text>`
+  ).join("");
+  const cylFillH = fillPct * 0.92;
+  const cylFillY = 10 + (100 - fillPct) * 0.92;
+  const levelY = (10 + (100 - fillPct) * 0.92).toFixed(1);
+
+  const pastBars = past7.map((d) => `
+    <div class="rg-bar-col">
+      <div class="rg-bar">
+        <div class="rg-bar-fill" style="height:${d.mm > 0 ? (d.mm / past7Max * 100).toFixed(1) : 0}%"></div>
+      </div>
+      <div class="rg-bar-mm">${d.mm > 0 ? d.mm : "·"}</div>
+      <div class="rg-bar-d">${d.d}</div>
+    </div>`).join("");
+
+  const nextBars = next7.map((d) => `
+    <div class="rg-bar-col">
+      <div class="rg-bar">
+        <div class="rg-bar-fill dashed" style="height:${d.mm > 0 ? (d.mm / next7Max * 100).toFixed(1) : 0}%"></div>
+        <div class="rg-bar-pct" style="height:${d.pct}%"></div>
+      </div>
+      <div class="rg-bar-mm">${d.mm > 0 ? d.mm : "·"}</div>
+      <div class="rg-bar-pct-label">${d.pct}%</div>
+      <div class="rg-bar-d">${d.d}</div>
+    </div>`).join("");
+
+  const normDiff = currentMonthMm - monthNorm;
+  const normStr = `${normDiff >= 0 ? "+" : ""}${normDiff} vs norm`;
+
+  wrap.innerHTML = `
+    <div class="dial rain-gauge" style="margin-top:14px">
+      <div class="dial-label"><span>Rain Gauge</span><span>${escapeHtml(status)}</span></div>
+      <div class="rg-top">
+        <div>
+          <svg viewBox="0 0 38 104" preserveAspectRatio="xMidYMid meet" class="rg-cyl-svg">
+            <path d="M 4 2 L 34 2 L 26 10 L 12 10 Z" fill="none" stroke="var(--rule)" stroke-width="0.5"/>
+            <rect x="12" y="10" width="14" height="92" fill="none" stroke="var(--rule)" stroke-width="0.5"/>
+            <rect x="12" y="${cylFillY.toFixed(1)}" width="14" height="${cylFillH.toFixed(1)}" fill="var(--ink)" opacity="0.85"/>
+            <g transform="translate(28,10)">${ticks}${tickLabels}</g>
+            <line x1="12" x2="26" y1="${levelY}" y2="${levelY}" stroke="var(--accent)" stroke-width="0.8"/>
+          </svg>
+        </div>
+        <div class="rg-readout">
+          <div class="rg-now">
+            <div class="rg-now-k">NOW</div>
+            <div class="rg-now-v">${nowMm.toFixed(1)}<small>mm</small></div>
+            <div class="rg-now-rate">${nowRate.toFixed(1)} mm/h · ${nowProb}%</div>
+          </div>
+          <div class="rg-stats">
+            <div>
+              <div class="rg-stat-k">24H</div>
+              <div class="rg-stat-v">${last24Mm.toFixed(1)}<small>mm</small></div>
+            </div>
+            <div>
+              <div class="rg-stat-k">Month</div>
+              <div class="rg-stat-v">${currentMonthMm}<small>mm</small></div>
+              <div class="rg-stat-sub">${escapeHtml(normStr)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rg-section">
+        <div class="rg-section-head"><span>Past 7 days</span><b>Σ ${past7Sum} mm</b></div>
+        <div class="rg-bars">${pastBars}</div>
+      </div>
+      <div class="rg-section">
+        <div class="rg-section-head"><span>Next 7 days</span><b>Σ ${next7Sum} mm fcst</b></div>
+        <div class="rg-bars">${nextBars}</div>
+        <div class="rg-legend">
+          <span><i class="bar-solid"></i>MM</span>
+          <span><i class="bar-line"></i>% CHANCE</span>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderAll(data) {
   renderHero(data);
   renderHourly(data);
@@ -1041,6 +1414,7 @@ function renderAll(data) {
   renderModelVerification(data);
   renderProviders(data);
   renderAgronomy(data);
+  renderRainGauge(data);
   renderSettings();
 }
 
@@ -1431,6 +1805,17 @@ document.addEventListener("keydown", (event) => {
     setSettingsPopoverOpen(false);
   }
 });
+
+// Sky mode manual override
+const skyModeSwitch = document.getElementById("sky-mode-switch");
+if (skyModeSwitch) {
+  skyModeSwitch.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-sky-mode]");
+    if (!btn) return;
+    manualSkyOverride = true;
+    setSkyMode(btn.dataset.skyMode);
+  });
+}
 
 elements.searchForm.addEventListener("submit", handleSearch);
 elements.historyPresets.addEventListener("click", handleHistoryPresetClick);
