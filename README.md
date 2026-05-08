@@ -39,6 +39,12 @@ NEXT_PUBLIC_ACEWEATHER_API_BASE=
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+## Production API Notes
+
+The API endpoints are designed to answer both `GET` and `HEAD`, which helps LLM fetchers and uptime checks validate them before reading the full body.
+
+If `https://aceweather.app/api/...` redirects to `https://www.aceweather.app/api/...`, that redirect is coming from Vercel domain settings before the app code runs. If you want the apex API URLs to stay fetchable as plain text, keep both domains attached to the project without a forced apex-to-`www` redirect, or exclude `/api/*` from any canonical-host redirect you add at the app layer.
+
 ## Open It On Your Phone
 
 To make the local dev server reachable from your phone on the same Wi-Fi network, start it with:

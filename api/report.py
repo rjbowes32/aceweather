@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
-from helpers import send_error, send_json
+from helpers import send_error, send_text
 
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
@@ -20,7 +20,7 @@ def request_base_url(handler: BaseHTTPRequestHandler) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
+    def _handle(self, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         location_query = params.get("query", [None])[0]
 
@@ -32,37 +32,37 @@ class handler(BaseHTTPRequestHandler):
                     latitude = float(params.get("lat", [""])[0])
                     longitude = float(params.get("lon", [""])[0])
                 except ValueError:
-                    send_error(self, HTTPStatus.BAD_REQUEST, "Provide ?query=<location> or ?lat=<n>&lon=<n>.")
+                    send_error(self, HTTPStatus.BAD_REQUEST, "Provide ?query=<location> or ?lat=<n>&lon=<n>.", head_only=head_only)
                     return
                 if not (-90 <= latitude <= 90):
-                    send_error(self, HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.")
+                    send_error(self, HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.", head_only=head_only)
                     return
                 if not (-180 <= longitude <= 180):
-                    send_error(self, HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.")
+                    send_error(self, HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.", head_only=head_only)
                     return
                 timezone = params.get("timezone", ["auto"])[0] or "auto"
                 if timezone != "auto" and not lib.VALID_TIMEZONE_RE.match(timezone):
-                    send_error(self, HTTPStatus.BAD_REQUEST, "Invalid timezone format.")
+                    send_error(self, HTTPStatus.BAD_REQUEST, "Invalid timezone format.", head_only=head_only)
                     return
                 label = params.get("label", [None])[0]
 
             payload = lib.aggregate_weather(latitude, longitude, timezone, label, history_days=7)
             report_text = lib.build_report(payload, base_url=request_base_url(self))
-            body = report_text.encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
+            send_text(self, report_text, head_only=head_only)
 
         except LookupError as exc:
-            send_error(self, HTTPStatus.NOT_FOUND, str(exc))
+            send_error(self, HTTPStatus.NOT_FOUND, str(exc), head_only=head_only)
         except ValueError as exc:
-            send_error(self, HTTPStatus.BAD_REQUEST, str(exc))
+            send_error(self, HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Report generation failed: %s", exc)
-            send_error(self, HTTPStatus.BAD_GATEWAY, "Report generation is temporarily unavailable.")
+            send_error(self, HTTPStatus.BAD_GATEWAY, "Report generation is temporarily unavailable.", head_only=head_only)
+
+    def do_GET(self) -> None:
+        self._handle()
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        self._handle(head_only=True)
 
     def log_message(self, *args: object) -> None:
         pass

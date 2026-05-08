@@ -10,11 +10,17 @@ from helpers import send_json
 
 
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
+    def _handle(self, *, head_only: bool = False) -> None:
         host = self.headers.get("x-forwarded-host") or self.headers.get("host") or ""
         proto = self.headers.get("x-forwarded-proto", "https")
         base_url = f"{proto}://{host}" if host else ""
-        send_json(self, build_api_index(base_url))
+        send_json(self, build_api_index(base_url), head_only=head_only)
+
+    def do_GET(self) -> None:
+        self._handle()
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        self._handle(head_only=True)
 
     def log_message(self, *args: object) -> None:
         pass

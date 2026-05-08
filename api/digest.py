@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
-from helpers import send_error
+from helpers import send_error, send_text
 
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
@@ -20,27 +20,27 @@ def request_base_url(handler: BaseHTTPRequestHandler) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
+    def _handle(self, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
         mode = (params.get("mode", ["brief"])[0] or "brief").strip().lower()
 
         try:
             digest_text = lib.build_digest(set_name, base_url=request_base_url(self), mode=mode)
-            body = digest_text.encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
+            send_text(self, digest_text, head_only=head_only)
         except ValueError as exc:
-            send_error(self, HTTPStatus.BAD_REQUEST, str(exc))
+            send_error(self, HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except LookupError as exc:
-            send_error(self, HTTPStatus.NOT_FOUND, str(exc))
+            send_error(self, HTTPStatus.NOT_FOUND, str(exc), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Digest generation failed: %s", exc)
-            send_error(self, HTTPStatus.BAD_GATEWAY, "Digest generation is temporarily unavailable.")
+            send_error(self, HTTPStatus.BAD_GATEWAY, "Digest generation is temporarily unavailable.", head_only=head_only)
+
+    def do_GET(self) -> None:
+        self._handle()
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        self._handle(head_only=True)
 
     def log_message(self, *args: object) -> None:
         pass

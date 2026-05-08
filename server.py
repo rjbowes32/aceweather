@@ -26,27 +26,36 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(PUBLIC_DIR), **kwargs)
 
     def do_GET(self) -> None:  # noqa: N802
+        self._handle_request(head_only=False)
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        self._handle_request(head_only=True)
+
+    def _handle_request(self, *, head_only: bool) -> None:
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/api/search":
-            self._handle_search(parsed.query)
+            self._handle_search(parsed.query, head_only=head_only)
             return
         if parsed.path == "/api":
-            self._send_json(build_api_index(self._request_base_url()))
+            self._send_json(build_api_index(self._request_base_url()), head_only=head_only)
             return
         if parsed.path == "/api/digest":
-            self._handle_digest(parsed.query)
+            self._handle_digest(parsed.query, head_only=head_only)
             return
         if parsed.path == "/api/report":
-            self._handle_report(parsed.query)
+            self._handle_report(parsed.query, head_only=head_only)
             return
         if parsed.path == "/api/weather":
-            self._handle_weather(parsed.query)
+            self._handle_weather(parsed.query, head_only=head_only)
             return
         if parsed.path == "/api/providers":
             self._send_json({
                 "meteomaticsEnabled": lib.get_meteomatics_credentials() is not None,
                 "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-            })
+            }, head_only=head_only)
+            return
+        if head_only:
+            super().do_HEAD()
             return
         super().do_GET()
 
@@ -55,19 +64,19 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         proto = self.headers.get("x-forwarded-proto", "http")
         return f"{proto}://{host}" if host else ""
 
-    def _handle_search(self, query_string: str) -> None:
+    def _handle_search(self, query_string: str, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(query_string)
         query = params.get("query", [""])[0].strip()
         if len(query) < 2:
-            self._send_error(HTTPStatus.BAD_REQUEST, "Query must be at least 2 characters long.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "Query must be at least 2 characters long.", head_only=head_only)
             return
         try:
-            self._send_json(lib.fetch_geocoding(query))
+            self._send_json(lib.fetch_geocoding(query), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError) as exc:
             lib._log.error("Geocoding request failed: %s", exc)
-            self._send_error(HTTPStatus.BAD_GATEWAY, "Location search is temporarily unavailable.")
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Location search is temporarily unavailable.", head_only=head_only)
 
-    def _handle_report(self, query_string: str) -> None:
+    def _handle_report(self, query_string: str, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(query_string)
         location_query = params.get("query", [None])[0]
         try:
@@ -78,17 +87,17 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
                     latitude = float(params.get("lat", [""])[0])
                     longitude = float(params.get("lon", [""])[0])
                 except ValueError:
-                    self._send_error(HTTPStatus.BAD_REQUEST, "Provide ?query=<location> or ?lat=<n>&lon=<n>.")
+                    self._send_error(HTTPStatus.BAD_REQUEST, "Provide ?query=<location> or ?lat=<n>&lon=<n>.", head_only=head_only)
                     return
                 if not (-90 <= latitude <= 90):
-                    self._send_error(HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.")
+                    self._send_error(HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.", head_only=head_only)
                     return
                 if not (-180 <= longitude <= 180):
-                    self._send_error(HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.")
+                    self._send_error(HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.", head_only=head_only)
                     return
                 timezone = params.get("timezone", ["auto"])[0] or "auto"
                 if timezone != "auto" and not lib.VALID_TIMEZONE_RE.match(timezone):
-                    self._send_error(HTTPStatus.BAD_REQUEST, "Invalid timezone format.")
+                    self._send_error(HTTPStatus.BAD_REQUEST, "Invalid timezone format.", head_only=head_only)
                     return
                 label = params.get("label", [None])[0]
 
@@ -102,59 +111,47 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
                 observations_payload=observations_payload,
             )
             report_text = lib.build_report(payload, base_url=self._request_base_url())
-            body = report_text.encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
+            self._send_text(report_text, head_only=head_only)
         except LookupError as exc:
-            self._send_error(HTTPStatus.NOT_FOUND, str(exc))
+            self._send_error(HTTPStatus.NOT_FOUND, str(exc), head_only=head_only)
         except ValueError as exc:
-            self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Report generation failed: %s", exc)
-            self._send_error(HTTPStatus.BAD_GATEWAY, "Report generation is temporarily unavailable.")
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Report generation is temporarily unavailable.", head_only=head_only)
 
-    def _handle_digest(self, query_string: str) -> None:
+    def _handle_digest(self, query_string: str, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(query_string)
         set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
         mode = (params.get("mode", ["brief"])[0] or "brief").strip().lower()
         try:
             digest_text = lib.build_digest(set_name, base_url=self._request_base_url(), mode=mode)
-            body = digest_text.encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
+            self._send_text(digest_text, head_only=head_only)
         except LookupError as exc:
-            self._send_error(HTTPStatus.NOT_FOUND, str(exc))
+            self._send_error(HTTPStatus.NOT_FOUND, str(exc), head_only=head_only)
         except ValueError as exc:
-            self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Digest generation failed: %s", exc)
-            self._send_error(HTTPStatus.BAD_GATEWAY, "Digest generation is temporarily unavailable.")
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Digest generation is temporarily unavailable.", head_only=head_only)
 
-    def _handle_weather(self, query_string: str) -> None:
+    def _handle_weather(self, query_string: str, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(query_string)
         try:
             latitude = float(params.get("lat", [""])[0])
             longitude = float(params.get("lon", [""])[0])
         except ValueError:
-            self._send_error(HTTPStatus.BAD_REQUEST, "Latitude and longitude are required numeric values.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "Latitude and longitude are required numeric values.", head_only=head_only)
             return
         if not (-90 <= latitude <= 90):
-            self._send_error(HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "Latitude must be between -90 and 90.", head_only=head_only)
             return
         if not (-180 <= longitude <= 180):
-            self._send_error(HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "Longitude must be between -180 and 180.", head_only=head_only)
             return
         timezone = params.get("timezone", ["auto"])[0] or "auto"
         if timezone != "auto" and not lib.VALID_TIMEZONE_RE.match(timezone):
-            self._send_error(HTTPStatus.BAD_REQUEST, "Invalid timezone format.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "Invalid timezone format.", head_only=head_only)
             return
         label = params.get("label", [None])[0]
         history_days_value = params.get("history_days", [None])[0]
@@ -163,13 +160,13 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
         try:
             history_days = int(history_days_value) if history_days_value else None
         except ValueError:
-            self._send_error(HTTPStatus.BAD_REQUEST, "History days must be an integer.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "History days must be an integer.", head_only=head_only)
             return
         try:
             history_start = date.fromisoformat(history_start_value) if history_start_value else None
             history_end = date.fromisoformat(history_end_value) if history_end_value else None
         except ValueError:
-            self._send_error(HTTPStatus.BAD_REQUEST, "Custom history dates must use YYYY-MM-DD format.")
+            self._send_error(HTTPStatus.BAD_REQUEST, "Custom history dates must use YYYY-MM-DD format.", head_only=head_only)
             return
         try:
             observations_payload = self._parse_observations(params)
@@ -178,24 +175,35 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
                 history_days=history_days, history_start=history_start, history_end=history_end,
                 observations_payload=observations_payload,
             )
-            self._send_json(payload)
+            self._send_json(payload, head_only=head_only)
         except ValueError as exc:
-            self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Weather aggregation failed: %s", exc)
-            self._send_error(HTTPStatus.BAD_GATEWAY, "Weather data is temporarily unavailable.")
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Weather data is temporarily unavailable.", head_only=head_only)
 
-    def _send_json(self, payload: Any, status: HTTPStatus = HTTPStatus.OK) -> None:
+    def _send_json(self, payload: Any, status: HTTPStatus = HTTPStatus.OK, *, head_only: bool = False) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(body)
+        if not head_only:
+            self.wfile.write(body)
 
-    def _send_error(self, status: HTTPStatus, message: str) -> None:
-        self._send_json({"error": True, "message": message}, status=status)
+    def _send_text(self, text: str, status: HTTPStatus = HTTPStatus.OK, *, head_only: bool = False) -> None:
+        body = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        if not head_only:
+            self.wfile.write(body)
+
+    def _send_error(self, status: HTTPStatus, message: str, *, head_only: bool = False) -> None:
+        self._send_json({"error": True, "message": message}, status=status, head_only=head_only)
 
     def log_message(self, *args: object) -> None:
         pass
