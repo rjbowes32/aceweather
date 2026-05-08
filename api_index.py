@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import snapshot_api
 
 
 def build_api_index(base_url: str = "") -> dict[str, Any]:
@@ -55,6 +56,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 },
             ],
         },
+        "snapshotEndpoint": snapshot_api.snapshot_endpoint_docs(normalized_base),
         "endpoints": [
             {
                 "path": "/api/search",
@@ -78,6 +80,14 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "requiredParamsOneOf": [["query"], ["lat", "lon"]],
                 "optionalParams": ["timezone", "label"],
                 "description": "Returns the plain-text report derived from the weather payload.",
+            },
+            {
+                "path": "/api/snapshot",
+                "method": "GET, POST",
+                "responseFormat": "application/json",
+                "requiredParamsOneOf": [["query"], ["lat", "lon"]],
+                "optionalParams": ["timezone", "label", "history_days", "station", "site_id"],
+                "description": "Returns a compact JSON weather snapshot for AppSheet webhooks and other automations.",
             },
             {
                 "path": "/api/providers",

@@ -18,6 +18,7 @@ The Crop Dynamics digest is intentionally minimal:
 Crop Dynamics direct report URLs:
 - https://aceweather.app/api/report?query=Pocklington
 - https://aceweather.app/api/report?query=Boroughbridge
+- https://aceweather.app/api/report?query=Alford%2C%20Lincolnshire
 - https://aceweather.app/api/report?query=Sleaford
 - https://aceweather.app/api/report?query=Scotch%20Corner
 - https://aceweather.app/api/report?query=Longhirst
@@ -25,6 +26,11 @@ Crop Dynamics direct report URLs:
 
 Structured JSON endpoint:
 - GET https://aceweather.app/api/weather?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
+
+AppSheet-friendly JSON snapshot endpoint:
+- GET https://aceweather.app/api/snapshot?query=<place name>
+- POST https://aceweather.app/api/snapshot with JSON body like {"query":"Pocklington","station":"demo-station-1"}
+- Returns compact fields including temp_avg, precip_mm, humidity, snapshot_time, today_high_c, today_low_c, current_temp_c, and 7-day rainfall totals.
 
 Place search endpoint:
 - GET https://aceweather.app/api/search?query=<place name>
@@ -39,10 +45,12 @@ Machine-readable API discovery:
 Examples:
 - https://aceweather.app/api/report?query=Pocklington
 - https://aceweather.app/api/digest?set=cropdynamics
+- https://aceweather.app/api/snapshot?query=Pocklington
 - https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom
 
 Notes:
 - /api/report returns text/plain.
 - /api/weather returns application/json.
+- /api/snapshot returns application/json and supports GET or POST.
 - /api/digest?set=cropdynamics returns the slim regional text bundle for LLM reading.
 - For the simplest workflow, fetch https://aceweather.app/api/digest?set=cropdynamics once or call https://aceweather.app/api/report directly with ?query=...

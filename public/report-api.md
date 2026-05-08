@@ -63,16 +63,42 @@ If you need the JSON payload that powers the dashboard, use:
 
 `/api/weather`
 
+If you need a compact AppSheet-friendly JSON webhook response, use:
+
+`/api/snapshot`
+
 ## Crop Dynamics Set
 
 The canonical Crop Dynamics regional URLs are:
 
 - `https://aceweather.app/api/report?query=Pocklington`
 - `https://aceweather.app/api/report?query=Boroughbridge`
+- `https://aceweather.app/api/report?query=Alford%2C%20Lincolnshire`
 - `https://aceweather.app/api/report?query=Sleaford`
 - `https://aceweather.app/api/report?query=Scotch%20Corner`
 - `https://aceweather.app/api/report?query=Longhirst`
 - `https://aceweather.app/api/report?query=Berwick-upon-Tweed`
+
+## AppSheet Snapshot Endpoint
+
+`https://aceweather.app/api/snapshot`
+
+Use either:
+
+- `GET https://aceweather.app/api/snapshot?query=Pocklington`
+- `POST https://aceweather.app/api/snapshot` with a JSON body such as `{"query":"Pocklington","station":"demo-station-1"}`
+
+The response is compact JSON intended for webhook return values, including fields such as:
+
+- `temp_avg`
+- `precip_mm`
+- `humidity`
+- `snapshot_time`
+- `today_high_c`
+- `today_low_c`
+- `current_temp_c`
+- `history_7d_precip_mm`
+- `forecast_7d_precip_mm`
 
 If a fetcher requires exact URLs to appear in a previous response before it can call them, fetching `https://aceweather.app/api`, `https://aceweather.app/api/digest?set=cropdynamics`, or the AceWeather homepage first will expose the whole set.
 

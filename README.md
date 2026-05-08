@@ -9,6 +9,7 @@ AceWeather is a visually rich weather dashboard powered by Open-Meteo by default
 - Air quality, sun cycle, wind, humidity, pressure, UV, cloud layers, and soil data
 - Historical daily weather for the last 30 days
 - Same-period historical comparison across recent years
+- AppSheet-friendly `/api/snapshot` JSON endpoint for webhook return values
 - Optional Meteomatics provider panel through Python-side credentials
 
 ## Run The Python API

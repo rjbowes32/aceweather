@@ -13,6 +13,7 @@ from typing import Any
 
 from api_index import build_api_index
 import lib
+import snapshot_api
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
@@ -24,6 +25,9 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self) -> None:  # noqa: N802
         self._handle_request(head_only=True)
+
+    def do_POST(self) -> None:  # noqa: N802
+        self._handle_request(head_only=False)
 
     def _handle_request(self, *, head_only: bool) -> None:
         parsed = urllib.parse.urlparse(self.path)
@@ -42,6 +46,9 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/digest":
             self._handle_digest(parsed.query, head_only=head_only)
+            return
+        if parsed.path == "/api/snapshot":
+            self._handle_snapshot(parsed, head_only=head_only)
             return
         if parsed.path == "/api/report":
             self._handle_report(parsed.query, head_only=head_only)
@@ -179,6 +186,30 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
             lib._log.error("Weather aggregation failed: %s", exc)
             self._send_error(HTTPStatus.BAD_GATEWAY, "Weather data is temporarily unavailable.", head_only=head_only)
+
+    def _handle_snapshot(self, parsed: urllib.parse.ParseResult, *, head_only: bool = False) -> None:
+        is_authorized, _ = snapshot_api.require_webhook_auth(self.headers)
+        if not is_authorized:
+            self._send_error(HTTPStatus.UNAUTHORIZED, "Unauthorized. Provide Authorization: Bearer <token>.", head_only=head_only)
+            return
+
+        try:
+            raw_body = b""
+            if self.command == "POST":
+                content_length = int(self.headers.get("content-length", "0") or "0")
+                raw_body = self.rfile.read(content_length) if content_length > 0 else b""
+            body = snapshot_api.parse_json_body(raw_body)
+            query_params = urllib.parse.parse_qs(parsed.query)
+            request_payload = snapshot_api.parse_snapshot_request(query_params=query_params, body=body)
+            response_payload = snapshot_api.build_snapshot_response(request_payload)
+            self._send_json(response_payload, head_only=head_only)
+        except ValueError as exc:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
+        except LookupError as exc:
+            self._send_error(HTTPStatus.NOT_FOUND, str(exc), head_only=head_only)
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
+            lib._log.error("Snapshot generation failed: %s", exc)
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Snapshot generation is temporarily unavailable.", head_only=head_only)
 
     def _send_json(self, payload: Any, status: HTTPStatus = HTTPStatus.OK, *, head_only: bool = False) -> None:
         body = json.dumps(payload).encode("utf-8")

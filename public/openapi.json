@@ -203,6 +203,135 @@
         }
       }
     },
+    "/api/snapshot": {
+      "get": {
+        "summary": "Get compact JSON snapshot",
+        "description": "Returns a compact weather snapshot intended for AppSheet webhook return values. Use either query by place name or explicit coordinates.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            },
+            "description": "Place name. If provided, lat/lon are not required."
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "auto"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "history_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 7
+            }
+          },
+          {
+            "name": "station",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compact weather snapshot as JSON"
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "404": {
+            "description": "Location not found"
+          },
+          "401": {
+            "description": "Missing or invalid bearer token when ACEWEATHER_WEBHOOK_TOKEN is configured"
+          },
+          "502": {
+            "description": "Upstream provider unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Post compact JSON snapshot request",
+        "description": "Accepts a JSON body with query or lat/lon and returns the same compact AppSheet-friendly snapshot as the GET variant.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Compact weather snapshot as JSON"
+          },
+          "400": {
+            "description": "Invalid request body or parameters"
+          },
+          "404": {
+            "description": "Location not found"
+          },
+          "401": {
+            "description": "Missing or invalid bearer token when ACEWEATHER_WEBHOOK_TOKEN is configured"
+          },
+          "502": {
+            "description": "Upstream provider unavailable"
+          }
+        }
+      }
+    },
     "/api/digest": {
       "get": {
         "summary": "Get canonical regional digest",
