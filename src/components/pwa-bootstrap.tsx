@@ -8,9 +8,11 @@ export function PwaBootstrap() {
       return;
     }
 
-    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
-      console.error("AceWeather service worker registration failed", error);
-    });
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch((error) => {
+        console.error("AceWeather service worker cleanup failed", error);
+      });
   }, []);
 
   return null;

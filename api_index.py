@@ -26,6 +26,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "reportUrls": [
                     absolute("/api/report?query=Pocklington"),
                     absolute("/api/report?query=Boroughbridge"),
+                    absolute("/api/report?query=Alford%2C%20Lincolnshire"),
                     absolute("/api/report?query=Sleaford"),
                     absolute("/api/report?query=Scotch%20Corner"),
                     absolute("/api/report?query=Longhirst"),

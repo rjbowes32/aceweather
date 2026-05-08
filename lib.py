@@ -17,6 +17,7 @@ CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
     "cropdynamics": [
         {"slug": "pocklington", "query": "Pocklington"},
         {"slug": "boroughbridge", "query": "Boroughbridge"},
+        {"slug": "alford", "query": "Alford, Lincolnshire"},
         {"slug": "sleaford", "query": "Sleaford"},
         {"slug": "scotch-corner", "query": "Scotch Corner"},
         {
