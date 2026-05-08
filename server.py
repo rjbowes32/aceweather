@@ -1,4 +1,4 @@
-"""Local development server. Production runs on Vercel via api/*.py serverless functions."""
+"""Local API server. Production UI runs through Next.js/Vercel and API routes run via api/*.py."""
 from __future__ import annotations
 
 import json
@@ -8,23 +8,17 @@ import urllib.error
 import urllib.parse
 from datetime import date, datetime
 from http import HTTPStatus
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 from api_index import build_api_index
 import lib
 
-ROOT = Path(__file__).resolve().parent
-PUBLIC_DIR = ROOT / "public"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 
 
-class AceWeatherHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, directory=str(PUBLIC_DIR), **kwargs)
-
+class AceWeatherHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         self._handle_request(head_only=False)
 
@@ -33,6 +27,13 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
 
     def _handle_request(self, *, head_only: bool) -> None:
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/":
+            self._send_json({
+                "name": "AceWeather Local API",
+                "ui": "Run the Next.js frontend on http://localhost:3000",
+                "api": self._request_base_url() or "http://127.0.0.1:8000",
+            }, head_only=head_only)
+            return
         if parsed.path == "/api/search":
             self._handle_search(parsed.query, head_only=head_only)
             return
@@ -54,10 +55,7 @@ class AceWeatherHandler(SimpleHTTPRequestHandler):
                 "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             }, head_only=head_only)
             return
-        if head_only:
-            super().do_HEAD()
-            return
-        super().do_GET()
+        self._send_error(HTTPStatus.NOT_FOUND, "Unknown route.", head_only=head_only)
 
     def _request_base_url(self) -> str:
         host = self.headers.get("x-forwarded-host") or self.headers.get("host") or ""
