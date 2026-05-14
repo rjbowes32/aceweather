@@ -1,5 +1,5 @@
-import { WeatherConsole } from "@/components/weather-console";
+import { AceWeatherV2Synoptic } from "@/components/aceweather-v2-synoptic";
 
 export default function HomePage() {
-  return <WeatherConsole />;
+  return <AceWeatherV2Synoptic />;
 }
