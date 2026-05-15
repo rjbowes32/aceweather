@@ -89,6 +89,33 @@
   letter-spacing: inherit;
 }
 .aw2-mast-search input::placeholder { color: var(--muted-2); }
+.aw2-report-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.aw2-report-action button {
+  padding: 5px 9px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  white-space: nowrap;
+}
+.aw2-report-action span {
+  max-width: 104px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aw2-report-action.compact {
+  flex-shrink: 0;
+}
 
 /* === HERO STRIP (desktop) === */
 .aw2-hero {
@@ -161,22 +188,38 @@
 .aw2-mid {
   display: grid;
   grid-template-columns: 1fr 440px;
+  gap: 4px;
   border-bottom: 1px solid var(--rule);
   min-height: 0;
   overflow: hidden;
+  background: var(--rule-soft);
 }
-.aw2-mid-left { border-right: 1px solid var(--rule); min-width: 0; overflow: hidden; }
-.aw2-mid-right { display: grid; grid-template-rows: 1fr 200px; min-width: 0; overflow: hidden; }
+.aw2-mid-left { min-width: 0; overflow: hidden; background: var(--paper); }
+.aw2-mid-right { display: grid; grid-template-rows: 1fr 200px; gap: 4px; min-width: 0; overflow: hidden; background: var(--rule-soft); }
 
 .aw2-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
   border-bottom: 1px solid var(--rule);
   overflow: hidden;
   min-height: 0;
+  background: var(--rule-soft);
 }
-.aw2-row > * { border-right: 1px solid var(--rule); min-width: 0; overflow: hidden; }
-.aw2-row > *:last-child { border-right: 0; }
+.aw2-row > * { min-width: 0; overflow: hidden; background: var(--paper); }
+.aw2-outlook-panel {
+  padding-bottom: 14px;
+}
+.aw2-outlook-panel::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: var(--rule-soft);
+  border-top: 1px solid var(--rule-faint);
+}
 
 /* panels stretch to fill their grid cells, children flex */
 .aw2-mid-left > .aw2-panel,
@@ -184,7 +227,7 @@
 .aw2-mid-left .aw2-meteogram { flex: 1 1 0; min-height: 0; height: auto; }
 
 /* === PANEL === */
-.aw2-panel { padding: 10px 14px 12px; position: relative; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.aw2-panel { padding: 10px 14px 12px; position: relative; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background: var(--paper); }
 .aw2-panel.tight { padding: 8px 12px 10px; }
 .aw2-panel-head {
   display: flex; justify-content: space-between; align-items: baseline;
@@ -242,6 +285,7 @@
 .aw2-meteogram .wind-arrow { fill: var(--ink-3); }
 .aw2-meteogram .press-line { fill: none; stroke: var(--ink); stroke-width: 1.2; }
 .aw2-meteogram .track-rule { stroke: var(--rule); stroke-width: 0.5; }
+.aw2-meteogram .track-gap { fill: var(--paper); stroke: var(--rule); stroke-width: 0.5; }
 .aw2-meteogram .nowline { stroke: var(--rust); stroke-width: 0.8; stroke-dasharray: 1 2; }
 .aw2-meteogram .axis-text {
   font-family: var(--font-mono); font-size: 9px;
@@ -365,7 +409,7 @@
   grid-template-columns: repeat(14, 1fr);
 }
 .aw2-day {
-  padding: 10px 6px 10px;
+  padding: 10px 6px 4px;
   border-right: 1px solid var(--rule);
   display: flex; flex-direction: column; gap: 4px;
   min-width: 0;
@@ -583,6 +627,19 @@
   font-family: var(--font-mono); font-size: 9px;
   letter-spacing: 0.10em; color: var(--muted);
 }
+.aw2-m-head .aw2-report-action {
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rule);
+}
+.aw2-m-head .aw2-report-action button {
+  padding: 4px 8px;
+}
+.aw2-m-head .aw2-report-action span {
+  text-align: right;
+  max-width: 150px;
+}
 
 .aw2-m-section { padding: 14px 16px 0; }
 .aw2-m-section .h {
@@ -696,8 +753,8 @@
 .aw2-m-7 { display: flex; flex-direction: column; }
 .aw2-m-7-row {
   display: grid;
-  grid-template-columns: 50px 1fr 70px 64px;
-  gap: 10px;
+  grid-template-columns: 50px 28px 1fr 70px 64px;
+  gap: 8px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--rule-faint);
@@ -708,6 +765,34 @@
   letter-spacing: 0.10em; text-transform: uppercase; color: var(--muted);
 }
 .aw2-m-7-row .d b { display: block; font-family: var(--font-serif); font-size: 16px; letter-spacing: -0.01em; color: var(--ink); font-weight: 500; }
+.aw2-weather-icon {
+  width: 24px;
+  height: 24px;
+  justify-self: center;
+  color: var(--ink);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.aw2-weather-icon.sun,
+.aw2-weather-icon.partly {
+  color: var(--sun);
+}
+.aw2-weather-icon.cloud,
+.aw2-weather-icon.fog {
+  color: var(--muted);
+}
+.aw2-weather-icon.rain {
+  color: var(--teal);
+}
+.aw2-weather-icon.snow {
+  color: var(--frost);
+}
+.aw2-weather-icon.storm {
+  color: var(--hazard);
+}
 .aw2-m-7-row .bar {
   height: 6px; position: relative;
   background: var(--rule-faint);
@@ -808,8 +893,8 @@ body {
 
 .aw2-shell-desktop {
   width: max(100vw, 1440px);
-  height: 100vh;
-  min-height: 768px;
+  height: max(100vh, 1024px);
+  min-height: 1024px;
   overflow: auto;
 }
 

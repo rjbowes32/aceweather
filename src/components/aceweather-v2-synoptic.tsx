@@ -242,6 +242,135 @@ const dirToCompass = (deg) => {
 const fmt1 = (v) => (v == null || isNaN(v) ? "—" : (+v).toFixed(1));
 const fmt0 = (v) => (v == null || isNaN(v) ? "—" : Math.round(+v).toString());
 
+function weatherConditionFor(code) {
+  if (code === 0) return { key: "sun", label: "Sunny" };
+  if (code === 1) return { key: "sun", label: "Mainly clear" };
+  if (code === 2) return { key: "partly", label: "Partly cloudy" };
+  if (code === 3) return { key: "cloud", label: "Overcast" };
+  if (code === 45 || code === 48) return { key: "fog", label: "Fog" };
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { key: "rain", label: "Rain" };
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { key: "snow", label: "Snow" };
+  if (code >= 95) return { key: "storm", label: "Thunder" };
+  return { key: "cloud", label: "Cloudy" };
+}
+
+const WeatherIcon = ({ code }) => {
+  const condition = weatherConditionFor(code);
+  const common = {
+    viewBox: "0 0 28 28",
+    role: "img",
+    "aria-label": condition.label,
+    className: `aw2-weather-icon ${condition.key}`,
+  };
+
+  if (condition.key === "sun") {
+    return (
+      <svg {...common}>
+        <circle cx="14" cy="14" r="4.5"/>
+        {[0,45,90,135,180,225,270,315].map((a) => {
+          const r = a * Math.PI / 180;
+          return <line key={a} x1={14 + Math.cos(r) * 8} y1={14 + Math.sin(r) * 8} x2={14 + Math.cos(r) * 11} y2={14 + Math.sin(r) * 11}/>;
+        })}
+      </svg>
+    );
+  }
+
+  if (condition.key === "partly") {
+    return (
+      <svg {...common}>
+        <circle cx="10" cy="10" r="3.5"/>
+        <path d="M6 18.5h15.5c1.8 0 3.2-1.2 3.2-2.9 0-1.5-1.1-2.7-2.6-2.9-.7-2.4-2.7-4-5.1-4-2.1 0-3.9 1.2-4.8 3-2.3.1-4.1 1.6-4.1 3.6"/>
+      </svg>
+    );
+  }
+
+  if (condition.key === "rain" || condition.key === "storm") {
+    return (
+      <svg {...common}>
+        <path d="M5 15.5h16.5c1.8 0 3.2-1.2 3.2-2.9 0-1.5-1.1-2.7-2.6-2.9-.7-2.4-2.7-4-5.1-4-2.1 0-3.9 1.2-4.8 3-2.3.1-4.1 1.6-4.1 3.6"/>
+        {condition.key === "storm" ? (
+          <path d="M14 16.5l-2.4 4.2h3.1L13 25"/>
+        ) : (
+          <>
+            <line x1="10" y1="19" x2="8.5" y2="23"/>
+            <line x1="15" y1="19" x2="13.5" y2="23"/>
+            <line x1="20" y1="19" x2="18.5" y2="23"/>
+          </>
+        )}
+      </svg>
+    );
+  }
+
+  if (condition.key === "snow") {
+    return (
+      <svg {...common}>
+        <path d="M5 14h18M14 5v18M8 8l12 12M20 8L8 20"/>
+        <circle cx="14" cy="14" r="2"/>
+      </svg>
+    );
+  }
+
+  if (condition.key === "fog") {
+    return (
+      <svg {...common}>
+        <path d="M6 11.5h14.5c1.7 0 3-1.1 3-2.6 0-1.4-1-2.5-2.4-2.7-.7-2-2.4-3.3-4.6-3.3-1.9 0-3.5 1-4.3 2.6"/>
+        <line x1="4" y1="16" x2="24" y2="16"/>
+        <line x1="7" y1="20" x2="21" y2="20"/>
+        <line x1="4" y1="24" x2="24" y2="24"/>
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M5 17h16.5c1.8 0 3.2-1.2 3.2-2.9 0-1.5-1.1-2.7-2.6-2.9-.7-2.4-2.7-4-5.1-4-2.1 0-3.9 1.2-4.8 3-2.3.1-4.1 1.6-4.1 3.6"/>
+    </svg>
+  );
+};
+
+function reportParamsFor(location = AW_LOCATION) {
+  return new URLSearchParams({
+    lat: location.lat.toString(),
+    lon: location.lon.toString(),
+    timezone: location.tz,
+    label: `${location.name}, ${location.region}`,
+  });
+}
+
+function reportUrlFor(location = AW_LOCATION) {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return `${origin}/api/report?${reportParamsFor(location).toString()}`;
+}
+
+async function shareWeatherReport(setStatus, location = AW_LOCATION) {
+  const reportUrl = reportUrlFor(location);
+  setStatus("Preparing report");
+  try {
+    const response = await fetch(reportUrl);
+    if (!response.ok) throw new Error(`Report ${response.status}`);
+    const text = await response.text();
+    const title = `AceWeather report · ${location.name}`;
+
+    if (navigator.share) {
+      await navigator.share({ title, text, url: reportUrl });
+      setStatus("Report shared");
+      return;
+    }
+
+    await navigator.clipboard.writeText(text);
+    setStatus("Report copied");
+  } catch {
+    setStatus("Report unavailable");
+  }
+}
+
+const ReportAction = ({ status, onShare, compact = false }) => (
+  <div className={compact ? "aw2-report-action compact" : "aw2-report-action"}>
+    <button type="button" onClick={onShare}>Share report</button>
+    <span role="status" aria-live="polite">{status}</span>
+  </div>
+);
+
 
 /* AceWeather v2 — shared panels & meteogram
    All visual components live here. Desktop and mobile both consume these. */
@@ -271,6 +400,7 @@ function Meteogram({ data, width = 880, height = 380, hoursPast = 12, hoursFutur
   const n = times.length;
   // layout
   const padL = 78, padR = 56, padTop = 6, padBottom = 22;
+  const trackGap = 6;
   const tracksH = height - padTop - padBottom;
   const tracks = [
     { id: "temp", label: "Temp",      unit: "°C",  weight: 1.4 },
@@ -280,13 +410,18 @@ function Meteogram({ data, width = 880, height = 380, hoursPast = 12, hoursFutur
     { id: "press",label: "Pressure",  unit: "hPa", weight: 0.85 },
   ];
   const wSum = tracks.reduce((a, t) => a + t.weight, 0);
+  const plottedTracksH = tracksH - trackGap * (tracks.length - 1);
   let acc = padTop;
   const trackBounds = tracks.map((t) => {
-    const h = (tracksH / wSum) * t.weight;
+    const h = (plottedTracksH / wSum) * t.weight;
     const b = { y: acc, h, ...t };
-    acc += h;
+    acc += h + trackGap;
     return b;
   });
+  const trackGaps = trackBounds.slice(1).map((t) => ({
+    y: t.y - trackGap,
+    h: trackGap,
+  }));
 
   const xOf = (i) => padL + ((width - padL - padR) * i) / (n - 1);
   const xNow = xOf(hoursPast);
@@ -352,10 +487,10 @@ function Meteogram({ data, width = 880, height = 380, hoursPast = 12, hoursFutur
               x1={g.x} x2={g.x} y1={padTop} y2={padTop + tracksH}/>
       ))}
 
-      {/* horizontal rules between tracks */}
-      {trackBounds.slice(1).map((t, i) => (
-        <line key={i} className="track-rule"
-              x1={padL} x2={width - padR} y1={t.y} y2={t.y}/>
+      {/* breathing space between variable tracks */}
+      {trackGaps.map((g, i) => (
+        <rect key={i} className="track-gap"
+              x={padL} y={g.y} width={width - padL - padR} height={g.h}/>
       ))}
 
       {/* per-track labels (left) + current values (right) */}
@@ -759,9 +894,9 @@ function SunPath({ data }) {
         <path className="aw2-sun-arc-now" d={elapsedArc}/>
         <line className="aw2-sun-horizon" x1={cx - r - 8} x2={cx + r + 8} y1={cy} y2={cy}/>
         <circle className="aw2-sun-dot" cx={sx} cy={sy} r="4"/>
-        <text x={cx - r - 6} y={cy + 12} textAnchor="middle"
+        <text x={cx - r - 6} y={cy - 4} textAnchor="middle"
               style={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: "var(--muted)" }}>{sunrise}</text>
-        <text x={cx + r + 6} y={cy + 12} textAnchor="middle"
+        <text x={cx + r + 6} y={cy - 4} textAnchor="middle"
               style={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: "var(--muted)" }}>{sunset}</text>
       </svg>
       <div className="aw2-sun-stats">
@@ -850,6 +985,12 @@ function ClimatePanel({ data }) {
   const ys = (v) => padT + (H - padT - padB) * (1 - (v - min) / (max - min));
   const xs = (i) => padL + ((W - padL - padR) * i) / (c.history.length - 1);
   const normY = ys(c.monthly_mean_30y);
+  const normLabel = { x: padL + 8, y: padT + 7, w: 94, h: 14 };
+  const plotW = W - padL - padR;
+  const barSlot = plotW / c.history.length;
+  const barW = barSlot * 0.58;
+  const barX = (i) => padL + i * barSlot + (barSlot - barW) / 2;
+  const barCenter = (i) => padL + i * barSlot + barSlot / 2;
 
   return (
     <div className="aw2-climate">
@@ -865,28 +1006,30 @@ function ClimatePanel({ data }) {
         {/* 30y norm reference */}
         <line x1={padL} x2={W - padR} y1={normY} y2={normY}
               stroke="var(--ink)" strokeWidth="0.5" strokeDasharray="3 3"/>
-        <text x={W - padR - 4} y={normY - 3} textAnchor="end"
-              style={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: "var(--ink)" }}>
-          30y · {c.monthly_mean_30y}°
-        </text>
         {/* year bars */}
         {c.history.map((y, i) => {
           const v = y.mean;
           const yy = ys(v);
-          const colW = (W - padL - padR) / c.history.length;
-          const x = xs(i) - colW * 0.35;
           const color = v > c.monthly_mean_30y ? "var(--rust)" : "var(--teal)";
           return (
             <g key={y.y}>
-              <rect x={x} y={yy} width={colW * 0.7} height={(H - padB) - yy}
+              <rect x={barX(i)} y={yy} width={barW} height={(H - padB) - yy}
                     fill={color} opacity={i === c.history.length - 1 ? 1 : 0.5}/>
-              <text x={xs(i)} y={H - 4} textAnchor="middle"
+              <text x={barCenter(i)} y={H - 4} textAnchor="middle"
                     style={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: i === c.history.length - 1 ? "var(--ink)" : "var(--muted)" }}>
                 {String(y.y).slice(2)}
               </text>
             </g>
           );
         })}
+        <g>
+          <rect x={normLabel.x} y={normLabel.y} width={normLabel.w} height={normLabel.h}
+                fill="var(--paper)" stroke="var(--rule)" strokeWidth="0.5"/>
+          <text x={normLabel.x + 5} y={normLabel.y + 10} textAnchor="start"
+                style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, fill: "var(--ink)" }}>
+            30y mean · {c.monthly_mean_30y}°
+          </text>
+        </g>
         <text x={padL - 4} y={padT + 8} textAnchor="end"
               style={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: "var(--muted)" }}>{Math.ceil(max)}°</text>
         <text x={padL - 4} y={H - padB} textAnchor="end"
@@ -924,6 +1067,7 @@ function ClimatePanel({ data }) {
 const Desktop = () => {
   const [data, setData] = useState(AW_FALLBACK);
   const [live, setLive] = useState(null); // null | "loading" | "live" | "offline"
+  const [reportStatus, setReportStatus] = useState("");
 
   // Try a live fetch once at mount, fall back silently if it fails.
   useEffect(() => {
@@ -967,6 +1111,7 @@ const Desktop = () => {
           <span style={{ color: "var(--muted)" }}>⌕</span>
           <input placeholder="Search location" defaultValue="Bishopton, Stockton-on-Tees" />
         </div>
+        <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus)} compact />
       </header>
 
       <section className="aw2-hero">
@@ -1019,7 +1164,7 @@ const Desktop = () => {
         </div>
       </div>
 
-      <div className="aw2-panel">
+      <div className="aw2-panel aw2-outlook-panel">
         <div className="aw2-panel-head">
           <span className="num">05</span>
           <span className="title">14-day outlook</span>
@@ -1115,6 +1260,7 @@ function mergeOpenMeteo(fallback, om) {
 
 const Mobile = () => {
   const [data] = useState(AW_FALLBACK);
+  const [reportStatus, setReportStatus] = useState("");
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
   const tLo = Math.min(...data.hourly.temperature_2m.slice(24, 48));
@@ -1134,6 +1280,7 @@ const Mobile = () => {
     hi: d.temperature_2m_max[7 + i], lo: d.temperature_2m_min[7 + i],
     rain: d.precipitation_sum[7 + i], pct: d.precipitation_probability_max[7 + i],
     wind: d.wind_speed_10m_max[7 + i], wdir: d.wind_direction_10m_dominant[7 + i],
+    code: d.weather_code[7 + i],
   }));
   const minLo = Math.min(...days7.map(x => x.lo));
   const maxHi = Math.max(...days7.map(x => x.hi));
@@ -1164,6 +1311,7 @@ const Mobile = () => {
           <div className="loc">Bishopton</div>
           <div className="obs">Stockton-on-Tees · 30 m</div>
         </div>
+        <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus)} compact />
       </header>
 
       <section className="aw2-m-now">
@@ -1249,6 +1397,7 @@ const Mobile = () => {
             return (
               <div key={i} className="aw2-m-7-row">
                 <div className="d">{i === 0 ? "TODAY" : day.d}<b>{day.dt}</b></div>
+                <WeatherIcon code={day.code} />
                 <div className="bar">
                   <div className="seg" style={{ left: segL + "%", width: (segR - segL) + "%" }}/>
                 </div>
