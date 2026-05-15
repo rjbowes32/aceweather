@@ -640,6 +640,92 @@
   text-align: right;
   max-width: 150px;
 }
+.aw2-m-location-search {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 6px;
+  margin-top: 6px;
+}
+.aw2-m-location-search input {
+  min-width: 0;
+  border: 1px solid var(--rule);
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+}
+.aw2-m-location-search button {
+  border: 1px solid var(--rule);
+  padding: 5px 7px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper-2);
+  white-space: nowrap;
+}
+.aw2-m-location-search button[type="submit"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.aw2-m-location-status {
+  min-height: 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.aw2-m-location-suggestions {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+.aw2-m-location-suggestions button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--rule-faint);
+  text-align: left;
+}
+.aw2-m-location-suggestions button:last-child { border-bottom: 0; }
+.aw2-m-location-suggestions span {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 500;
+}
+.aw2-m-location-suggestions small {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: right;
+}
+.aw2-m-saved-locations {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+.aw2-m-saved-locations button {
+  flex: 0 0 auto;
+  border: 1px solid var(--rule);
+  padding: 4px 7px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--paper);
+  white-space: nowrap;
+}
 
 .aw2-m-section { padding: 14px 16px 0; }
 .aw2-m-section .h {

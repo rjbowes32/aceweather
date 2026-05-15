@@ -18,6 +18,8 @@ const AW_LOCATION = {
   tz: "Europe/London",
 };
 
+const AW_MOBILE_SAVED_KEY = "aceweather.mobile.savedLocations.v1";
+
 // Generate 48 hours starting "now" (15:00 BST on Wed 14 May 2026 in this prototype)
 const _h = (n, fn) => Array.from({ length: n }, (_, i) => fn(i));
 
@@ -202,10 +204,10 @@ const AW_FALLBACK = {
 };
 
 // Open-Meteo live fetch — wired but optional. Returns the same shape as AW_FALLBACK.
-async function awFetchLive(lat = AW_LOCATION.lat, lon = AW_LOCATION.lon, signal) {
+async function awFetchLive(lat = AW_LOCATION.lat, lon = AW_LOCATION.lon, signal, timezone = AW_LOCATION.tz) {
   const params = new URLSearchParams({
     latitude: lat, longitude: lon,
-    timezone: "Europe/London",
+    timezone: timezone || "auto",
     past_days: 7,
     forecast_days: 14,
     current: [
@@ -241,6 +243,39 @@ const dirToCompass = (deg) => {
 };
 const fmt1 = (v) => (v == null || isNaN(v) ? "—" : (+v).toFixed(1));
 const fmt0 = (v) => (v == null || isNaN(v) ? "—" : Math.round(+v).toString());
+
+function mobileLocationLabel(location) {
+  return [location.name, location.region, location.country].filter(Boolean).join(", ");
+}
+
+function mobileLocationFromSearch(result) {
+  return {
+    name: result.name || "Selected location",
+    region: result.admin1 || "",
+    country: result.country || "",
+    lat: Number(result.latitude),
+    lon: Number(result.longitude),
+    elev: result.elevation ?? result.elevation_m ?? null,
+    tz: result.timezone || "auto",
+  };
+}
+
+async function searchMobileLocations(query) {
+  const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Search ${response.status}`);
+  const payload = await response.json();
+  return (payload.results || []).slice(0, 5).map(mobileLocationFromSearch);
+}
+
+function readMobileSavedLocations() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(AW_MOBILE_SAVED_KEY);
+    return raw ? JSON.parse(raw).slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
 
 function weatherConditionFor(code) {
   if (code === 0) return { key: "sun", label: "Sunny" };
@@ -1074,7 +1109,7 @@ const Desktop = () => {
     if (!window.AW_TRY_LIVE) return;
     const ctrl = new AbortController();
     Promise.resolve().then(() => setLive("loading"));
-    awFetchLive(AW_LOCATION.lat, AW_LOCATION.lon, ctrl.signal)
+    awFetchLive(AW_LOCATION.lat, AW_LOCATION.lon, ctrl.signal, AW_LOCATION.tz)
       .then((json) => {
         // light merge — keep fallback's `weekday`, `date`, `climate` we synthesized
         const merged = mergeOpenMeteo(AW_FALLBACK, json);
@@ -1259,8 +1294,13 @@ function mergeOpenMeteo(fallback, om) {
    402 × 874. Curated for farmers in the field. Rain-first. */
 
 const Mobile = () => {
-  const [data] = useState(AW_FALLBACK);
+  const [data, setData] = useState(AW_FALLBACK);
+  const [mobileLocation, setMobileLocation] = useState(AW_LOCATION);
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [savedLocations, setSavedLocations] = useState(() => readMobileSavedLocations());
   const [reportStatus, setReportStatus] = useState("");
+  const [locationStatus, setLocationStatus] = useState("Mock data");
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
   const tLo = Math.min(...data.hourly.temperature_2m.slice(24, 48));
@@ -1300,6 +1340,57 @@ const Mobile = () => {
   const xs = (i) => padL + ((W - padL - padR) * i) / 23;
   const colW = (W - padL - padR) / 24;
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AW_MOBILE_SAVED_KEY, JSON.stringify(savedLocations));
+    } catch {
+      // localStorage may be unavailable in private browsing.
+    }
+  }, [savedLocations]);
+
+  async function loadLocation(location, reason = "Loaded") {
+    setLocationStatus("Refreshing");
+    try {
+      const live = await awFetchLive(location.lat, location.lon, undefined, location.tz);
+      setData(mergeOpenMeteo(AW_FALLBACK, live));
+      setMobileLocation(location);
+      setQuery("");
+      setSuggestions([]);
+      setLocationStatus(`${reason} ${location.name}`);
+    } catch {
+      setLocationStatus("Could not refresh");
+    }
+  }
+
+  async function submitLocationSearch(event) {
+    event.preventDefault();
+    if (query.trim().length < 2) {
+      setLocationStatus("Type a place");
+      return;
+    }
+    setLocationStatus("Searching");
+    try {
+      const results = await searchMobileLocations(query.trim());
+      setSuggestions(results);
+      setLocationStatus(results.length ? "Select a result" : "No location found");
+    } catch {
+      setLocationStatus("Search unavailable");
+    }
+  }
+
+  function saveMobileLocation(location = mobileLocation) {
+    setSavedLocations((previous) => {
+      const key = `${location.lat.toFixed(4)},${location.lon.toFixed(4)}`;
+      const exists = previous.some((item) => `${item.lat.toFixed(4)},${item.lon.toFixed(4)}` === key);
+      if (exists) {
+        setLocationStatus("Already saved");
+        return previous;
+      }
+      setLocationStatus(`Saved ${location.name}`);
+      return [location, ...previous].slice(0, 8);
+    });
+  }
+
   return (
     <div className="aw2 aw2-mobile" data-screen-label="02 Mobile PWA">
       <header className="aw2-m-head">
@@ -1308,10 +1399,43 @@ const Mobile = () => {
           <div className="sub">{obsTime} BST</div>
         </div>
         <div className="row">
-          <div className="loc">Bishopton</div>
-          <div className="obs">Stockton-on-Tees · 30 m</div>
+          <div className="loc">{mobileLocation.name}</div>
+          <div className="obs">
+            {[mobileLocation.region, mobileLocation.elev ? `${Math.round(mobileLocation.elev)} m` : null].filter(Boolean).join(" · ")}
+          </div>
         </div>
-        <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus)} compact />
+        <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus, mobileLocation)} compact />
+        <form className="aw2-m-location-search" onSubmit={submitLocationSearch}>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search location"
+            aria-label="Search location"
+          />
+          <button type="submit">Search</button>
+          <button type="button" onClick={() => loadLocation(mobileLocation, "Updated")} aria-label="Refresh selected location">Refresh</button>
+          <button type="button" onClick={() => saveMobileLocation()}>Save</button>
+        </form>
+        <div className="aw2-m-location-status" role="status" aria-live="polite">{locationStatus}</div>
+        {suggestions.length ? (
+          <div className="aw2-m-location-suggestions">
+            {suggestions.map((location) => (
+              <button key={`${location.lat}-${location.lon}`} type="button" onClick={() => loadLocation(location)}>
+                <span>{location.name}</span>
+                <small>{[location.region, location.country].filter(Boolean).join(", ")}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {savedLocations.length ? (
+          <div className="aw2-m-saved-locations" aria-label="Saved locations">
+            {savedLocations.map((location) => (
+              <button key={`${location.lat}-${location.lon}`} type="button" onClick={() => loadLocation(location)}>
+                {location.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       <section className="aw2-m-now">
