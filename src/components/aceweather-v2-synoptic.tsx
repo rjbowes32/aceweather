@@ -1436,6 +1436,20 @@ const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
+        <div className="h"><b>Seasonal difference</b><span>vs 30-Y norm</span></div>
+        <div className="aw2-m-climate">
+          <ClimatePanel data={data}/>
+        </div>
+      </section>
+
+      <section className="aw2-m-section">
+        <div className="h"><b>Precip radar</b><span>50 km range</span></div>
+        <div className="aw2-m-radar">
+          <RadarSketch data={data}/>
+        </div>
+      </section>
+
+      <section className="aw2-m-section">
         <div className="h"><b>Wind today</b><span>10 m AGL</span></div>
         <div className="aw2-m-wind">
           <svg width="88" height="88" viewBox="0 0 88 88">

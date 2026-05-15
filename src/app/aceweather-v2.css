@@ -844,6 +844,38 @@
 }
 .aw2-m-soil-row .moist small, .aw2-m-soil-row .temp small { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
 
+/* mobile climate + radar */
+.aw2-m-climate {
+  border: 1px solid var(--rule);
+  padding: 10px 10px 12px;
+}
+.aw2-m-climate .aw2-climate {
+  gap: 10px;
+}
+.aw2-m-climate .aw2-climate-pills {
+  margin-top: 0;
+}
+.aw2-m-climate .aw2-climate-pills button {
+  padding: 4px 9px;
+}
+.aw2-m-climate .aw2-climate-chart {
+  height: 92px;
+}
+.aw2-m-climate .aw2-climate-stats {
+  padding-top: 10px;
+}
+.aw2-m-radar {
+  border: 1px solid var(--rule);
+  padding: 10px 12px 12px;
+}
+.aw2-m-radar .aw2-radar {
+  max-width: 260px;
+}
+.aw2-m-radar .aw2-radar-foot {
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+}
+
 /* mobile wind */
 .aw2-m-wind {
   display: grid; grid-template-columns: 88px 1fr; gap: 14px; align-items: center;
