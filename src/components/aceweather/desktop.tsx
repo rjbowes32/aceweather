@@ -13,6 +13,7 @@ import { ClimatePanel } from "./panels/climate-panel";
 import { FortnightStrip } from "./panels/fortnight-strip";
 import { FrostPanel } from "./panels/frost-panel";
 import { Meteogram } from "./panels/meteogram";
+import { ModelCompare } from "./panels/model-compare";
 import { OnThisDay } from "./panels/on-this-day";
 import { RadarLive } from "./panels/radar-live";
 import { RainPanel } from "./panels/rain-panel";
@@ -172,6 +173,15 @@ export const Desktop = () => {
       <div className="aw2-panel">
         <div className="aw2-panel-head">
           <span className="num">10</span>
+          <span className="title">Model comparison · next 7 days</span>
+          <span className="right">ECMWF · GFS · ICON · UKMO</span>
+        </div>
+        <ModelCompare location={desktopLocation}/>
+      </div>
+
+      <div className="aw2-panel">
+        <div className="aw2-panel-head">
+          <span className="num">11</span>
           <span className="title">On this day · {desktopLocation.name}</span>
           <span className="right">ERA5 ARCHIVE · BACK TO 1940</span>
         </div>
