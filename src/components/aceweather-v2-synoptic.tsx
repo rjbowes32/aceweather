@@ -1338,6 +1338,63 @@ function mergeOpenMeteo(fallback, om) {
 }
 
 
+const UpdateNotice = () => {
+  const [updateReady, setUpdateReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    let initialBuildId = null;
+
+    const fetchBuildId = async () => {
+      try {
+        const r = await fetch("/version", { cache: "no-store" });
+        if (!r.ok) return null;
+        const j = await r.json();
+        return typeof j.buildId === "string" ? j.buildId : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const check = async () => {
+      const current = await fetchBuildId();
+      if (cancelled || !current) return;
+      if (initialBuildId == null) {
+        initialBuildId = current;
+      } else if (current !== initialBuildId) {
+        setUpdateReady(true);
+      }
+    };
+
+    check();
+    const interval = window.setInterval(check, 5 * 60 * 1000);
+    const onVisible = () => { if (!document.hidden) check(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  if (!updateReady) return null;
+
+  return (
+    <button
+      type="button"
+      className="aw2-m-update"
+      onClick={() => window.location.reload()}
+      aria-label="A new version is available — tap to refresh"
+    >
+      <span className="dot" aria-hidden="true" />
+      Update
+    </button>
+  );
+};
+
+
 /* AceWeather v2 — MOBILE PWA
    402 × 874. Curated for farmers in the field. Rain-first. */
 
@@ -1472,7 +1529,10 @@ const Mobile = () => {
       <header className="aw2-m-head">
         <div className="row">
           <div className="mark">AceWeather</div>
-          <div className="sub">{obsTime} BST</div>
+          <div className="aw2-m-head-right">
+            <UpdateNotice />
+            <div className="sub">{obsTime} BST</div>
+          </div>
         </div>
         <div className="row">
           <div className="loc">{mobileLocation.name}</div>
