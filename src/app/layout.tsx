@@ -7,6 +7,7 @@ import "./globals.css";
 import "./aceweather-v2.css";
 import "./radar.css";
 import "./chips.css";
+import "./onthisday.css";
 
 const newsreader = Newsreader({
   variable: "--font-newsreader",

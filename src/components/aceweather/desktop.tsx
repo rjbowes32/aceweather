@@ -13,6 +13,7 @@ import { ClimatePanel } from "./panels/climate-panel";
 import { FortnightStrip } from "./panels/fortnight-strip";
 import { FrostPanel } from "./panels/frost-panel";
 import { Meteogram } from "./panels/meteogram";
+import { OnThisDay } from "./panels/on-this-day";
 import { RadarLive } from "./panels/radar-live";
 import { RainPanel } from "./panels/rain-panel";
 import { SoilProfile } from "./panels/soil-profile";
@@ -166,6 +167,15 @@ export const Desktop = () => {
           </div>
           <ClimatePanel data={data}/>
         </div>
+      </div>
+
+      <div className="aw2-panel">
+        <div className="aw2-panel-head">
+          <span className="num">10</span>
+          <span className="title">On this day · {desktopLocation.name}</span>
+          <span className="right">ERA5 ARCHIVE · BACK TO 1940</span>
+        </div>
+        <OnThisDay location={desktopLocation}/>
       </div>
 
       <footer className="aw2-foot">

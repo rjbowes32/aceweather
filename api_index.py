@@ -123,6 +123,14 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "optionalParams": ["set", "mode"],
                 "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics. Default mode is a faster brief bundle.",
             },
+            {
+                "path": "/api/onthisday",
+                "method": "GET",
+                "responseFormat": "application/json",
+                "requiredParamsOneOf": [["query"], ["lat", "lon"]],
+                "optionalParams": ["timezone", "label", "date", "month", "day", "years"],
+                "description": "Returns the same calendar date across the last N years (Open-Meteo ERA5 archive back to 1940). Default years=40. Includes hottest/coldest/wettest/windiest year for the date.",
+            },
         ],
         "agentHint": "If you need one standard regional bundle, call /api/digest?set=cropdynamics. It defaults to a faster brief text bundle. If you need a single place, call /api/report directly.",
     }

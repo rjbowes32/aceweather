@@ -495,6 +495,29 @@
           }
         }
       }
+    },
+    "/api/onthisday": {
+      "get": {
+        "summary": "On-this-day historical climatology",
+        "description": "Returns observed weather for the same calendar date across the last N years (Open-Meteo ERA5 archive). Default years=40. The summary block includes per-metric records (hottest/coldest/wettest/windiest year for the date).",
+        "parameters": [
+          { "name": "query", "in": "query", "required": false, "schema": { "type": "string", "minLength": 2 } },
+          { "name": "lat", "in": "query", "required": false, "schema": { "type": "number", "minimum": -90, "maximum": 90 } },
+          { "name": "lon", "in": "query", "required": false, "schema": { "type": "number", "minimum": -180, "maximum": 180 } },
+          { "name": "timezone", "in": "query", "required": false, "schema": { "type": "string", "default": "auto" } },
+          { "name": "label", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "date", "in": "query", "required": false, "schema": { "type": "string", "format": "date" }, "description": "YYYY-MM-DD. If omitted, defaults to today's month/day." },
+          { "name": "month", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 12 } },
+          { "name": "day", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 31 } },
+          { "name": "years", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 80, "default": 40 } }
+        ],
+        "responses": {
+          "200": { "description": "Historical climatology JSON" },
+          "400": { "description": "Invalid parameters" },
+          "404": { "description": "Location not found" },
+          "502": { "description": "Upstream provider unavailable" }
+        }
+      }
     }
   }
 }

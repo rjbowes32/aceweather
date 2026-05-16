@@ -20,6 +20,7 @@ import { MobileWindDial } from "./mobile-wind-dial";
 import { awFetchLive, mergeOpenMeteo } from "./open-meteo";
 import { AnomalyChips } from "./panels/anomaly-chips";
 import { ClimatePanel } from "./panels/climate-panel";
+import { OnThisDay } from "./panels/on-this-day";
 import { RadarLive } from "./panels/radar-live";
 import { ReportAction, shareWeatherReport } from "./report-action";
 import { AW_FALLBACK, AW_LOCATION } from "./sample-data";
@@ -355,6 +356,11 @@ export const Mobile = () => {
       <section className="aw2-m-section">
         <div className="h"><b>Live radar</b><span>RainViewer · −2h → +30m</span></div>
         <div className="aw2-m-radar"><RadarLive location={mobileLocation} height={280}/></div>
+      </section>
+
+      <section className="aw2-m-section">
+        <div className="h"><b>On this day</b><span>HISTORY · ERA5</span></div>
+        <OnThisDay location={mobileLocation} />
       </section>
 
       <section className="aw2-m-section">

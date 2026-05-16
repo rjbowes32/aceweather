@@ -1,0 +1,100 @@
+/* On-this-day panel: date picker, bar chart, records. */
+
+.aw2-otd {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.aw2-otd.placeholder {
+  padding: 24px;
+  text-align: center;
+}
+
+.aw2-otd-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.aw2-otd-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.aw2-otd-controls input,
+.aw2-otd-controls select {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+}
+
+.aw2-otd-pill {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.aw2-otd-pill.loading { color: var(--ink); }
+.aw2-otd-pill.error { color: var(--rust); border-color: var(--rust); }
+
+.aw2-otd-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 14px 4px;
+  text-align: center;
+}
+
+.aw2-otd-chart {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.aw2-otd-records {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.aw2-otd-record {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.aw2-otd-record .k {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.aw2-otd-record .v {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
