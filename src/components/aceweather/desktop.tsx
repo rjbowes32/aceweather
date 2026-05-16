@@ -8,6 +8,7 @@ import { awFetchLive, mergeOpenMeteo } from "./open-meteo";
 import { ReportAction, shareWeatherReport } from "./report-action";
 import { AW_FALLBACK, AW_LOCATION } from "./sample-data";
 import { Stat } from "./stat";
+import { AnomalyChips } from "./panels/anomaly-chips";
 import { ClimatePanel } from "./panels/climate-panel";
 import { FortnightStrip } from "./panels/fortnight-strip";
 import { FrostPanel } from "./panels/frost-panel";
@@ -91,6 +92,8 @@ export const Desktop = () => {
           <Stat k="UV"       v={fmt1(c.uv_index)}        u=""      sub="Moderate"/>
         </div>
       </section>
+
+      <AnomalyChips data={data} />
 
       <div className="aw2-mid">
         <div className="aw2-mid-left aw2-panel">

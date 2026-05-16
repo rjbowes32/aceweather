@@ -18,6 +18,7 @@ import { WeatherIcon } from "./icons";
 import { MobileRainChart } from "./mobile-rain-chart";
 import { MobileWindDial } from "./mobile-wind-dial";
 import { awFetchLive, mergeOpenMeteo } from "./open-meteo";
+import { AnomalyChips } from "./panels/anomaly-chips";
 import { ClimatePanel } from "./panels/climate-panel";
 import { RadarLive } from "./panels/radar-live";
 import { ReportAction, shareWeatherReport } from "./report-action";
@@ -277,6 +278,11 @@ export const Mobile = () => {
           <div className="aw2-m-now-chip"><div className="k">RH</div><div className="v">{fmt0(c.relative_humidity_2m)}<small>%</small></div></div>
           <div className="aw2-m-now-chip"><div className="k">Cloud</div><div className="v">{fmt0(c.cloud_cover)}<small>%</small></div></div>
         </div>
+      </section>
+
+      <section className="aw2-m-section">
+        <div className="h"><b>Now vs normal</b><span>CLIMATOLOGY</span></div>
+        <AnomalyChips data={data} />
       </section>
 
       <section className="aw2-m-section">

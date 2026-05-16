@@ -1,0 +1,62 @@
+/* Anomaly / "now vs normal" chip strip. */
+
+.aw2-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.aw2-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.aw2-chip .k {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.aw2-chip .v {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.aw2-chip .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.aw2-chip-warm  { border-left-color: var(--rust); }
+.aw2-chip-warm .v { color: var(--rust); }
+.aw2-chip-cool  { border-left-color: var(--teal); }
+.aw2-chip-cool .v { color: var(--teal); }
+.aw2-chip-wet   { border-left-color: var(--teal); }
+.aw2-chip-wet  .v { color: var(--teal); }
+.aw2-chip-dry   { border-left-color: var(--rust); }
+.aw2-chip-dry  .v { color: var(--rust); }
+.aw2-chip-neutral { border-left-color: var(--rule); }
+
+@media (max-width: 480px) {
+  .aw2-chips {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 8px 10px;
+  }
+  .aw2-chip .v { font-size: 16px; }
+}
