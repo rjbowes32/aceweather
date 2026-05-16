@@ -131,6 +131,12 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "optionalParams": ["timezone", "label", "date", "month", "day", "years"],
                 "description": "Returns the same calendar date across the last N years (Open-Meteo ERA5 archive back to 1940). Default years=40. Includes hottest/coldest/wettest/windiest year for the date.",
             },
+            {
+                "path": "/api/tropical",
+                "method": "GET",
+                "responseFormat": "application/json",
+                "description": "Aggregates active tropical systems from NHC (Atlantic + East Pacific JSON) and JTWC (West Pacific + Indian Ocean RSS). Returns one storm list normalized across both agencies with category, winds, pressure, position, and advisory link.",
+            },
         ],
         "agentHint": "If you need one standard regional bundle, call /api/digest?set=cropdynamics. It defaults to a faster brief text bundle. If you need a single place, call /api/report directly.",
     }

@@ -9,6 +9,7 @@ import "./radar.css";
 import "./chips.css";
 import "./onthisday.css";
 import "./models.css";
+import "./tropical.css";
 
 const newsreader = Newsreader({
   variable: "--font-newsreader",

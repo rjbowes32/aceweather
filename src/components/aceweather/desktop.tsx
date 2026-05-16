@@ -16,6 +16,7 @@ import { Meteogram } from "./panels/meteogram";
 import { ModelCompare } from "./panels/model-compare";
 import { OnThisDay } from "./panels/on-this-day";
 import { RadarLive } from "./panels/radar-live";
+import { TropicalPanel } from "./panels/tropical";
 import { RainPanel } from "./panels/rain-panel";
 import { SoilProfile } from "./panels/soil-profile";
 import { SunPath } from "./panels/sun-path";
@@ -186,6 +187,15 @@ export const Desktop = () => {
           <span className="right">ERA5 ARCHIVE · BACK TO 1940</span>
         </div>
         <OnThisDay location={desktopLocation}/>
+      </div>
+
+      <div className="aw2-panel">
+        <div className="aw2-panel-head">
+          <span className="num">12</span>
+          <span className="title">Active tropical systems</span>
+          <span className="right">NHC · JTWC</span>
+        </div>
+        <TropicalPanel />
       </div>
 
       <footer className="aw2-foot">

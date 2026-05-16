@@ -23,6 +23,7 @@ import { ClimatePanel } from "./panels/climate-panel";
 import { ModelCompare } from "./panels/model-compare";
 import { OnThisDay } from "./panels/on-this-day";
 import { RadarLive } from "./panels/radar-live";
+import { TropicalPanel } from "./panels/tropical";
 import { ReportAction, shareWeatherReport } from "./report-action";
 import { AW_FALLBACK, AW_LOCATION } from "./sample-data";
 import { UpdateNotice } from "./update-notice";
@@ -367,6 +368,11 @@ export const Mobile = () => {
       <section className="aw2-m-section">
         <div className="h"><b>On this day</b><span>HISTORY · ERA5</span></div>
         <OnThisDay location={mobileLocation} />
+      </section>
+
+      <section className="aw2-m-section">
+        <div className="h"><b>Active tropical systems</b><span>NHC · JTWC</span></div>
+        <TropicalPanel />
       </section>
 
       <section className="aw2-m-section">

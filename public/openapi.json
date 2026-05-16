@@ -496,6 +496,16 @@
         }
       }
     },
+    "/api/tropical": {
+      "get": {
+        "summary": "Active tropical systems (NHC + JTWC)",
+        "description": "Aggregates active storms from NHC (Atlantic + East Pacific) and JTWC (West Pacific + Indian Ocean), normalized into a single storm list with category, winds, pressure, position, and advisory link. Either source may fail gracefully — check sources.{nhc,jtwc}.ok.",
+        "responses": {
+          "200": { "description": "Tropical aggregation JSON" },
+          "502": { "description": "Both upstream feeds unavailable" }
+        }
+      }
+    },
     "/api/onthisday": {
       "get": {
         "summary": "On-this-day historical climatology",
