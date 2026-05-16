@@ -19,7 +19,7 @@ import { MobileRainChart } from "./mobile-rain-chart";
 import { MobileWindDial } from "./mobile-wind-dial";
 import { awFetchLive, mergeOpenMeteo } from "./open-meteo";
 import { ClimatePanel } from "./panels/climate-panel";
-import { RadarSketch } from "./panels/radar-sketch";
+import { RadarLive } from "./panels/radar-live";
 import { ReportAction, shareWeatherReport } from "./report-action";
 import { AW_FALLBACK, AW_LOCATION } from "./sample-data";
 import { UpdateNotice } from "./update-notice";
@@ -347,8 +347,8 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>Precip radar</b><span>50 km range</span></div>
-        <div className="aw2-m-radar"><RadarSketch data={data}/></div>
+        <div className="h"><b>Live radar</b><span>RainViewer · −2h → +30m</span></div>
+        <div className="aw2-m-radar"><RadarLive location={mobileLocation} height={280}/></div>
       </section>
 
       <section className="aw2-m-section">

@@ -55,6 +55,13 @@ function isDataRequest(url) {
   if (url.hostname === "archive-api.open-meteo.com") return true;
   if (url.hostname === "air-quality-api.open-meteo.com") return true;
   if (url.hostname === "geocoding-api.open-meteo.com") return true;
+  if (url.hostname === "api.rainviewer.com") return true;
+  return false;
+}
+
+function isMapTileRequest(url) {
+  if (url.hostname === "tilecache.rainviewer.com") return true;
+  if (url.hostname.endsWith(".basemaps.cartocdn.com")) return true;
   return false;
 }
 
@@ -145,6 +152,10 @@ self.addEventListener("fetch", (event) => {
   try { url = new URL(request.url); } catch { return; }
 
   if (isDataRequest(url)) {
+    event.respondWith(staleWhileRevalidate(request, DATA_CACHE));
+    return;
+  }
+  if (isMapTileRequest(url)) {
     event.respondWith(staleWhileRevalidate(request, DATA_CACHE));
     return;
   }

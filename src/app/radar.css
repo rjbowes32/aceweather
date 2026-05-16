@@ -1,0 +1,159 @@
+/* Live-radar panel styling (RainViewer + MapLibre).
+   Kept in its own file to stay under the 400-line cap. */
+
+.aw2-radar-live {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 200px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.aw2-radar-live.placeholder {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 160px;
+}
+
+.aw2-radar-live-map {
+  width: 100%;
+  background: #e7eaee;
+  position: relative;
+}
+
+.aw2-radar-live-map .maplibregl-ctrl-attrib {
+  font-size: 9px;
+  font-family: var(--font-mono);
+}
+
+.aw2-radar-live-status {
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.aw2-radar-live-status.error {
+  color: var(--rust);
+}
+
+.aw2-radar-live-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.aw2-radar-live-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--ink);
+  border-radius: 2px;
+}
+
+.aw2-radar-live-play:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.aw2-radar-live-controls input[type="range"] {
+  flex: 1;
+  accent-color: var(--rust);
+}
+
+.aw2-radar-live-time {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 70px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.aw2-radar-live-time .t {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.aw2-radar-live-time .tag {
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.aw2-radar-live-time.forecast .tag {
+  color: var(--rust);
+}
+
+.aw2-radar-live-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 480px) {
+  .aw2-radar-live-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}
+
+/* Saved-location pill carved off the giant — kept here because the v2 CSS
+   is already over the cap. */
+
+.aw2-m-saved-pill {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.aw2-m-saved-pill > button {
+  background: transparent;
+  border: none;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.aw2-m-saved-pill > button:first-child {
+  font-size: 11px;
+}
+
+.aw2-m-saved-pill .aw2-m-saved-remove {
+  padding: 4px 8px;
+  border-left: 1px solid var(--rule);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.aw2-m-saved-pill .aw2-m-saved-remove:hover {
+  color: var(--rust);
+  background: rgba(0, 0, 0, 0.04);
+}

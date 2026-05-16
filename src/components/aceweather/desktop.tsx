@@ -12,7 +12,7 @@ import { ClimatePanel } from "./panels/climate-panel";
 import { FortnightStrip } from "./panels/fortnight-strip";
 import { FrostPanel } from "./panels/frost-panel";
 import { Meteogram } from "./panels/meteogram";
-import { RadarSketch } from "./panels/radar-sketch";
+import { RadarLive } from "./panels/radar-live";
 import { RainPanel } from "./panels/rain-panel";
 import { SoilProfile } from "./panels/soil-profile";
 import { SunPath } from "./panels/sun-path";
@@ -150,10 +150,10 @@ export const Desktop = () => {
         <div className="aw2-panel tight">
           <div className="aw2-panel-head">
             <span className="num">08</span>
-            <span className="title">Precip · radar (≈)</span>
-            <span className="right">50 KM RANGE</span>
+            <span className="title">Live radar</span>
+            <span className="right">RAINVIEWER · −2h → +30m</span>
           </div>
-          <RadarSketch data={data}/>
+          <RadarLive location={desktopLocation} height={260}/>
         </div>
         <div className="aw2-panel tight">
           <div className="aw2-panel-head">

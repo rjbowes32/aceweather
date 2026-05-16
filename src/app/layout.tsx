@@ -5,6 +5,7 @@ import { PwaBootstrap } from "@/components/pwa-bootstrap";
 
 import "./globals.css";
 import "./aceweather-v2.css";
+import "./radar.css";
 
 const newsreader = Newsreader({
   variable: "--font-newsreader",
