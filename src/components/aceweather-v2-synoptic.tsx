@@ -267,6 +267,50 @@ async function searchMobileLocations(query) {
   return (payload.results || []).slice(0, 5).map(mobileLocationFromSearch);
 }
 
+async function reverseGeocode(lat, lon) {
+  try {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Reverse ${response.status}`);
+    const payload = await response.json();
+    return {
+      name: payload.city || payload.locality || payload.principalSubdivision || "My location",
+      region: payload.principalSubdivision || payload.localityInfo?.administrative?.[1]?.name || "",
+      country: payload.countryName || "",
+    };
+  } catch {
+    return { name: "My location", region: "", country: "" };
+  }
+}
+
+function requestBrowserLocation(timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocation unavailable"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const place = await reverseGeocode(lat, lon);
+        const tz = (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "auto";
+        resolve({
+          name: place.name,
+          region: place.region,
+          country: place.country,
+          lat,
+          lon,
+          elev: position.coords.altitude ?? null,
+          tz,
+        });
+      },
+      (err) => reject(err),
+      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 5 * 60 * 1000 }
+    );
+  });
+}
+
 function readMobileSavedLocations() {
   if (typeof window === "undefined") return [];
   try {
@@ -1103,21 +1147,26 @@ const Desktop = () => {
   const [data, setData] = useState(AW_FALLBACK);
   const [live, setLive] = useState(null); // null | "loading" | "live" | "offline"
   const [reportStatus, setReportStatus] = useState("");
+  const [desktopLocation, setDesktopLocation] = useState(AW_LOCATION);
 
-  // Try a live fetch once at mount, fall back silently if it fails.
   useEffect(() => {
-    if (!window.AW_TRY_LIVE) return;
-    const ctrl = new AbortController();
-    Promise.resolve().then(() => setLive("loading"));
-    awFetchLive(AW_LOCATION.lat, AW_LOCATION.lon, ctrl.signal, AW_LOCATION.tz)
-      .then((json) => {
-        // light merge — keep fallback's `weekday`, `date`, `climate` we synthesized
-        const merged = mergeOpenMeteo(AW_FALLBACK, json);
-        setData(merged);
-        setLive("live");
+    let cancelled = false;
+    setLive("loading");
+    requestBrowserLocation()
+      .then(async (loc) => {
+        if (cancelled) return;
+        setDesktopLocation(loc);
+        try {
+          const json = await awFetchLive(loc.lat, loc.lon, undefined, loc.tz);
+          if (cancelled) return;
+          setData(mergeOpenMeteo(AW_FALLBACK, json));
+          setLive("live");
+        } catch {
+          if (!cancelled) setLive("offline");
+        }
       })
-      .catch(() => setLive("offline"));
-    return () => ctrl.abort();
+      .catch(() => { if (!cancelled) setLive("offline"); });
+    return () => { cancelled = true; };
   }, []);
 
   const c = data.current;
@@ -1136,17 +1185,16 @@ const Desktop = () => {
           <span className="sub">Mk III · Synoptic</span>
         </div>
         <div className="aw2-mast-meta">
-          <div>STN <b>BSH-054</b></div>
-          <div>LAT <b>54.5435° N</b></div>
-          <div>LON <b>1.4373° W</b></div>
-          <div>ELEV <b>30 m</b></div>
-          <div>OBS <b>{obsTime} BST</b></div>
+          <div>LAT <b>{Math.abs(desktopLocation.lat).toFixed(4)}° {desktopLocation.lat >= 0 ? "N" : "S"}</b></div>
+          <div>LON <b>{Math.abs(desktopLocation.lon).toFixed(4)}° {desktopLocation.lon >= 0 ? "E" : "W"}</b></div>
+          {desktopLocation.elev != null ? <div>ELEV <b>{Math.round(desktopLocation.elev)} m</b></div> : null}
+          <div>OBS <b>{obsTime}</b></div>
         </div>
         <div className="aw2-mast-search">
           <span style={{ color: "var(--muted)" }}>⌕</span>
-          <input placeholder="Search location" defaultValue="Bishopton, Stockton-on-Tees" />
+          <input placeholder="Search location" defaultValue={[desktopLocation.name, desktopLocation.region].filter(Boolean).join(", ")} key={`${desktopLocation.lat}-${desktopLocation.lon}`} />
         </div>
-        <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus)} compact />
+        <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus, desktopLocation)} compact />
       </header>
 
       <section className="aw2-hero">
@@ -1191,7 +1239,7 @@ const Desktop = () => {
           <div className="aw2-panel">
             <div className="aw2-panel-head">
               <span className="num">04</span>
-              <span className="title">Frost overnight · Bishopton</span>
+              <span className="title">Frost overnight · {desktopLocation.name}</span>
               <span className="right">AIR · GRASS · 0° REFERENCE</span>
             </div>
             <FrostPanel data={data}/>
@@ -1245,9 +1293,9 @@ const Desktop = () => {
 
       <footer className="aw2-foot">
         <span className="sources">SOURCE · <b>Open-Meteo</b> · ECMWF · UKMO · ERA5 · CMIP6</span>
-        <span>Updated {obsTime} · Bishopton, Stockton-on-Tees</span>
+        <span>Updated {obsTime} · {[desktopLocation.name, desktopLocation.region].filter(Boolean).join(", ")}</span>
         <span className={"live " + (live === "offline" ? "offline" : "")}>
-          {live === "live" ? "LIVE" : live === "loading" ? "FETCHING" : live === "offline" ? "MOCK DATA" : "MOCK DATA"}
+          {live === "live" ? "LIVE" : live === "loading" ? "LOCATING" : live === "offline" ? "OFFLINE" : "OFFLINE"}
         </span>
       </footer>
     </div>
@@ -1300,7 +1348,8 @@ const Mobile = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [savedLocations, setSavedLocations] = useState(() => readMobileSavedLocations());
   const [reportStatus, setReportStatus] = useState("");
-  const [locationStatus, setLocationStatus] = useState("Mock data");
+  const [locationStatus, setLocationStatus] = useState("Locating…");
+  const [selectedDay, setSelectedDay] = useState(null);
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
   const tLo = Math.min(...data.hourly.temperature_2m.slice(24, 48));
@@ -1321,6 +1370,10 @@ const Mobile = () => {
     rain: d.precipitation_sum[7 + i], pct: d.precipitation_probability_max[7 + i],
     wind: d.wind_speed_10m_max[7 + i], wdir: d.wind_direction_10m_dominant[7 + i],
     code: d.weather_code[7 + i],
+    dailyIdx: 7 + i,
+    dateIso: d.time?.[7 + i] || null,
+    sunrise: d.sunrise?.[7 + i] || null,
+    sunset: d.sunset?.[7 + i] || null,
   }));
   const minLo = Math.min(...days7.map(x => x.lo));
   const maxHi = Math.max(...days7.map(x => x.hi));
@@ -1347,6 +1400,29 @@ const Mobile = () => {
       // localStorage may be unavailable in private browsing.
     }
   }, [savedLocations]);
+
+  useEffect(() => {
+    let cancelled = false;
+    requestBrowserLocation()
+      .then(async (loc) => {
+        if (cancelled) return;
+        setLocationStatus("Refreshing");
+        try {
+          const live = await awFetchLive(loc.lat, loc.lon, undefined, loc.tz);
+          if (cancelled) return;
+          setData(mergeOpenMeteo(AW_FALLBACK, live));
+          setMobileLocation(loc);
+          setLocationStatus(`Located ${loc.name}`);
+        } catch {
+          if (!cancelled) setLocationStatus("Located, but live data unavailable");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLocationStatus(err && err.code === 1 ? "Location permission denied" : "Location unavailable");
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   async function loadLocation(location, reason = "Loaded") {
     setLocationStatus("Refreshing");
@@ -1519,7 +1595,13 @@ const Mobile = () => {
             const segL = ((day.lo - minLo) / (maxHi - minLo)) * 100;
             const segR = ((day.hi - minLo) / (maxHi - minLo)) * 100;
             return (
-              <div key={i} className="aw2-m-7-row">
+              <button
+                key={i}
+                type="button"
+                className="aw2-m-7-row"
+                onClick={() => setSelectedDay(day)}
+                aria-label={`Open detailed forecast for ${day.d} ${day.dt}`}
+              >
                 <div className="d">{i === 0 ? "TODAY" : day.d}<b>{day.dt}</b></div>
                 <WeatherIcon code={day.code} />
                 <div className="bar">
@@ -1534,7 +1616,7 @@ const Mobile = () => {
                   <span className="sep"> / </span>
                   <span className="lo">{Math.round(day.lo)}°</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -1619,6 +1701,125 @@ const Mobile = () => {
       <footer className="aw2-m-foot">
         Open-Meteo · ECMWF · UKMO · Updated {obsTime}
       </footer>
+
+      {selectedDay ? (
+        <DayDetail
+          day={selectedDay}
+          hourly={data.hourly}
+          location={mobileLocation}
+          onClose={() => setSelectedDay(null)}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+function buildThreeHourlySlots(hourly, dateIso) {
+  if (!hourly || !Array.isArray(hourly.time) || !dateIso) return [];
+  const indices = [];
+  for (let i = 0; i < hourly.time.length; i++) {
+    if (typeof hourly.time[i] === "string" && hourly.time[i].startsWith(dateIso)) {
+      indices.push(i);
+    }
+  }
+  if (!indices.length) return [];
+  return indices.filter((_, k) => k % 3 === 0).map((idx) => {
+    const time = hourly.time[idx] || "";
+    const hh = time.includes("T") ? time.split("T")[1].slice(0, 5) : "";
+    return {
+      hh,
+      temp: hourly.temperature_2m?.[idx],
+      precip: hourly.precipitation?.[idx],
+      precipProb: hourly.precipitation_probability?.[idx],
+      windSpeed: hourly.wind_speed_10m?.[idx],
+      windGust: hourly.wind_gusts_10m?.[idx],
+      windDir: hourly.wind_direction_10m?.[idx],
+      cloud: hourly.cloud_cover?.[idx],
+      humidity: hourly.relative_humidity_2m?.[idx],
+      pressure: hourly.pressure_msl?.[idx],
+    };
+  });
+}
+
+const DayDetail = ({ day, hourly, location, onClose }) => {
+  const slots = buildThreeHourlySlots(hourly, day.dateIso);
+  const fullDate = (() => {
+    if (!day.dateIso) return `${day.d} ${day.dt}`;
+    try {
+      return new Date(day.dateIso + "T12:00:00").toLocaleDateString("en-GB", {
+        weekday: "long", day: "numeric", month: "long",
+      });
+    } catch {
+      return `${day.d} ${day.dt}`;
+    }
+  })();
+
+  const sunTime = (iso) => {
+    if (!iso) return null;
+    const t = iso.includes("T") ? iso.split("T")[1].slice(0, 5) : iso;
+    return t;
+  };
+
+  return (
+    <div className="aw2-m-day-detail" role="dialog" aria-modal="true" aria-label={`Detailed forecast for ${fullDate}`} onClick={onClose}>
+      <div className="aw2-m-day-detail-card" onClick={(e) => e.stopPropagation()}>
+        <header className="aw2-m-day-detail-head">
+          <div>
+            <div className="aw2-m-day-detail-date">{fullDate}</div>
+            <div className="aw2-m-day-detail-sub">{[location?.name, location?.region].filter(Boolean).join(", ") || "—"}</div>
+          </div>
+          <button type="button" className="aw2-m-day-detail-close" onClick={onClose} aria-label="Close detailed forecast">×</button>
+        </header>
+
+        <div className="aw2-m-day-detail-summary">
+          <div className="block">
+            <div className="lbl">High / Low</div>
+            <div className="val">{Math.round(day.hi)}° / <span className="lo">{Math.round(day.lo)}°</span></div>
+          </div>
+          <div className="block">
+            <div className="lbl">Rain</div>
+            <div className="val">{day.rain < 0.1 ? "—" : `${day.rain.toFixed(1)} mm`}<small> · {day.pct}%</small></div>
+          </div>
+          <div className="block">
+            <div className="lbl">Wind max</div>
+            <div className="val">{Math.round(day.wind)}<small> km/h {dirToCompass(day.wdir)}</small></div>
+          </div>
+          {day.sunrise || day.sunset ? (
+            <div className="block">
+              <div className="lbl">Sun</div>
+              <div className="val">{sunTime(day.sunrise) || "—"}<small> → {sunTime(day.sunset) || "—"}</small></div>
+            </div>
+          ) : null}
+        </div>
+
+        {slots.length ? (
+          <div className="aw2-m-day-detail-slots" role="list">
+            {slots.map((s) => (
+              <div key={s.hh} className="aw2-m-day-detail-slot" role="listitem">
+                <div className="hr">{s.hh}</div>
+                <div className="temp">{fmt0(s.temp)}<small>°C</small></div>
+                <div className={"rain" + ((s.precip ?? 0) < 0.1 ? " dry" : "")}>
+                  {s.precip != null && s.precip >= 0.1 ? `${s.precip.toFixed(1)} mm` : "—"}
+                  <small>{s.precipProb != null ? `${Math.round(s.precipProb)}%` : ""}</small>
+                </div>
+                <div className="wind">
+                  {fmt0(s.windSpeed)}<small> km/h</small>
+                  <small className="dir">{s.windDir != null ? `${dirToCompass(s.windDir)} · gust ${fmt0(s.windGust)}` : ""}</small>
+                </div>
+                <div className="misc">
+                  <span>Cloud {fmt0(s.cloud)}%</span>
+                  <span>RH {fmt0(s.humidity)}%</span>
+                  <span>{fmt0(s.pressure)} hPa</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="aw2-m-day-detail-empty">
+            Hourly forecast not available for this day.
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -899,6 +899,187 @@
 }
 .aw2-m-7-row .temps .lo { color: var(--frost); font-size: 12px; }
 .aw2-m-7-row .temps .sep { color: var(--muted-2); }
+button.aw2-m-7-row {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule-faint);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  padding: 10px 0;
+}
+button.aw2-m-7-row:last-child { border-bottom: 0; }
+button.aw2-m-7-row:hover,
+button.aw2-m-7-row:focus-visible { background: var(--rule-soft); outline: none; }
+
+/* mobile day-detail modal */
+.aw2-m-day-detail {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  z-index: 50;
+}
+.aw2-m-day-detail-card {
+  background: var(--panel, #fff);
+  width: 100%;
+  max-height: 90%;
+  overflow-y: auto;
+  border-top: 1px solid var(--rule);
+  border-radius: 12px 12px 0 0;
+  padding: 14px 16px 20px;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
+}
+.aw2-m-day-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+.aw2-m-day-detail-date {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.aw2-m-day-detail-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.aw2-m-day-detail-close {
+  background: transparent;
+  border: 1px solid var(--rule);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+.aw2-m-day-detail-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule-faint);
+  margin-bottom: 10px;
+}
+.aw2-m-day-detail-summary .block .lbl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.aw2-m-day-detail-summary .block .val {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.aw2-m-day-detail-summary .block .val small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.aw2-m-day-detail-summary .block .val .lo { color: var(--frost); }
+.aw2-m-day-detail-slots {
+  display: flex;
+  flex-direction: column;
+}
+.aw2-m-day-detail-slot {
+  display: grid;
+  grid-template-columns: 44px 60px 1fr 1fr;
+  grid-template-areas:
+    "hr temp rain wind"
+    "hr temp misc misc";
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule-faint);
+  align-items: center;
+}
+.aw2-m-day-detail-slot:last-child { border-bottom: 0; }
+.aw2-m-day-detail-slot .hr {
+  grid-area: hr;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.aw2-m-day-detail-slot .temp {
+  grid-area: temp;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.aw2-m-day-detail-slot .temp small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 2px;
+}
+.aw2-m-day-detail-slot .rain {
+  grid-area: rain;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
+}
+.aw2-m-day-detail-slot .rain.dry { color: var(--muted-2); }
+.aw2-m-day-detail-slot .rain small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+}
+.aw2-m-day-detail-slot .wind {
+  grid-area: wind;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.aw2-m-day-detail-slot .wind small {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.aw2-m-day-detail-slot .wind small.dir { display: block; margin-left: 0; }
+.aw2-m-day-detail-slot .misc {
+  grid-area: misc;
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.aw2-m-day-detail-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
 
 /* mobile soil */
 .aw2-m-soil { display: flex; flex-direction: column; gap: 6px; }
