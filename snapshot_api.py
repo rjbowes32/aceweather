@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date
 from http import HTTPStatus
 from typing import Any
 
 import lib
+import periods
 
 DEFAULT_HISTORY_DAYS = 7
 
@@ -66,7 +68,29 @@ def parse_snapshot_request(*, query_params: dict[str, list[str]], body: dict[str
     location_query = pick("query")
     label = pick("label")
     timezone = pick("timezone") or "auto"
-    history_days = _coerce_int(pick("history_days"), name="history_days", default=DEFAULT_HISTORY_DAYS)
+    period_value = pick("period")
+    history_start_value = pick("history_start")
+    history_end_value = pick("history_end")
+    history_start: date | None = None
+    history_end: date | None = None
+    period_canonical: str | None = None
+    if period_value:
+        start_date, end_date, canonical = periods.resolve_period(str(period_value))
+        history_start = start_date
+        history_end = end_date
+        period_canonical = canonical
+        history_days = None
+    elif history_start_value or history_end_value:
+        try:
+            history_start = date.fromisoformat(str(history_start_value)) if history_start_value else None
+            history_end = date.fromisoformat(str(history_end_value)) if history_end_value else None
+        except ValueError as exc:
+            raise ValueError("history_start and history_end must use YYYY-MM-DD format.") from exc
+        if history_start and history_end and history_start > history_end:
+            raise ValueError("history_start must be on or before history_end.")
+        history_days = None
+    else:
+        history_days = _coerce_int(pick("history_days"), name="history_days", default=DEFAULT_HISTORY_DAYS)
     station_id = pick("station")
     site_id = pick("site_id")
 
@@ -93,6 +117,9 @@ def parse_snapshot_request(*, query_params: dict[str, list[str]], body: dict[str
         "timezone": timezone,
         "label": label,
         "history_days": history_days,
+        "history_start": history_start,
+        "history_end": history_end,
+        "period": period_canonical,
         "station": station_id,
         "site_id": site_id,
     }
@@ -116,7 +143,9 @@ def build_snapshot_response(request_payload: dict[str, Any]) -> dict[str, Any]:
         request_payload["longitude"],
         request_payload["timezone"],
         request_payload["label"],
-        history_days=request_payload["history_days"],
+        history_days=request_payload.get("history_days"),
+        history_start=request_payload.get("history_start"),
+        history_end=request_payload.get("history_end"),
     )
 
     forecast = payload["providers"]["openMeteo"]["forecast"]
@@ -135,10 +164,17 @@ def build_snapshot_response(request_payload: dict[str, Any]) -> dict[str, Any]:
     if today_high is not None and today_low is not None:
         temp_avg = round((float(today_high) + float(today_low)) / 2, 1)
 
+    history_range = history.get("range") or {}
+    history_period_precip = _sum_numeric(history_daily.get("precipitation_sum"))
     response = {
         "query": request_payload["query"],
         "station": request_payload["station"],
         "site_id": request_payload["site_id"],
+        "period": request_payload.get("period"),
+        "history_start": history_range.get("startDate"),
+        "history_end": history_range.get("endDate"),
+        "history_days_resolved": history_range.get("days"),
+        "history_period_precip_mm": history_period_precip,
         "location_name": payload["location"]["name"],
         "latitude": payload["location"]["latitude"],
         "longitude": payload["location"]["longitude"],

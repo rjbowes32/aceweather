@@ -6,6 +6,42 @@ from datetime import date, datetime
 from typing import Any, Callable
 
 
+def _history_section_header(history: dict[str, Any], period_label: str | None) -> str:
+    rng = history.get("range") or {}
+    start = rng.get("startDate")
+    end = rng.get("endDate")
+    days = rng.get("days")
+    if start and end and days:
+        suffix = f" — {period_label}" if period_label else ""
+        return f"## Observed Archive ({start} to {end}, {days} days){suffix}"
+    return "## Observed Archive"
+
+
+def _history_rows_csv(history: dict[str, Any], wmo_label: Callable[[int | None], str]) -> list[str]:
+    hist = history["daily"]
+    rows = ["date,max_c,min_c,rain_mm,wind_kph,condition"]
+    n = len(hist["time"])
+    for i in range(n):
+        tmax = hist["temperature_2m_max"][i]
+        tmin = hist["temperature_2m_min"][i]
+        rain = hist["precipitation_sum"][i] or 0
+        wind = hist["wind_speed_10m_max"][i] or 0
+        rows.append(
+            f"{hist['time'][i]},"
+            f"{tmax if tmax is not None else ''},"
+            f"{tmin if tmin is not None else ''},"
+            f"{rain:.1f},"
+            f"{wind:.0f},"
+            f"\"{wmo_label(hist['weather_code'][i])}\""
+        )
+    return rows
+
+
+def build_history_csv(payload: dict[str, Any], wmo_label: Callable[[int | None], str]) -> str:
+    history = payload["providers"]["openMeteo"]["history"]
+    return "\n".join(_history_rows_csv(history, wmo_label)) + "\n"
+
+
 def build_report(
     payload: dict[str, Any],
     *,
@@ -15,6 +51,8 @@ def build_report(
     canonical_region_set_urls: Callable[[str, str], list[str]],
     digest_url: Callable[[str, str], str],
     full_digest_url: Callable[[str, str], str],
+    period_label: str | None = None,
+    request_query_string: str = "",
 ) -> str:
     location = payload["location"]
     forecast = payload["providers"]["openMeteo"]["forecast"]
@@ -22,10 +60,23 @@ def build_report(
     air = payload["providers"]["openMeteo"]["airQuality"]
     ecmwf = payload["providers"].get("ecmwf", {})
     agronomy = payload["agronomy"]
+    history_range = history.get("range") or {}
+
+    header_meta = (
+        f"Generated: {payload['generatedAt']} | Lat: {location['latitude']:.4f} | "
+        f"Lon: {location['longitude']:.4f} | Timezone: {location['timezone']}"
+    )
+    if history_range.get("startDate") and history_range.get("endDate"):
+        header_meta += (
+            f" | History: {history_range['startDate']} to {history_range['endDate']} "
+            f"({history_range.get('days', '?')} days)"
+        )
+        if period_label:
+            header_meta += f" [{period_label}]"
 
     lines: list[str] = [
         f"# AceWeather Report: {location['name']}",
-        f"Generated: {payload['generatedAt']} | Lat: {location['latitude']:.4f} | Lon: {location['longitude']:.4f} | Timezone: {location['timezone']}",
+        header_meta,
         "",
         "## Current Conditions",
     ]
@@ -36,13 +87,13 @@ def build_report(
         f"- Humidity: {cur['relative_humidity_2m']}% | Wind: {cur['wind_speed_10m']:.0f} km/h (gusts {cur['wind_gusts_10m']:.0f} km/h) | Pressure: {cur['pressure_msl']:.0f} hPa",
         f"- Precipitation (current reading): {cur['precipitation']:.1f} mm",
         "",
-        "## Last 7 Days (Observed Archive)",
+        _history_section_header(history, period_label),
         "| Date       | Max C | Min C | Rain mm | Wind km/h | Condition            |",
         "|------------|-------|-------|---------|-----------|----------------------|",
     ]
     hist = history["daily"]
     n = len(hist["time"])
-    for i in range(max(0, n - 7), n):
+    for i in range(n):
         tmax = hist["temperature_2m_max"][i]
         tmin = hist["temperature_2m_min"][i]
         rain = hist["precipitation_sum"][i] or 0
@@ -52,6 +103,17 @@ def build_report(
             f"{f'{tmin:.1f}' if tmin is not None else '--':>5} | {rain:>7.1f} | "
             f"{wind:>9.0f} | {wmo_label(hist['weather_code'][i]):<20} |"
         )
+    if n > 0:
+        rain_total = sum(v or 0 for v in hist["precipitation_sum"])
+        tmax_values = [v for v in hist["temperature_2m_max"] if v is not None]
+        tmin_values = [v for v in hist["temperature_2m_min"] if v is not None]
+        summary_bits = [f"Rain total: {rain_total:.1f} mm"]
+        if tmax_values:
+            summary_bits.append(f"Highest max: {max(tmax_values):.1f} C")
+        if tmin_values:
+            summary_bits.append(f"Lowest min: {min(tmin_values):.1f} C")
+        lines.append("")
+        lines.append("Period summary: " + " | ".join(summary_bits))
     lines += [
         "",
         "## 10-Day Forecast",
@@ -125,6 +187,21 @@ def build_report(
             f"- Full version: {full_digest_url('cropdynamics', base_url)}",
             "",
         ]
+    base_query = request_query_string or "query=<place>"
+    lines += [
+        "## Pulling Historical Data (for LLM agents)",
+        "Re-call this same /api/report endpoint with one of these parameters to change the observed window:",
+        f"- ?{base_query}&period=last_week (previous Mon-Sun)",
+        f"- ?{base_query}&period=last_month",
+        f"- ?{base_query}&period=same_week_last_year",
+        f"- ?{base_query}&period=same_month_last_year",
+        f"- ?{base_query}&period=ytd",
+        f"- ?{base_query}&period=last_30d  (or last_7d, last_14d, last_90d, last_365d)",
+        f"- ?{base_query}&history_start=YYYY-MM-DD&history_end=YYYY-MM-DD (custom range)",
+        f"- ?{base_query}&history_days=N (last N days, max 730)",
+        f"- ?{base_query}&format=csv  (return the observed-archive table as CSV)",
+        "",
+    ]
     return "\n".join(lines)
 
 

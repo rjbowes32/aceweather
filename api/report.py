@@ -5,11 +5,13 @@ import os
 import sys
 import urllib.error
 import urllib.parse
+from datetime import date
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
+import periods
 from helpers import send_error, send_text
 
 
@@ -19,10 +21,63 @@ def request_base_url(handler: BaseHTTPRequestHandler) -> str:
     return f"{proto}://{host}" if host else ""
 
 
+def _build_request_query_string(params: dict[str, list[str]]) -> str:
+    location_params = []
+    for key in ("query", "lat", "lon", "timezone", "label"):
+        value = params.get(key, [None])[0]
+        if value:
+            location_params.append((key, value))
+    return urllib.parse.urlencode(location_params)
+
+
 class handler(BaseHTTPRequestHandler):
     def _handle(self, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         location_query = params.get("query", [None])[0]
+        format_value = (params.get("format", ["md"])[0] or "md").lower()
+        if format_value not in ("md", "markdown", "text", "csv", "json"):
+            send_error(self, HTTPStatus.BAD_REQUEST, "format must be one of: md, csv, json.", head_only=head_only)
+            return
+
+        period_value = params.get("period", [None])[0]
+        history_days_value = params.get("history_days", [None])[0]
+        history_start_value = params.get("history_start", [None])[0]
+        history_end_value = params.get("history_end", [None])[0]
+
+        history_days: int | None = None
+        history_start: date | None = None
+        history_end: date | None = None
+        period_label: str | None = None
+
+        try:
+            if period_value:
+                start_date, end_date, canonical = periods.resolve_period(period_value)
+                history_start = start_date
+                history_end = end_date
+                period_label = f"{periods.describe_period(canonical)} ({canonical})"
+            else:
+                if history_days_value:
+                    try:
+                        history_days = int(history_days_value)
+                        if history_days < 1:
+                            raise ValueError
+                    except ValueError:
+                        send_error(self, HTTPStatus.BAD_REQUEST, "history_days must be a positive integer.", head_only=head_only)
+                        return
+                else:
+                    history_days = 7
+                if history_start_value:
+                    history_start = date.fromisoformat(history_start_value)
+                if history_end_value:
+                    history_end = date.fromisoformat(history_end_value)
+                if history_start and history_end and history_start > history_end:
+                    send_error(self, HTTPStatus.BAD_REQUEST, "history_start must be on or before history_end.", head_only=head_only)
+                    return
+                if history_start_value or history_end_value:
+                    history_days = None
+        except ValueError as exc:
+            send_error(self, HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
+            return
 
         try:
             if location_query:
@@ -46,8 +101,29 @@ class handler(BaseHTTPRequestHandler):
                     return
                 label = params.get("label", [None])[0]
 
-            payload = lib.aggregate_weather(latitude, longitude, timezone, label, history_days=7)
-            report_text = lib.build_report(payload, base_url=request_base_url(self))
+            payload = lib.aggregate_weather(
+                latitude, longitude, timezone, label,
+                history_days=history_days,
+                history_start=history_start,
+                history_end=history_end,
+            )
+
+            if format_value == "csv":
+                csv_body = lib.build_history_csv(payload)
+                send_text(self, csv_body, head_only=head_only, content_type="text/csv; charset=utf-8")
+                return
+            if format_value == "json":
+                from helpers import send_json
+                send_json(self, payload, head_only=head_only)
+                return
+
+            request_query_string = _build_request_query_string(params)
+            report_text = lib.build_report(
+                payload,
+                base_url=request_base_url(self),
+                period_label=period_label,
+                request_query_string=request_query_string,
+            )
             send_text(self, report_text, head_only=head_only)
 
         except LookupError as exc:

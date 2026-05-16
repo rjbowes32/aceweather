@@ -285,7 +285,14 @@ def aggregate_weather(
     }
 
 
-def build_report(payload: dict[str, Any], *, base_url: str = "", include_related: bool = True) -> str:
+def build_report(
+    payload: dict[str, Any],
+    *,
+    base_url: str = "",
+    include_related: bool = True,
+    period_label: str | None = None,
+    request_query_string: str = "",
+) -> str:
     return reports.build_report(
         payload,
         base_url=base_url,
@@ -294,7 +301,13 @@ def build_report(payload: dict[str, Any], *, base_url: str = "", include_related
         canonical_region_set_urls=canonical_region_set_urls,
         digest_url=digest_url,
         full_digest_url=full_digest_url,
+        period_label=period_label,
+        request_query_string=request_query_string,
     )
+
+
+def build_history_csv(payload: dict[str, Any]) -> str:
+    return reports.build_history_csv(payload, wmo_label)
 
 
 def _build_region_brief(region: dict[str, str]) -> dict[str, Any]:

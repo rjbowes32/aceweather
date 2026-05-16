@@ -20,10 +20,17 @@ def send_error(h: Any, status: HTTPStatus, message: str, *, head_only: bool = Fa
     send_json(h, {"error": True, "message": message}, status, head_only=head_only)
 
 
-def send_text(h: Any, text: str, status: HTTPStatus = HTTPStatus.OK, *, head_only: bool = False) -> None:
+def send_text(
+    h: Any,
+    text: str,
+    status: HTTPStatus = HTTPStatus.OK,
+    *,
+    head_only: bool = False,
+    content_type: str = "text/plain; charset=utf-8",
+) -> None:
     body = text.encode("utf-8")
     h.send_response(status)
-    h.send_header("Content-Type", "text/plain; charset=utf-8")
+    h.send_header("Content-Type", content_type)
     h.send_header("Content-Length", str(len(body)))
     h.send_header("Cache-Control", "no-store")
     h.end_headers()

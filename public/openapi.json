@@ -134,7 +134,7 @@
     "/api/report": {
       "get": {
         "summary": "Get plain-text weather report",
-        "description": "Returns the LLM-friendly weather report as text/plain. Use either query by place name or explicit coordinates.",
+        "description": "Returns the LLM-friendly weather report as text/plain. Supports flexible historical-data windows via period shortcuts or explicit date ranges, and an optional format=csv|json mode.",
         "parameters": [
           {
             "name": "query",
@@ -182,13 +182,82 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "description": "Named historical window. Overrides history_days/history_start/history_end if set.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "last_7d",
+                "last_14d",
+                "last_30d",
+                "last_90d",
+                "last_365d",
+                "last_week",
+                "this_week",
+                "last_month",
+                "mtd",
+                "ytd",
+                "same_week_last_year",
+                "same_month_last_year",
+                "same_period_last_year"
+              ]
+            }
+          },
+          {
+            "name": "history_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 730,
+              "default": 7
+            },
+            "description": "Number of days of history ending yesterday."
+          },
+          {
+            "name": "history_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Custom history start date (YYYY-MM-DD). Combine with history_end."
+          },
+          {
+            "name": "history_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Custom history end date (YYYY-MM-DD)."
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["md", "csv", "json"],
+              "default": "md"
+            },
+            "description": "md returns the markdown text report (default). csv returns just the observed-archive table as CSV. json returns the full structured weather payload."
           }
         ],
         "responses": {
           "200": {
-            "description": "Plain-text weather report",
+            "description": "Plain-text weather report (or CSV / JSON depending on format)",
             "content": {
-              "text/plain": {}
+              "text/plain": {},
+              "text/csv": {},
+              "application/json": {}
             }
           },
           "400": {
@@ -262,7 +331,50 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
+              "maximum": 730,
               "default": 7
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "last_7d",
+                "last_14d",
+                "last_30d",
+                "last_90d",
+                "last_365d",
+                "last_week",
+                "this_week",
+                "last_month",
+                "mtd",
+                "ytd",
+                "same_week_last_year",
+                "same_month_last_year",
+                "same_period_last_year"
+              ]
+            },
+            "description": "Named historical window. Overrides history_days/start/end."
+          },
+          {
+            "name": "history_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "history_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
             }
           },
           {

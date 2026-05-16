@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import periods
 import snapshot_api
 
 
@@ -39,7 +40,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
             "path": "/api/report",
             "method": "GET",
             "responseFormat": "text/plain",
-            "description": "Returns a plain-text weather report for a place name or coordinates.",
+            "description": "Returns a plain-text weather report for a place name or coordinates. Supports flexible historical windows via period shortcuts or explicit date ranges.",
             "queryOptions": [
                 {
                     "mode": "place search",
@@ -55,6 +56,20 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                     ),
                 },
             ],
+            "optionalParams": [
+                "timezone", "label", "period", "history_days", "history_start", "history_end", "format",
+            ],
+            "supportedPeriods": list(periods.supported_periods()),
+            "historyExamples": {
+                "lastWeek": absolute("/api/report?query=Pocklington&period=last_week"),
+                "sameWeekLastYear": absolute("/api/report?query=Pocklington&period=same_week_last_year"),
+                "sameMonthLastYear": absolute("/api/report?query=Pocklington&period=same_month_last_year"),
+                "monthToDate": absolute("/api/report?query=Pocklington&period=mtd"),
+                "yearToDate": absolute("/api/report?query=Pocklington&period=ytd"),
+                "customRange": absolute("/api/report?query=Pocklington&history_start=2024-06-01&history_end=2024-06-30"),
+                "csvTable": absolute("/api/report?query=Pocklington&period=last_30d&format=csv"),
+                "jsonPayload": absolute("/api/report?query=Pocklington&period=last_30d&format=json"),
+            },
         },
         "snapshotEndpoint": snapshot_api.snapshot_endpoint_docs(normalized_base),
         "endpoints": [
@@ -76,18 +91,24 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
             {
                 "path": "/api/report",
                 "method": "GET",
-                "responseFormat": "text/plain",
+                "responseFormat": "text/plain (or text/csv / application/json when format= is set)",
                 "requiredParamsOneOf": [["query"], ["lat", "lon"]],
-                "optionalParams": ["timezone", "label"],
-                "description": "Returns the plain-text report derived from the weather payload.",
+                "optionalParams": [
+                    "timezone", "label", "period", "history_days", "history_start", "history_end", "format",
+                ],
+                "supportedPeriods": list(periods.supported_periods()),
+                "description": "Plain-text report with a configurable historical window. Use period= for natural ranges like last_week or same_week_last_year, or history_start/history_end for custom ranges, or history_days=N for the last N days. format=csv returns just the observed table, format=json returns the structured payload.",
             },
             {
                 "path": "/api/snapshot",
                 "method": "GET, POST",
                 "responseFormat": "application/json",
                 "requiredParamsOneOf": [["query"], ["lat", "lon"]],
-                "optionalParams": ["timezone", "label", "history_days", "station", "site_id"],
-                "description": "Returns a compact JSON weather snapshot for AppSheet webhooks and other automations.",
+                "optionalParams": [
+                    "timezone", "label", "history_days", "history_start", "history_end", "period", "station", "site_id",
+                ],
+                "supportedPeriods": list(periods.supported_periods()),
+                "description": "Compact JSON weather snapshot. Same period / history_start / history_end / history_days controls as /api/report.",
             },
             {
                 "path": "/api/providers",
