@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
@@ -10,6 +10,7 @@ import "./chips.css";
 import "./onthisday.css";
 import "./models.css";
 import "./tropical.css";
+import "./pwa.css";
 
 const newsreader = Newsreader({
   variable: "--font-newsreader",
@@ -29,22 +30,40 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f1e8" },
+    { media: "(prefers-color-scheme: dark)", color: "#14140f" },
+  ],
+};
+
 export const metadata: Metadata = {
-  title: "AceWeather v2 · Synoptic",
-  description: "Synoptic weather and farm intelligence.",
+  title: "AceWeather",
+  description: "Synoptic weather and farm intelligence — installable PWA.",
+  applicationName: "AceWeather",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "AceWeather",
   },
+  formatDetection: { telephone: false },
   icons: {
     icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
       { url: "/icons/aceweather-icon.svg", type: "image/svg+xml" },
-      { url: "/icons/aceweather-icon-maskable.svg", type: "image/svg+xml" },
     ],
-    apple: [{ url: "/icons/aceweather-icon.svg" }],
-    other: [{ rel: "mask-icon", url: "/icons/aceweather-icon-mono.svg", color: "#14140f" }],
+    apple: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    other: [
+      { rel: "mask-icon", url: "/icons/aceweather-icon-mono.svg", color: "#14140f" },
+    ],
   },
 };
 
@@ -55,6 +74,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${newsreader.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
+      </head>
       <body>
         <PwaBootstrap />
         {children}

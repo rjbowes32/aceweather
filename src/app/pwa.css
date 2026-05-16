@@ -1,0 +1,102 @@
+/* PWA-compliance overrides.
+   Layered after aceweather-v2.css so these rules win. */
+
+html, body {
+  height: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Allow the mobile shell to scroll its content and respect device safe areas. */
+@media (max-width: 760px) {
+  .aw2-shell {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .aw2-shell-mobile {
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    background: var(--paper);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .aw2-mobile {
+    width: 100%;
+    min-height: 100%;
+    height: auto;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .aw2-m-head {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Standalone install / display-mode tweaks (running as installed PWA). */
+@media all and (display-mode: standalone) {
+  body { background: var(--paper); }
+  .aw2-shell { background: var(--paper); }
+  /* Hide install prompt once the user has installed and reopened. */
+  .aw2-install-prompt { display: none !important; }
+}
+
+/* Install prompt pill — appears only when beforeinstallprompt fires. */
+.aw2-install-prompt {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.aw2-install-prompt .text { flex: 1; }
+.aw2-install-prompt button {
+  font: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 4px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.aw2-install-prompt button.dismiss { border-color: transparent; opacity: 0.7; }
+.aw2-install-prompt button.dismiss:hover { opacity: 1; }
+
+/* Make scrollbars unobtrusive inside the mobile shell. */
+.aw2-shell-mobile::-webkit-scrollbar { width: 6px; }
+.aw2-shell-mobile::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+/* Touch-friendly hit areas on tiny controls. */
+@media (max-width: 760px) {
+  .aw2-m-saved-pill > button,
+  .aw2-m-saved-remove,
+  .aw2-radar-live-play,
+  .aw2-models-controls button,
+  .aw2-otd-controls input,
+  .aw2-otd-controls select {
+    min-height: 36px;
+  }
+}

@@ -13,6 +13,8 @@ import {
 } from "@/lib/store";
 
 import { DayDetail } from "./day-detail";
+import { InstallPrompt } from "./install-prompt";
+import { MobileLocationLists } from "./mobile-locations";
 import { dirToCompass, fmt0, fmt1, requestBrowserLocation, searchMobileLocations } from "./helpers";
 import { WeatherIcon } from "./icons";
 import { MobileRainChart } from "./mobile-rain-chart";
@@ -207,6 +209,7 @@ export const Mobile = () => {
 
   return (
     <div className="aw2 aw2-mobile" data-screen-label="02 Mobile PWA">
+      <InstallPrompt />
       <header className="aw2-m-head">
         <div className="row">
           <div className="mark">AceWeather</div>
@@ -234,35 +237,12 @@ export const Mobile = () => {
           <button type="button" onClick={() => saveMobileLocation()}>Save</button>
         </form>
         <div className="aw2-m-location-status" role="status" aria-live="polite">{locationStatus}</div>
-        {suggestions.length ? (
-          <div className="aw2-m-location-suggestions">
-            {suggestions.map((location) => (
-              <button key={`${location.lat}-${location.lon}`} type="button" onClick={() => loadLocation(location)}>
-                <span>{location.name}</span>
-                <small>{[location.region, location.country].filter(Boolean).join(", ")}</small>
-              </button>
-            ))}
-          </div>
-        ) : null}
-        {savedLocations.length ? (
-          <div className="aw2-m-saved-locations" aria-label="Saved locations">
-            {savedLocations.map((location) => (
-              <span key={`${location.lat}-${location.lon}`} className="aw2-m-saved-pill">
-                <button type="button" onClick={() => loadLocation(location)}>
-                  {location.name}
-                </button>
-                <button
-                  type="button"
-                  className="aw2-m-saved-remove"
-                  aria-label={`Remove ${location.name}`}
-                  onClick={() => removeMobileLocation(location)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : null}
+        <MobileLocationLists
+          suggestions={suggestions}
+          savedLocations={savedLocations}
+          onPick={loadLocation}
+          onRemove={removeMobileLocation}
+        />
       </header>
 
       <section className="aw2-m-now">
