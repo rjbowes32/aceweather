@@ -14,6 +14,9 @@ import {
 
 import { DayDetail } from "./day-detail";
 import { InstallPrompt } from "./install-prompt";
+import { LunarChip } from "./lunar";
+import { NowFx } from "./now-fx";
+import { RainGauge } from "./rain-gauge";
 import { MobileLocationLists } from "./mobile-locations";
 import { dirToCompass, fmt0, fmt1, requestBrowserLocation, searchMobileLocations } from "./helpers";
 import { WeatherIcon } from "./icons";
@@ -38,7 +41,7 @@ export const Mobile = () => {
   const [savedLocations, setSavedLocations] = useState([]);
   const [reportStatus, setReportStatus] = useState("");
   const [locationStatus, setLocationStatus] = useState("Locating…");
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [expandedDayIdx, setExpandedDayIdx] = useState(null);
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
   const tLo = Math.min(...data.hourly.temperature_2m.slice(24, 48));
@@ -246,6 +249,7 @@ export const Mobile = () => {
       </header>
 
       <section className="aw2-m-now">
+        <NowFx code={c.weather_code} isDay={c.is_day} />
         <div className="aw2-m-now-temp">
           <div className="num">{fmt0(c.temperature_2m)}</div>
           <div className="deg">°C</div>
@@ -260,6 +264,7 @@ export const Mobile = () => {
           <div className="aw2-m-now-chip"><div className="k">Dir</div><div className="v">{dirToCompass(c.wind_direction_10m)}</div></div>
           <div className="aw2-m-now-chip"><div className="k">RH</div><div className="v">{fmt0(c.relative_humidity_2m)}<small>%</small></div></div>
           <div className="aw2-m-now-chip"><div className="k">Cloud</div><div className="v">{fmt0(c.cloud_cover)}<small>%</small></div></div>
+          <LunarChip />
         </div>
       </section>
 
@@ -286,28 +291,40 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
+        <div className="h"><b>My rain gauge</b><span>MANUAL · {mobileLocation.name?.toUpperCase()}</span></div>
+        <RainGauge location={mobileLocation} />
+      </section>
+
+      <section className="aw2-m-section">
         <div className="h"><b>7-day outlook</b><span>HI · LO · MM</span></div>
         <div className="aw2-m-7">
           {days7.map((day, i) => {
             const segL = ((day.lo - minLo) / (maxHi - minLo)) * 100;
             const segR = ((day.hi - minLo) / (maxHi - minLo)) * 100;
+            const isOpen = expandedDayIdx === i;
             return (
-              <button key={i} type="button" className="aw2-m-7-row"
-                onClick={() => setSelectedDay(day)}
-                aria-label={`Open detailed forecast for ${day.d} ${day.dt}`}>
-                <div className="d">{i === 0 ? "TODAY" : day.d}<b>{day.dt}</b></div>
-                <WeatherIcon code={day.code} />
-                <div className="bar"><div className="seg" style={{ left: segL + "%", width: (segR - segL) + "%" }}/></div>
-                <div className={"rain" + (day.rain < 0.1 ? " dry" : "")}>
-                  <span>{day.rain < 0.1 ? "·" : day.rain.toFixed(1) + "mm"}</span>
-                  <span className="pct">{day.pct}%</span>
-                </div>
-                <div className="temps">
-                  <span>{Math.round(day.hi)}°</span>
-                  <span className="sep"> / </span>
-                  <span className="lo">{Math.round(day.lo)}°</span>
-                </div>
-              </button>
+              <div key={i} className={"aw2-m-7-item" + (isOpen ? " open" : "")}>
+                <button type="button" className="aw2-m-7-row"
+                  onClick={() => setExpandedDayIdx(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  aria-label={`${isOpen ? "Collapse" : "Expand"} detailed forecast for ${day.d} ${day.dt}`}>
+                  <div className="d">{i === 0 ? "TODAY" : day.d}<b>{day.dt}</b></div>
+                  <WeatherIcon code={day.code} />
+                  <div className="bar"><div className="seg" style={{ left: segL + "%", width: (segR - segL) + "%" }}/></div>
+                  <div className={"rain" + (day.rain < 0.1 ? " dry" : "")}>
+                    <span>{day.rain < 0.1 ? "·" : day.rain.toFixed(1) + "mm"}</span>
+                    <span className="pct">{day.pct}%</span>
+                  </div>
+                  <div className="temps">
+                    <span>{Math.round(day.hi)}°</span>
+                    <span className="sep"> / </span>
+                    <span className="lo">{Math.round(day.lo)}°</span>
+                  </div>
+                </button>
+                {isOpen ? (
+                  <DayDetail day={day} hourly={data.hourly} location={mobileLocation} onClose={() => setExpandedDayIdx(null)} />
+                ) : null}
+              </div>
             );
           })}
         </div>
@@ -364,14 +381,6 @@ export const Mobile = () => {
         Open-Meteo · ECMWF · UKMO · Updated {obsTime}
       </footer>
 
-      {selectedDay ? (
-        <DayDetail
-          day={selectedDay}
-          hourly={data.hourly}
-          location={mobileLocation}
-          onClose={() => setSelectedDay(null)}
-        />
-      ) : null}
     </div>
   );
 };

@@ -50,14 +50,14 @@ export const DayDetail = ({ day, hourly, location, onClose }) => {
   };
 
   return (
-    <div className="aw2-m-day-detail" role="dialog" aria-modal="true" aria-label={`Detailed forecast for ${fullDate}`} onClick={onClose}>
-      <div className="aw2-m-day-detail-card" onClick={(e) => e.stopPropagation()}>
+    <div className="aw2-m-day-detail" aria-label={`Detailed forecast for ${fullDate}`}>
+      <div className="aw2-m-day-detail-card">
         <header className="aw2-m-day-detail-head">
           <div>
             <div className="aw2-m-day-detail-date">{fullDate}</div>
             <div className="aw2-m-day-detail-sub">{[location?.name, location?.region].filter(Boolean).join(", ") || "—"}</div>
           </div>
-          <button type="button" className="aw2-m-day-detail-close" onClick={onClose} aria-label="Close detailed forecast">×</button>
+          <button type="button" className="aw2-m-day-detail-close" onClick={onClose} aria-label="Collapse detailed forecast">×</button>
         </header>
 
         <div className="aw2-m-day-detail-summary">
