@@ -12,8 +12,6 @@ export const AW_LOCATION = {
   tz: "Europe/London",
 };
 
-export const AW_MOBILE_SAVED_KEY = "aceweather.mobile.savedLocations.v1";
-
 const _h = (n, fn) => Array.from({ length: n }, (_, i) => fn(i));
 
 export const AW_FALLBACK = {
