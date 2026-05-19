@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   addSavedLocation as awAddSavedLocation,
@@ -33,15 +33,87 @@ import { ReportAction, shareWeatherReport } from "./report-action";
 import { AW_FALLBACK, AW_LOCATION } from "./sample-data";
 import { UpdateNotice } from "./update-notice";
 
+const MOBILE_PREFS_KEY = "aceweather.mobile.prefs.v1";
+const STALE_WEATHER_MS = 60 * 60 * 1000;
+
+function readMobilePrefs() {
+  if (typeof window === "undefined") return { startupLocationMode: "gps" };
+  try {
+    const raw = window.localStorage.getItem(MOBILE_PREFS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { startupLocationMode: parsed.startupLocationMode === "saved" ? "saved" : "gps" };
+  } catch {
+    return { startupLocationMode: "gps" };
+  }
+}
+
+function formatAge(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return "now";
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
+function trendFor(value, previous, tolerance = 0.2) {
+  if (value == null || previous == null || Number.isNaN(value) || Number.isNaN(previous)) {
+    return { glyph: "→", label: "steady", className: "steady" };
+  }
+  const delta = value - previous;
+  if (Math.abs(delta) <= tolerance) return { glyph: "→", label: "steady", className: "steady" };
+  return delta > 0 ? { glyph: "↑", label: "rising", className: "up" } : { glyph: "↓", label: "falling", className: "down" };
+}
+
+function weatherConditionFor(code) {
+  if (code === 0) return { key: "sun", label: "Sunny" };
+  if (code === 1) return { key: "sun", label: "Mainly clear" };
+  if (code === 2) return { key: "partly", label: "Partly cloudy" };
+  if (code === 3) return { key: "cloud", label: "Overcast" };
+  if (code === 45 || code === 48) return { key: "fog", label: "Fog" };
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { key: "rain", label: "Rain" };
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { key: "snow", label: "Snow" };
+  if (code >= 95) return { key: "storm", label: "Thunder" };
+  return { key: "cloud", label: "Cloudy" };
+}
+
+function buildWeatherAlerts(data, current, next24, next24p) {
+  const alerts = [];
+  const gust = current?.wind_gusts_10m ?? 0;
+  const rain24 = next24.reduce((sum, value) => sum + (value || 0), 0);
+  const peakChance = Math.max(0, ...next24p);
+  const minTemp = Math.min(...(data?.daily?.temperature_2m_min || [99]).slice(0, 2));
+  const codes = [
+    current?.weather_code,
+    ...(data?.hourly?.weather_code || []).slice(0, 12),
+    ...(data?.daily?.weather_code || []).slice(0, 3),
+  ].filter((code) => code != null);
+
+  if (codes.some((code) => code >= 95)) alerts.push({ level: "high", label: "Thunder risk" });
+  if (gust >= 45) alerts.push({ level: "high", label: "High gusts" });
+  else if (gust >= 32) alerts.push({ level: "watch", label: "Gusty" });
+  if (rain24 >= 12 || peakChance >= 85) alerts.push({ level: "watch", label: "Wet spell" });
+  if (minTemp <= 2) alerts.push({ level: "watch", label: "Cold night" });
+  return alerts.slice(0, 3);
+}
+
 export const Mobile = () => {
   const [data, setData] = useState(AW_FALLBACK);
   const [mobileLocation, setMobileLocation] = useState(AW_LOCATION);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [savedLocations, setSavedLocations] = useState([]);
+  const [mobilePrefs, setMobilePrefs] = useState(() => readMobilePrefs());
   const [reportStatus, setReportStatus] = useState("");
   const [locationStatus, setLocationStatus] = useState("Locating…");
+  const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
+  const [weatherFetchedAt, setWeatherFetchedAt] = useState(null);
+  const [locationFixAt, setLocationFixAt] = useState(null);
+  const [weatherSource, setWeatherSource] = useState("local");
+  const [gpsFallbackAvailable, setGpsFallbackAvailable] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [expandedDayIdx, setExpandedDayIdx] = useState(null);
+  const startupLoadStartedRef = useRef(false);
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
   const tLo = Math.min(...data.hourly.temperature_2m.slice(24, 48));
@@ -75,6 +147,27 @@ export const Mobile = () => {
     { d: "18", s: "Root zone",t: h.soil_temperature_18cm[nowIdx], m: h.soil_moisture_3_to_9cm[nowIdx] },
     { d: "54", s: "Sub-soil", t: h.soil_temperature_54cm[nowIdx], m: h.soil_moisture_27_to_81cm[nowIdx] },
   ];
+  const condition = weatherConditionFor(c.weather_code);
+  const dayState = c.is_day === 0 ? "night" : "day";
+  const weatherAge = weatherFetchedAt ? nowTick - weatherFetchedAt : null;
+  const fixAge = locationFixAt ? nowTick - locationFixAt : null;
+  const isStale = weatherAge != null && weatherAge > STALE_WEATHER_MS;
+  const previousIdx = Math.max(0, nowIdx - 1);
+  const tempTrend = trendFor(c.temperature_2m, h.temperature_2m[previousIdx]);
+  const windTrend = trendFor(c.wind_speed_10m, h.wind_speed_10m[previousIdx], 0.8);
+  const humidityTrend = trendFor(c.relative_humidity_2m, h.relative_humidity_2m[previousIdx], 1);
+  const pressureTrend = trendFor(c.pressure_msl, h.pressure_msl[previousIdx], 0.4);
+  const daylightRemaining = (() => {
+    const sunset = d.sunset?.[7] || d.sunset?.[0];
+    if (!sunset || c.is_day === 0) return c.is_day === 0 ? "Night" : "--";
+    const [hours, minutes] = sunset.split(":").map(Number);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return "--";
+    const target = new Date();
+    target.setHours(hours, minutes, 0, 0);
+    return formatAge(target.getTime() - nowTick);
+  })();
+  const weatherAlerts = buildWeatherAlerts(data, c, next24, next24p);
+  const statusTone = isRefreshingLocation ? "loading" : isStale ? "stale" : weatherSource === "cached" ? "cached" : weatherSource === "live" ? "live" : "offline";
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +175,19 @@ export const Mobile = () => {
       .then((locs) => { if (!cancelled) setSavedLocations(locs); })
       .catch(() => {});
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MOBILE_PREFS_KEY, JSON.stringify(mobilePrefs));
+    } catch {
+      // Preferences are best-effort.
+    }
+  }, [mobilePrefs]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick(Date.now()), 60000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -115,7 +221,17 @@ export const Mobile = () => {
   }, []);
 
   useEffect(() => {
+    if (startupLoadStartedRef.current) return;
+    if (mobilePrefs.startupLocationMode === "saved" && savedLocations[0]) {
+      startupLoadStartedRef.current = true;
+      loadLocation(savedLocations[0], "Loaded");
+      return;
+    }
+    if (mobilePrefs.startupLocationMode === "saved") return;
+
+    startupLoadStartedRef.current = true;
     let cancelled = false;
+    setIsRefreshingLocation(true);
     requestBrowserLocation()
       .then(async (loc) => {
         if (cancelled) return;
@@ -127,6 +243,9 @@ export const Mobile = () => {
           setData(mergeOpenMeteo(AW_FALLBACK, live));
           setMobileLocation(loc);
           setLocationStatus(`Located ${loc.name}`);
+          setWeatherFetchedAt(Date.now());
+          setLocationFixAt(Date.now());
+          setWeatherSource("live");
           awSetCachedPayload(id, "openmeteo", live).catch(() => {});
         } catch {
           if (cancelled) return;
@@ -135,6 +254,9 @@ export const Mobile = () => {
             setData(mergeOpenMeteo(AW_FALLBACK, cached.payload));
             setMobileLocation(loc);
             const ageMin = Math.round((Date.now() - cached.fetchedAt) / 60000);
+            setWeatherFetchedAt(cached.fetchedAt);
+            setLocationFixAt(Date.now());
+            setWeatherSource("cached");
             setLocationStatus(`Offline copy · ${ageMin} min old`);
           } else {
             setLocationStatus("Located, but live data unavailable");
@@ -144,11 +266,17 @@ export const Mobile = () => {
       .catch((err) => {
         if (cancelled) return;
         setLocationStatus(err && err.code === 1 ? "Location permission denied" : "Location unavailable");
+        setGpsFallbackAvailable(savedLocations.length > 0);
+      })
+      .finally(() => {
+        if (!cancelled) setIsRefreshingLocation(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [mobilePrefs.startupLocationMode, savedLocations]);
 
   async function loadLocation(location, reason = "Loaded") {
+    setGpsFallbackAvailable(false);
+    setIsRefreshingLocation(true);
     setLocationStatus("Refreshing");
     const id = awLocationId(location.lat, location.lon);
     try {
@@ -158,6 +286,8 @@ export const Mobile = () => {
       setQuery("");
       setSuggestions([]);
       setLocationStatus(`${reason} ${location.name}`);
+      setWeatherFetchedAt(Date.now());
+      setWeatherSource("live");
       awSetCachedPayload(id, "openmeteo", live).catch(() => {});
     } catch {
       const cached = await awGetCachedPayload(id, "openmeteo");
@@ -165,10 +295,31 @@ export const Mobile = () => {
         setData(mergeOpenMeteo(AW_FALLBACK, cached.payload));
         setMobileLocation(location);
         const ageMin = Math.round((Date.now() - cached.fetchedAt) / 60000);
+        setWeatherFetchedAt(cached.fetchedAt);
+        setWeatherSource("cached");
         setLocationStatus(`Offline copy · ${ageMin} min old`);
       } else {
         setLocationStatus("Could not refresh");
       }
+    } finally {
+      setIsRefreshingLocation(false);
+    }
+  }
+
+  async function refreshCurrentLocation(reason = "Updated") {
+    setGpsFallbackAvailable(false);
+    setIsRefreshingLocation(true);
+    setLocationStatus("Detecting location");
+    try {
+      const loc = await requestBrowserLocation();
+      setLocationFixAt(Date.now());
+      await loadLocation(loc, reason);
+      return true;
+    } catch (err) {
+      setLocationStatus(err && err.code === 1 ? "Location permission denied" : "Location unavailable");
+      setGpsFallbackAvailable(savedLocations.length > 0);
+      setIsRefreshingLocation(false);
+      return false;
     }
   }
 
@@ -218,7 +369,7 @@ export const Mobile = () => {
           <div className="mark">AceWeather</div>
           <div className="aw2-m-head-right">
             <UpdateNotice />
-            <div className="sub">{obsTime} BST</div>
+            <div className={`sub aw2-m-source ${statusTone}`}>{weatherSource === "live" ? "LIVE" : weatherSource === "cached" ? "CACHED" : "LOCAL"} Â· {obsTime} BST</div>
           </div>
         </div>
         <div className="row">
@@ -226,6 +377,11 @@ export const Mobile = () => {
           <div className="obs">
             {[mobileLocation.region, mobileLocation.elev ? `${Math.round(mobileLocation.elev)} m` : null].filter(Boolean).join(" · ")}
           </div>
+        </div>
+        <div className="aw2-m-freshness" aria-label="Forecast freshness">
+          <span className={isStale ? "stale" : ""}>Weather {weatherAge == null ? "--" : formatAge(weatherAge)} old</span>
+          <span>Fix {fixAge == null ? "--" : formatAge(fixAge)} old</span>
+          <b>{isStale ? "Stale" : "Fresh"}</b>
         </div>
         <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus, mobileLocation)} compact />
         <form className="aw2-m-location-search" onSubmit={submitLocationSearch}>
@@ -236,33 +392,62 @@ export const Mobile = () => {
             aria-label="Search location"
           />
           <button type="submit">Search</button>
-          <button type="button" onClick={() => loadLocation(mobileLocation, "Updated")} aria-label="Refresh selected location">Refresh</button>
+          <button className={isRefreshingLocation ? "is-loading" : ""} type="button" onClick={() => refreshCurrentLocation("Updated")} aria-label="Refresh current location" disabled={isRefreshingLocation}>
+            {isRefreshingLocation ? "Fixing" : "Refresh"}
+          </button>
           <button type="button" onClick={() => saveMobileLocation()}>Save</button>
         </form>
+        <div className="aw2-m-startup-mode" role="group" aria-label="Startup location mode">
+          <button type="button" aria-pressed={mobilePrefs.startupLocationMode === "gps"} onClick={() => setMobilePrefs({ startupLocationMode: "gps" })}>GPS launch</button>
+          <button type="button" aria-pressed={mobilePrefs.startupLocationMode === "saved"} onClick={() => setMobilePrefs({ startupLocationMode: "saved" })}>Saved launch</button>
+        </div>
         <div className="aw2-m-location-status" role="status" aria-live="polite">{locationStatus}</div>
+        {gpsFallbackAvailable && savedLocations[0] ? (
+          <button className="aw2-m-fallback" type="button" onClick={() => loadLocation(savedLocations[0], "Loaded")}>
+            Use {savedLocations[0].name}
+          </button>
+        ) : null}
         <MobileLocationLists
           suggestions={suggestions}
           savedLocations={savedLocations}
           onPick={loadLocation}
           onRemove={removeMobileLocation}
         />
+        <div className="aw2-m-quick-actions">
+          <button type="button" onClick={() => shareWeatherReport(setReportStatus, mobileLocation)}>Copy report</button>
+          <button type="button" onClick={() => saveMobileLocation()}>Save</button>
+          <button type="button" onClick={() => refreshCurrentLocation("Updated")} disabled={isRefreshingLocation}>GPS</button>
+          {savedLocations[0] ? <button type="button" onClick={() => loadLocation(savedLocations[0], "Loaded")}>Saved</button> : null}
+        </div>
       </header>
 
-      <section className="aw2-m-now">
+      <section className={`aw2-m-now ${condition.key} ${dayState} ${statusTone}`}>
         <NowFx code={c.weather_code} isDay={c.is_day} />
         <div className="aw2-m-now-temp">
           <div className="num">{fmt0(c.temperature_2m)}</div>
           <div className="deg">°C</div>
+          <span className={`aw2-trend ${tempTrend.className}`} aria-label={`Temperature ${tempTrend.label}`}>{tempTrend.glyph}</span>
         </div>
+        {weatherAlerts.length ? (
+          <div className="aw2-m-alerts">
+            {weatherAlerts.map((alert) => <span key={alert.label} className={alert.level}>{alert.label}</span>)}
+          </div>
+        ) : null}
         <div className="aw2-m-now-hilo">
           <div className="hi">High <b>{Math.round(tHi)}°</b></div>
           <div className="lo">Low <b>{Math.round(tLo)}°</b></div>
           <div>Feels {fmt0(c.apparent_temperature)}°</div>
         </div>
+        <div className="aw2-m-condition-strip">
+          <div><span>Now</span><b>{condition.label}</b></div>
+          <div><span>Rain 3h</span><b>{next24.slice(0, 3).reduce((a, b) => a + b, 0).toFixed(1)}mm</b></div>
+          <div><span>Gust</span><b>{fmt0(c.wind_gusts_10m)} km/h</b></div>
+          <div><span>Light</span><b>{daylightRemaining}</b></div>
+        </div>
         <div className="aw2-m-now-chips">
-          <div className="aw2-m-now-chip"><div className="k">Wind</div><div className="v">{fmt0(c.wind_speed_10m)}<small>km/h</small></div></div>
-          <div className="aw2-m-now-chip"><div className="k">Dir</div><div className="v">{dirToCompass(c.wind_direction_10m)}</div></div>
-          <div className="aw2-m-now-chip"><div className="k">RH</div><div className="v">{fmt0(c.relative_humidity_2m)}<small>%</small></div></div>
+          <div className="aw2-m-now-chip"><div className="k">Wind</div><div className="v">{fmt0(c.wind_speed_10m)}<small>km/h</small><span className={`aw2-trend ${windTrend.className}`}>{windTrend.glyph}</span></div></div>
+          <div className="aw2-m-now-chip"><div className="k">Pressure</div><div className="v">{fmt0(c.pressure_msl)}<small>hPa</small><span className={`aw2-trend ${pressureTrend.className}`}>{pressureTrend.glyph}</span></div></div>
+          <div className="aw2-m-now-chip"><div className="k">RH</div><div className="v">{fmt0(c.relative_humidity_2m)}<small>%</small><span className={`aw2-trend ${humidityTrend.className}`}>{humidityTrend.glyph}</span></div></div>
           <div className="aw2-m-now-chip"><div className="k">Cloud</div><div className="v">{fmt0(c.cloud_cover)}<small>%</small></div></div>
           <LunarChip />
         </div>
