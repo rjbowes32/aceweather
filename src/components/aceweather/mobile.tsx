@@ -97,13 +97,23 @@ function buildWeatherAlerts(data, current, next24, next24p) {
   return alerts.slice(0, 3);
 }
 
+function withTimeout(promise, timeoutMs, message = "Request timed out") {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    }),
+  ]).finally(() => window.clearTimeout(timer));
+}
+
 export const Mobile = () => {
   const [data, setData] = useState(AW_FALLBACK);
   const [mobileLocation, setMobileLocation] = useState(AW_LOCATION);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [savedLocations, setSavedLocations] = useState([]);
-  const [mobilePrefs, setMobilePrefs] = useState(() => readMobilePrefs());
+  const [mobilePrefs, setMobilePrefs] = useState({ startupLocationMode: "gps" });
   const [reportStatus, setReportStatus] = useState("");
   const [locationStatus, setLocationStatus] = useState("Locating…");
   const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
@@ -111,8 +121,9 @@ export const Mobile = () => {
   const [locationFixAt, setLocationFixAt] = useState(null);
   const [weatherSource, setWeatherSource] = useState("local");
   const [gpsFallbackAvailable, setGpsFallbackAvailable] = useState(false);
-  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [nowTick, setNowTick] = useState(null);
   const [expandedDayIdx, setExpandedDayIdx] = useState(null);
+  const [hasMounted, setHasMounted] = useState(false);
   const startupLoadStartedRef = useRef(false);
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
@@ -149,8 +160,9 @@ export const Mobile = () => {
   ];
   const condition = weatherConditionFor(c.weather_code);
   const dayState = c.is_day === 0 ? "night" : "day";
-  const weatherAge = weatherFetchedAt ? nowTick - weatherFetchedAt : null;
-  const fixAge = locationFixAt ? nowTick - locationFixAt : null;
+  const effectiveNow = nowTick ?? 0;
+  const weatherAge = weatherFetchedAt && nowTick ? nowTick - weatherFetchedAt : null;
+  const fixAge = locationFixAt && nowTick ? nowTick - locationFixAt : null;
   const isStale = weatherAge != null && weatherAge > STALE_WEATHER_MS;
   const previousIdx = Math.max(0, nowIdx - 1);
   const tempTrend = trendFor(c.temperature_2m, h.temperature_2m[previousIdx]);
@@ -164,10 +176,17 @@ export const Mobile = () => {
     if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return "--";
     const target = new Date();
     target.setHours(hours, minutes, 0, 0);
-    return formatAge(target.getTime() - nowTick);
+    if (!nowTick) return "--";
+    return formatAge(target.getTime() - effectiveNow);
   })();
   const weatherAlerts = buildWeatherAlerts(data, c, next24, next24p);
   const statusTone = isRefreshingLocation ? "loading" : isStale ? "stale" : weatherSource === "cached" ? "cached" : weatherSource === "live" ? "live" : "offline";
+
+  useEffect(() => {
+    setHasMounted(true);
+    setNowTick(Date.now());
+    setMobilePrefs(readMobilePrefs());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,6 +240,7 @@ export const Mobile = () => {
   }, []);
 
   useEffect(() => {
+    if (!hasMounted) return;
     if (startupLoadStartedRef.current) return;
     if (mobilePrefs.startupLocationMode === "saved" && savedLocations[0]) {
       startupLoadStartedRef.current = true;
@@ -232,7 +252,7 @@ export const Mobile = () => {
     startupLoadStartedRef.current = true;
     let cancelled = false;
     setIsRefreshingLocation(true);
-    requestBrowserLocation()
+    withTimeout(requestBrowserLocation(), 12000, "Location timed out")
       .then(async (loc) => {
         if (cancelled) return;
         setLocationStatus("Refreshing");
@@ -272,7 +292,7 @@ export const Mobile = () => {
         if (!cancelled) setIsRefreshingLocation(false);
       });
     return () => { cancelled = true; };
-  }, [mobilePrefs.startupLocationMode, savedLocations]);
+  }, [hasMounted, mobilePrefs.startupLocationMode, savedLocations]);
 
   async function loadLocation(location, reason = "Loaded") {
     setGpsFallbackAvailable(false);
@@ -311,7 +331,7 @@ export const Mobile = () => {
     setIsRefreshingLocation(true);
     setLocationStatus("Detecting location");
     try {
-      const loc = await requestBrowserLocation();
+      const loc = await withTimeout(requestBrowserLocation(), 12000, "Location timed out");
       setLocationFixAt(Date.now());
       await loadLocation(loc, reason);
       return true;
@@ -379,9 +399,9 @@ export const Mobile = () => {
           </div>
         </div>
         <div className="aw2-m-freshness" aria-label="Forecast freshness">
-          <span className={isStale ? "stale" : ""}>Weather {weatherAge == null ? "--" : formatAge(weatherAge)} old</span>
-          <span>Fix {fixAge == null ? "--" : formatAge(fixAge)} old</span>
-          <b>{isStale ? "Stale" : "Fresh"}</b>
+          <span className={isStale ? "stale" : ""}>Weather {!hasMounted || weatherAge == null ? "--" : formatAge(weatherAge)} old</span>
+          <span>Fix {!hasMounted || fixAge == null ? "--" : formatAge(fixAge)} old</span>
+          <b>{!hasMounted ? "--" : isStale ? "Stale" : "Fresh"}</b>
         </div>
         <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus, mobileLocation)} compact />
         <form className="aw2-m-location-search" onSubmit={submitLocationSearch}>
