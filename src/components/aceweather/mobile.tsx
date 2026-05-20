@@ -389,7 +389,7 @@ export const Mobile = () => {
           <div className="mark">AceWeather</div>
           <div className="aw2-m-head-right">
             <UpdateNotice />
-            <div className={`sub aw2-m-source ${statusTone}`}>{weatherSource === "live" ? "LIVE" : weatherSource === "cached" ? "CACHED" : "LOCAL"} Â· {obsTime} BST</div>
+            <div className={`sub aw2-m-source ${statusTone}`}>{weatherSource === "live" ? "LIVE" : weatherSource === "cached" ? "CACHED" : "LOCAL"} | {obsTime} BST</div>
           </div>
         </div>
         <div className="row">
