@@ -277,7 +277,7 @@ export const Mobile = () => {
             setWeatherFetchedAt(cached.fetchedAt);
             setLocationFixAt(Date.now());
             setWeatherSource("cached");
-            setLocationStatus(`Offline copy · ${ageMin} min old`);
+            setLocationStatus(`Offline copy | ${ageMin} min old`);
           } else {
             setLocationStatus("Located, but live data unavailable");
           }
@@ -317,7 +317,7 @@ export const Mobile = () => {
         const ageMin = Math.round((Date.now() - cached.fetchedAt) / 60000);
         setWeatherFetchedAt(cached.fetchedAt);
         setWeatherSource("cached");
-        setLocationStatus(`Offline copy · ${ageMin} min old`);
+        setLocationStatus(`Offline copy | ${ageMin} min old`);
       } else {
         setLocationStatus("Could not refresh");
       }
@@ -395,7 +395,7 @@ export const Mobile = () => {
         <div className="row">
           <div className="loc">{mobileLocation.name}</div>
           <div className="obs">
-            {[mobileLocation.region, mobileLocation.elev ? `${Math.round(mobileLocation.elev)} m` : null].filter(Boolean).join(" · ")}
+            {[mobileLocation.region, mobileLocation.elev ? `${Math.round(mobileLocation.elev)} m` : null].filter(Boolean).join(" | ")}
           </div>
         </div>
         <div className="aw2-m-freshness" aria-label="Forecast freshness">
@@ -479,7 +479,7 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>Rainfall · next 24h</b><span>+0 → +24h</span></div>
+        <div className="h"><b>Rainfall | next 24h</b><span>+0 to +24h</span></div>
         <div className="aw2-m-rain">
           <div className="aw2-m-rain-cell">
             <div className="k">Total</div>
@@ -496,12 +496,12 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>My rain gauge</b><span>MANUAL · {mobileLocation.name?.toUpperCase()}</span></div>
+        <div className="h"><b>My rain gauge</b><span>MANUAL | {mobileLocation.name?.toUpperCase()}</span></div>
         <RainGauge location={mobileLocation} />
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>7-day outlook</b><span>HI · LO · MM</span></div>
+        <div className="h"><b>7-day outlook</b><span>HI | LO | MM</span></div>
         <div className="aw2-m-7">
           {days7.map((day, i) => {
             const segL = ((day.lo - minLo) / (maxHi - minLo)) * 100;
@@ -517,7 +517,7 @@ export const Mobile = () => {
                   <WeatherIcon code={day.code} />
                   <div className="bar"><div className="seg" style={{ left: segL + "%", width: (segR - segL) + "%" }}/></div>
                   <div className={"rain" + (day.rain < 0.1 ? " dry" : "")}>
-                    <span>{day.rain < 0.1 ? "·" : day.rain.toFixed(1) + "mm"}</span>
+                    <span>{day.rain < 0.1 ? "-" : day.rain.toFixed(1) + "mm"}</span>
                     <span className="pct">{day.pct}%</span>
                   </div>
                   <div className="temps">
@@ -536,7 +536,7 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>Soil · multi-depth</b><span>NOW</span></div>
+        <div className="h"><b>Soil | multi-depth</b><span>NOW</span></div>
         <div className="aw2-m-soil">
           {soil.map((s, i) => {
             const moistPct = Math.round(s.m * 100);
@@ -558,7 +558,7 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>Live radar</b><span>RainViewer · −2h → +30m</span></div>
+        <div className="h"><b>Live radar</b><span>RainViewer | -2h to +30m</span></div>
         <div className="aw2-m-radar"><RadarLive location={mobileLocation} height={280}/></div>
       </section>
 
@@ -568,12 +568,12 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>On this day</b><span>HISTORY · ERA5</span></div>
+        <div className="h"><b>On this day</b><span>HISTORY | ERA5</span></div>
         <OnThisDay location={mobileLocation} />
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>Active tropical systems</b><span>NHC · JTWC</span></div>
+        <div className="h"><b>Active tropical systems</b><span>NHC | JTWC</span></div>
         <TropicalPanel />
       </section>
 
@@ -583,7 +583,7 @@ export const Mobile = () => {
       </section>
 
       <footer className="aw2-m-foot">
-        Open-Meteo · ECMWF · UKMO · Updated {obsTime}
+        Open-Meteo | ECMWF | UKMO | Updated {obsTime}
       </footer>
 
     </div>
