@@ -306,6 +306,83 @@ def build_brief_digest(
     return "\n".join(lines)
 
 
+def build_short_digest(
+    set_name: str,
+    *,
+    regions: list[dict[str, str]],
+    base_url: str = "",
+    history_days: int = 7,
+    digest_url: Callable[[str, str], str],
+    canonical_region_set_urls: Callable[[str, str], list[str]],
+    build_region_history: Callable[[dict[str, str]], dict[str, Any]],
+) -> str:
+    digest_link = _append_query_params(
+        digest_url(set_name, base_url),
+        {"history_days": history_days, "format": "short"},
+    )
+    detail_link = _append_query_params(
+        digest_url(set_name, base_url),
+        {"history_days": history_days},
+    )
+    report_links = [
+        _append_query_params(url, {"history_days": history_days})
+        for url in canonical_region_set_urls(set_name, base_url)
+    ]
+    lines = [
+        f"# AceWeather Short Bundle: {set_name}",
+        f"Generated: {datetime.utcnow().isoformat(timespec='seconds')}Z",
+        "",
+        "Historical-only summary for fast LLM fetching.",
+        f"Historical window: last {history_days} days ending yesterday.",
+        f"Short bundle URL: {digest_link}",
+        f"Detailed bundle URL: {detail_link}",
+        "",
+        "## Regional Historical Summary",
+        "| Location | Dates | Rain mm | High C | Low C |",
+        "|----------|-------|---------|--------|-------|",
+    ]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(regions))) as executor:
+        histories = list(executor.map(build_region_history, regions))
+
+    for item in histories:
+        history = item["history"]
+        rng = item.get("range") or {}
+        dates = history.get("time", [])
+        history_count = min(history_days, len(dates))
+        rain_values = [
+            float(history["precipitation_sum"][index] or 0.0)
+            for index in range(history_count)
+        ]
+        high_values = [
+            float(history["temperature_2m_max"][index])
+            for index in range(history_count)
+            if history["temperature_2m_max"][index] is not None
+        ]
+        low_values = [
+            float(history["temperature_2m_min"][index])
+            for index in range(history_count)
+            if history["temperature_2m_min"][index] is not None
+        ]
+        start_date = rng.get("startDate") or (dates[0] if dates else "")
+        end_date = rng.get("endDate") or (dates[history_count - 1] if history_count else "")
+        date_range = f"{start_date} to {end_date}" if start_date and end_date else "no data"
+        rain_total = f"{sum(rain_values):.1f}" if history_count else "--"
+        high = f"{max(high_values):.1f}" if high_values else "--"
+        low = f"{min(low_values):.1f}" if low_values else "--"
+        lines.append(f"| {item['label']} | {date_range} | {rain_total} | {high} | {low} |")
+
+    lines += [
+        "",
+        "## Direct Report URLs",
+        *[f"- {url}" for url in report_links],
+        "",
+        "## Agent Instruction",
+        "Use this table for quick regional comparison. Fetch a direct report URL only when daily rows are needed.",
+    ]
+    return "\n".join(lines)
+
+
 def build_digest(
     set_name: str,
     *,

@@ -24,6 +24,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
         "regionalDigests": {
             "cropdynamics": {
                 "digest": absolute("/api/digest?set=cropdynamics"),
+                "shortDigest": absolute("/api/digest?set=cropdynamics&history_days=29&format=short"),
                 "last29DaysDigest": absolute("/api/digest?set=cropdynamics&history_days=29"),
                 "fullDigest": absolute("/api/digest?set=cropdynamics&mode=full"),
                 "reportUrls": [
@@ -121,8 +122,8 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "path": "/api/digest",
                 "method": "GET",
                 "responseFormat": "text/plain",
-                "optionalParams": ["set", "mode", "history_days"],
-                "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics. Default mode is a faster brief bundle. history_days controls the observed historical window ending yesterday.",
+                "optionalParams": ["set", "mode", "history_days", "format"],
+                "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics. Use format=short for a fast historical-only summary table. history_days controls the observed historical window ending yesterday.",
             },
             {
                 "path": "/api/onthisday",

@@ -6,6 +6,7 @@ For agent workflows that need a standard regional bundle from one unlocked URL, 
 
 - `https://aceweather.app/api/digest?set=cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
+- `https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short`
 
 That Crop Dynamics bundle is intentionally slim. It returns, for each region:
 
@@ -13,6 +14,8 @@ That Crop Dynamics bundle is intentionally slim. It returns, for each region:
 - observed temperature highs and lows for the requested historical window
 - forecast rainfall for the next 7 days
 - forecast temperature highs and lows for the next 7 days
+
+Use `format=short` for a faster historical-only summary table without forecast or daily rows.
 
 Machine-readable discovery is also available at:
 
@@ -39,6 +42,7 @@ Current deployed site:
 - `https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom`
 - `https://aceweather.app/api/digest?set=cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
+- `https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short`
 
 Local development:
 
@@ -60,6 +64,8 @@ Local development:
 This is the fixed LLM-friendly bundle endpoint. It is shorter than the full report flow and is meant to reduce timeouts.
 
 Add `history_days=<days>` to change how many historical days are pulled back from the current day. Historical observations end yesterday, so on 4 June 2026, `history_days=29` covers 6 May through 3 June.
+
+Add `format=short` for the fastest LLM-friendly regional comparison. It returns one table with location, date range, rain in mm, high C, and low C.
 
 ## Related Endpoint
 

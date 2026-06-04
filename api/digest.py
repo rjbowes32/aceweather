@@ -24,6 +24,7 @@ class handler(BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
         mode = (params.get("mode", ["brief"])[0] or "brief").strip().lower()
+        digest_format = (params.get("format", ["brief"])[0] or "brief").strip().lower()
         history_days_value = params.get("history_days", [None])[0]
         try:
             history_days = int(history_days_value) if history_days_value else None
@@ -37,6 +38,7 @@ class handler(BaseHTTPRequestHandler):
                 base_url=request_base_url(self),
                 mode=mode,
                 history_days=history_days,
+                digest_format=digest_format,
             )
             send_text(self, digest_text, head_only=head_only)
         except ValueError as exc:

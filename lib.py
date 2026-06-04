@@ -376,6 +376,21 @@ def _build_region_brief(region: dict[str, str], *, history_days: int = DEFAULT_D
     }
 
 
+def _build_region_history_summary(
+    region: dict[str, str],
+    *,
+    history_days: int = DEFAULT_DIGEST_HISTORY_DAYS,
+) -> dict[str, Any]:
+    latitude, longitude, timezone, label = resolve_region_location(region)
+    history = fetch_history(latitude, longitude, timezone, history_days=history_days)
+    return {
+        "label": label,
+        "query": region["query"],
+        "history": history["daily"],
+        "range": history.get("range", {}),
+    }
+
+
 def build_brief_digest(
     set_name: str,
     *,
@@ -400,11 +415,10 @@ def build_brief_digest(
     )
 
 
-def build_digest(
+def build_short_digest(
     set_name: str,
     *,
     base_url: str = "",
-    mode: str = "brief",
     history_days: int | None = None,
 ) -> str:
     regions = CANONICAL_REGION_SETS.get(set_name)
@@ -412,6 +426,42 @@ def build_digest(
         supported = ", ".join(sorted(CANONICAL_REGION_SETS))
         raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
     resolved_history_days = resolve_digest_history_days(history_days)
+
+    return reports.build_short_digest(
+        set_name,
+        regions=regions,
+        base_url=base_url,
+        history_days=resolved_history_days,
+        digest_url=digest_url,
+        canonical_region_set_urls=canonical_region_set_urls,
+        build_region_history=lambda region: _build_region_history_summary(
+            region,
+            history_days=resolved_history_days,
+        ),
+    )
+
+
+def build_digest(
+    set_name: str,
+    *,
+    base_url: str = "",
+    mode: str = "brief",
+    history_days: int | None = None,
+    digest_format: str = "brief",
+) -> str:
+    regions = CANONICAL_REGION_SETS.get(set_name)
+    if not regions:
+        supported = ", ".join(sorted(CANONICAL_REGION_SETS))
+        raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
+    resolved_history_days = resolve_digest_history_days(history_days)
+    if digest_format == "short":
+        return build_short_digest(
+            set_name,
+            base_url=base_url,
+            history_days=resolved_history_days,
+        )
+    if digest_format not in ("brief", "text"):
+        raise ValueError("format must be one of: brief, short.")
 
     def aggregate_weather_for_region(region: dict[str, str]) -> dict[str, Any]:
         latitude, longitude, timezone, label = resolve_region_location(region)

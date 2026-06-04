@@ -480,6 +480,17 @@
               "default": 7
             },
             "description": "Number of historical observation days to include, counting back from yesterday. For example, on 4 June 2026, history_days=29 covers 6 May through 3 June."
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "brief",
+              "enum": ["brief", "short"]
+            },
+            "description": "Use short for a fast historical-only regional summary table without forecast or daily rows."
           }
         ],
         "responses": {

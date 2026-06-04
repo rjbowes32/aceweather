@@ -129,6 +129,7 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(query_string)
         set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
         mode = (params.get("mode", ["brief"])[0] or "brief").strip().lower()
+        digest_format = (params.get("format", ["brief"])[0] or "brief").strip().lower()
         history_days_value = params.get("history_days", [None])[0]
         try:
             history_days = int(history_days_value) if history_days_value else None
@@ -141,6 +142,7 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
                 base_url=self._request_base_url(),
                 mode=mode,
                 history_days=history_days,
+                digest_format=digest_format,
             )
             self._send_text(digest_text, head_only=head_only)
         except LookupError as exc:
