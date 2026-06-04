@@ -7,11 +7,13 @@ Preferred endpoint for report text:
 - GET https://aceweather.app/api/report?lat=<latitude>&lon=<longitude>&timezone=<IANA timezone or auto>&label=<human label>
 
 Canonical regional digest:
+- GET https://aceweather.app/api/cropdynamics
 - GET https://aceweather.app/api/digest?set=cropdynamics
 - GET https://aceweather.app/api/digest?set=cropdynamics&history_days=<days>
 - GET https://aceweather.app/api/digest?set=cropdynamics&history_days=<days>&format=short
 
 The Crop Dynamics digest is intentionally minimal:
+- /api/cropdynamics returns application/json with rain_mm, high_c, and low_c per location
 - observed rainfall for the requested historical window, defaulting to the last 7 days
 - observed temperature highs and lows for the requested historical window
 - forecast rainfall for the next 7 days
@@ -47,6 +49,7 @@ Machine-readable API discovery:
 
 Examples:
 - https://aceweather.app/api/report?query=Pocklington
+- https://aceweather.app/api/cropdynamics
 - https://aceweather.app/api/digest?set=cropdynamics
 - https://aceweather.app/api/digest?set=cropdynamics&history_days=29
 - https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short
@@ -57,5 +60,6 @@ Notes:
 - /api/report returns text/plain.
 - /api/weather returns application/json.
 - /api/snapshot returns application/json and supports GET or POST.
+- /api/cropdynamics returns the fastest JSON regional summary and defaults to 29 historical days.
 - /api/digest?set=cropdynamics returns the slim regional text bundle for LLM reading. Add history_days=29 for the window from 6 May to 3 June when today is 4 June. Add format=short for a faster summary-only table.
 - For the simplest workflow, fetch https://aceweather.app/api/digest?set=cropdynamics once or call https://aceweather.app/api/report directly with ?query=...

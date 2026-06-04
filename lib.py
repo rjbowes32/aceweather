@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import urllib.parse
+import concurrent.futures
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -13,6 +14,7 @@ import weather_sources
 
 DEFAULT_PUBLIC_BASE_URL = os.getenv("ACEWEATHER_PUBLIC_BASE_URL", "https://aceweather.app")
 DEFAULT_DIGEST_HISTORY_DAYS = 7
+DEFAULT_CROPDYNAMICS_JSON_HISTORY_DAYS = 29
 MAX_DIGEST_HISTORY_DAYS = 366
 
 CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
@@ -388,6 +390,80 @@ def _build_region_history_summary(
         "query": region["query"],
         "history": history["daily"],
         "range": history.get("range", {}),
+    }
+
+
+def _summarize_history_region(item: dict[str, Any]) -> dict[str, Any]:
+    history = item["history"]
+    rng = item.get("range") or {}
+    dates = history.get("time", [])
+    rain_values = [float(value or 0.0) for value in history.get("precipitation_sum", [])]
+    high_values = [
+        float(value)
+        for value in history.get("temperature_2m_max", [])
+        if value is not None
+    ]
+    low_values = [
+        float(value)
+        for value in history.get("temperature_2m_min", [])
+        if value is not None
+    ]
+    start_date = rng.get("startDate") or (dates[0] if dates else None)
+    end_date = rng.get("endDate") or (dates[-1] if dates else None)
+    return {
+        "location": item["label"],
+        "query": item["query"],
+        "date_range": {
+            "start": start_date,
+            "end": end_date,
+            "days": rng.get("days") or len(dates),
+        },
+        "rain_mm": round(sum(rain_values), 1),
+        "high_c": round(max(high_values), 1) if high_values else None,
+        "low_c": round(min(low_values), 1) if low_values else None,
+    }
+
+
+def build_cropdynamics_json(*, base_url: str = "", history_days: int | None = None) -> dict[str, Any]:
+    resolved_history_days = resolve_digest_history_days(
+        DEFAULT_CROPDYNAMICS_JSON_HISTORY_DAYS if history_days is None else history_days
+    )
+    regions = CANONICAL_REGION_SETS["cropdynamics"]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(regions))) as executor:
+        histories = list(
+            executor.map(
+                lambda region: _build_region_history_summary(
+                    region,
+                    history_days=resolved_history_days,
+                ),
+                regions,
+            )
+        )
+
+    return {
+        "name": "AceWeather Crop Dynamics Summary",
+        "set": "cropdynamics",
+        "format": "json",
+        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "history_days": resolved_history_days,
+        "window": "last N days ending yesterday",
+        "units": {
+            "rain_mm": "millimetres",
+            "high_c": "degrees Celsius",
+            "low_c": "degrees Celsius",
+        },
+        "locations": [_summarize_history_region(item) for item in histories],
+        "links": {
+            "self": absolute_public_url("/api/cropdynamics", base_url),
+            "short_text": absolute_public_url(
+                f"/api/digest?set=cropdynamics&history_days={resolved_history_days}&format=short",
+                base_url,
+            ),
+            "detailed_text": absolute_public_url(
+                f"/api/digest?set=cropdynamics&history_days={resolved_history_days}",
+                base_url,
+            ),
+        },
     }
 
 

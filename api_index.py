@@ -23,6 +23,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
         },
         "regionalDigests": {
             "cropdynamics": {
+                "json": absolute("/api/cropdynamics"),
                 "digest": absolute("/api/digest?set=cropdynamics"),
                 "shortDigest": absolute("/api/digest?set=cropdynamics&history_days=29&format=short"),
                 "last29DaysDigest": absolute("/api/digest?set=cropdynamics&history_days=29"),
@@ -126,6 +127,13 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "description": "Returns a bundled plain-text digest for a canonical regional set such as cropdynamics. Use format=short for a fast historical-only summary table. history_days controls the observed historical window ending yesterday.",
             },
             {
+                "path": "/api/cropdynamics",
+                "method": "GET",
+                "responseFormat": "application/json",
+                "optionalParams": ["days", "history_days"],
+                "description": "Returns a fast JSON Crop Dynamics summary for LLM fetching. Defaults to the last 29 historical days ending yesterday.",
+            },
+            {
                 "path": "/api/onthisday",
                 "method": "GET",
                 "responseFormat": "application/json",
@@ -140,5 +148,5 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "description": "Aggregates active tropical systems from NHC (Atlantic + East Pacific JSON) and JTWC (West Pacific + Indian Ocean RSS). Returns one storm list normalized across both agencies with category, winds, pressure, position, and advisory link.",
             },
         ],
-        "agentHint": "If you need one standard regional bundle, call /api/digest?set=cropdynamics. It defaults to a faster brief text bundle. If you need a single place, call /api/report directly.",
+        "agentHint": "If you need one standard Crop Dynamics regional summary, call /api/cropdynamics first. It returns compact JSON. If you need daily rows, call /api/digest?set=cropdynamics&history_days=29&format=short or /api/report for a single place.",
     }

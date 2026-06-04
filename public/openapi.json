@@ -509,6 +509,40 @@
         }
       }
     },
+    "/api/cropdynamics": {
+      "get": {
+        "summary": "Get Crop Dynamics JSON summary",
+        "description": "Returns a fast JSON summary for the seven Crop Dynamics locations. Defaults to the last 29 historical days ending yesterday and includes rain_mm, high_c, and low_c per location.",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 366,
+              "default": 29
+            },
+            "description": "Historical days to include, counting back from yesterday. history_days is accepted as an alias."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crop Dynamics summary JSON",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "400": {
+            "description": "Invalid days value"
+          },
+          "502": {
+            "description": "Upstream provider unavailable"
+          }
+        }
+      }
+    },
     "/api/providers": {
       "get": {
         "summary": "Get provider availability",

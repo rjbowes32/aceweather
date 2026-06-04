@@ -4,12 +4,14 @@ AceWeather exposes a plain-text weather report endpoint for any searched or save
 
 For agent workflows that need a standard regional bundle from one unlocked URL, use:
 
+- `https://aceweather.app/api/cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short`
 
 That Crop Dynamics bundle is intentionally slim. It returns, for each region:
 
+- JSON via `/api/cropdynamics`: location, date range, rain mm, high C, low C
 - observed rainfall for the requested historical window, defaulting to the last 7 days
 - observed temperature highs and lows for the requested historical window
 - forecast rainfall for the next 7 days
@@ -40,6 +42,7 @@ Current deployed site:
 
 - `https://aceweather.app/api/report?query=Pocklington`
 - `https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom`
+- `https://aceweather.app/api/cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short`
@@ -58,6 +61,10 @@ Local development:
 - Agronomy summary
 
 ## Crop Dynamics Bundle
+
+`https://aceweather.app/api/cropdynamics`
+
+This is the fastest JSON endpoint for LLM or browser-fetch tools. It defaults to the last 29 historical days ending yesterday and returns one compact `locations` array.
 
 `https://aceweather.app/api/digest?set=cropdynamics`
 
