@@ -42,6 +42,13 @@ def build_history_csv(payload: dict[str, Any], wmo_label: Callable[[int | None],
     return "\n".join(_history_rows_csv(history, wmo_label)) + "\n"
 
 
+def _append_query_params(url: str, params: dict[str, Any]) -> str:
+    parsed = urllib.parse.urlparse(url)
+    query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+    query.update({key: str(value) for key, value in params.items()})
+    return urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query)))
+
+
 def build_report(
     payload: dict[str, Any],
     *,
@@ -210,20 +217,30 @@ def build_brief_digest(
     *,
     regions: list[dict[str, str]],
     base_url: str = "",
+    history_days: int = 7,
     digest_url: Callable[[str, str], str],
     full_digest_url: Callable[[str, str], str],
     canonical_region_set_urls: Callable[[str, str], list[str]],
     build_region_brief: Callable[[dict[str, str]], dict[str, Any]],
 ) -> str:
-    digest_link = digest_url(set_name, base_url)
-    report_links = canonical_region_set_urls(set_name, base_url)
+    digest_link = _append_query_params(digest_url(set_name, base_url), {"history_days": history_days})
+    full_digest_link = _append_query_params(
+        full_digest_url(set_name, base_url),
+        {"history_days": history_days},
+    )
+    report_links = [
+        _append_query_params(url, {"history_days": history_days})
+        for url in canonical_region_set_urls(set_name, base_url)
+    ]
     lines = [
         f"# AceWeather Bundle: {set_name}",
         f"Generated: {datetime.utcnow().isoformat(timespec='seconds')}Z",
         "",
         "This is the fast plain-text bundle intended for LLM fetching and interpretation.",
+        f"Historical window: last {history_days} days ending yesterday.",
+        "Forecast window: next 7 days from today.",
         f"Fixed bundle URL: {digest_link}",
-        f"Full bundle URL: {full_digest_url(set_name, base_url)}",
+        f"Full bundle URL: {full_digest_link}",
         "",
         "## Direct Report URLs",
         *[f"- {url}" for url in report_links],
@@ -231,12 +248,25 @@ def build_brief_digest(
         "## Regional Snapshot",
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, len(regions))) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(2, len(regions))) as executor:
         briefs = list(executor.map(build_region_brief, regions))
 
     for brief in briefs:
         history = brief["history"]
         daily = brief["daily"]
+        history_count = min(history_days, len(history["time"]))
+        history_rain = [
+            float(history["precipitation_sum"][index] or 0.0)
+            for index in range(history_count)
+        ]
+        history_highs = [
+            float(history["temperature_2m_max"][index] or 0.0)
+            for index in range(history_count)
+        ]
+        history_lows = [
+            float(history["temperature_2m_min"][index] or 0.0)
+            for index in range(history_count)
+        ]
         forecast_start = 0
         today_iso = date.today().isoformat()
         for index, day_value in enumerate(daily["time"]):
@@ -246,9 +276,15 @@ def build_brief_digest(
         lines += [
             "",
             f"### {brief['label']}",
-            "Observed last 7 days:",
+            (
+                f"Historical summary: rain {sum(history_rain):.1f} mm, "
+                f"high {max(history_highs):.1f} C, low {min(history_lows):.1f} C."
+                if history_count
+                else "Historical summary: no historical days returned."
+            ),
+            f"Observed last {history_days} days:",
         ]
-        for index in range(min(7, len(history["time"]))):
+        for index in range(history_count):
             lines.append(
                 f"  - {history['time'][index]}: high {float(history['temperature_2m_max'][index] or 0.0):.1f} C, "
                 f"low {float(history['temperature_2m_min'][index] or 0.0):.1f} C, "
@@ -276,6 +312,7 @@ def build_digest(
     regions: list[dict[str, str]],
     base_url: str = "",
     mode: str = "brief",
+    history_days: int = 7,
     digest_url: Callable[[str, str], str],
     canonical_region_set_urls: Callable[[str, str], list[str]],
     aggregate_weather_for_region: Callable[[dict[str, str]], dict[str, Any]],
@@ -287,18 +324,27 @@ def build_digest(
             set_name,
             regions=regions,
             base_url=base_url,
+            history_days=history_days,
         )
     if mode != "full":
         raise ValueError("Unknown digest mode. Supported modes: brief, full.")
 
-    digest_link = digest_url(set_name, base_url)
-    report_links = canonical_region_set_urls(set_name, base_url)
+    digest_link = _append_query_params(
+        digest_url(set_name, base_url),
+        {"mode": "full", "history_days": history_days},
+    )
+    report_links = [
+        _append_query_params(url, {"history_days": history_days})
+        for url in canonical_region_set_urls(set_name, base_url)
+    ]
     lines = [
         f"# AceWeather Digest: {set_name}",
         f"Generated: {datetime.utcnow().isoformat(timespec='seconds')}Z",
         "",
         "## Digest URL",
         f"- {digest_link}",
+        "",
+        f"Historical window: last {history_days} days ending yesterday.",
         "",
         "## Direct Report URLs",
         *[f"- {url}" for url in report_links],

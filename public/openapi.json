@@ -447,7 +447,7 @@
     "/api/digest": {
       "get": {
         "summary": "Get canonical regional digest",
-        "description": "Returns a bundled plain-text digest for a named regional set such as cropdynamics. The default brief mode is optimized for LLM use and includes only last-7 and next-7 rainfall and temperature highs/lows per region.",
+        "description": "Returns a bundled plain-text digest for a named regional set such as cropdynamics. The default brief mode is optimized for LLM use and includes the requested historical rainfall and temperature highs/lows plus next-7 forecast rainfall and temperature highs/lows per region.",
         "parameters": [
           {
             "name": "set",
@@ -468,6 +468,18 @@
               "enum": ["brief", "full"]
             },
             "description": "Use brief for the smaller LLM-oriented bundle or full for the full multi-section digest."
+          },
+          {
+            "name": "history_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 366,
+              "default": 7
+            },
+            "description": "Number of historical observation days to include, counting back from yesterday. For example, on 4 June 2026, history_days=29 covers 6 May through 3 June."
           }
         ],
         "responses": {

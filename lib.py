@@ -12,14 +12,43 @@ import reports
 import weather_sources
 
 DEFAULT_PUBLIC_BASE_URL = os.getenv("ACEWEATHER_PUBLIC_BASE_URL", "https://aceweather.app")
+DEFAULT_DIGEST_HISTORY_DAYS = 7
+MAX_DIGEST_HISTORY_DAYS = 366
 
 CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
     "cropdynamics": [
-        {"slug": "pocklington", "query": "Pocklington"},
-        {"slug": "boroughbridge", "query": "Boroughbridge"},
-        {"slug": "alford", "query": "Alford, Lincolnshire"},
-        {"slug": "sleaford", "query": "Sleaford"},
-        {"slug": "scotch-corner", "query": "Scotch Corner"},
+        {
+            "slug": "scotch-corner",
+            "query": "Scotch Corner",
+            "latitude": "54.44158",
+            "longitude": "-1.6658",
+            "timezone": "Europe/London",
+            "label": "Scotch Corner, England, United Kingdom",
+        },
+        {
+            "slug": "boroughbridge",
+            "query": "Boroughbridge",
+            "latitude": "54.0895",
+            "longitude": "-1.4011",
+            "timezone": "Europe/London",
+            "label": "Boroughbridge, England, United Kingdom",
+        },
+        {
+            "slug": "pocklington",
+            "query": "Pocklington",
+            "latitude": "53.93335",
+            "longitude": "-0.78106",
+            "timezone": "Europe/London",
+            "label": "Pocklington, England, United Kingdom",
+        },
+        {
+            "slug": "sleaford",
+            "query": "Sleaford",
+            "latitude": "52.99826",
+            "longitude": "-0.40941",
+            "timezone": "Europe/London",
+            "label": "Sleaford, England, United Kingdom",
+        },
         {
             "slug": "longhirst",
             "query": "Longhirst, Northumberland, England",
@@ -28,7 +57,14 @@ CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
             "timezone": "Europe/London",
             "label": "Longhirst, Northumberland, United Kingdom",
         },
-        {"slug": "berwick", "query": "Berwick-upon-Tweed"},
+        {
+            "slug": "berwick",
+            "query": "Berwick-upon-Tweed",
+            "latitude": "55.76868",
+            "longitude": "-2.00537",
+            "timezone": "Europe/London",
+            "label": "Berwick",
+        },
     ],
 }
 
@@ -105,7 +141,8 @@ def resolve_region_location(region: dict[str, str]) -> tuple[float, float, str, 
         timezone = region.get("timezone") or "auto"
         label = region.get("label") or region.get("query") or region.get("slug") or "Selected location"
         return latitude, longitude, timezone, label
-    return resolve_location_query(region["query"])
+    latitude, longitude, timezone, label = resolve_location_query(region["query"])
+    return latitude, longitude, timezone, region.get("label") or label
 
 
 def public_base_url(base_url: str = "") -> str:
@@ -134,6 +171,15 @@ def digest_url(set_name: str, base_url: str = "") -> str:
 
 def full_digest_url(set_name: str, base_url: str = "") -> str:
     return absolute_public_url(f"/api/digest?set={urllib.parse.quote(set_name)}&mode=full", base_url)
+
+
+def resolve_digest_history_days(history_days: int | None = None) -> int:
+    resolved_days = DEFAULT_DIGEST_HISTORY_DAYS if history_days is None else history_days
+    if resolved_days < 1:
+        raise ValueError("history_days must be a positive integer.")
+    if resolved_days > MAX_DIGEST_HISTORY_DAYS:
+        raise ValueError(f"history_days cannot exceed {MAX_DIGEST_HISTORY_DAYS}.")
+    return resolved_days
 
 
 def fetch_forecast(latitude: float, longitude: float, timezone: str) -> dict[str, Any]:
@@ -310,10 +356,10 @@ def build_history_csv(payload: dict[str, Any]) -> str:
     return reports.build_history_csv(payload, wmo_label)
 
 
-def _build_region_brief(region: dict[str, str]) -> dict[str, Any]:
+def _build_region_brief(region: dict[str, str], *, history_days: int = DEFAULT_DIGEST_HISTORY_DAYS) -> dict[str, Any]:
     latitude, longitude, timezone, label = resolve_region_location(region)
     forecast = fetch_forecast(latitude, longitude, timezone)
-    history = fetch_history(latitude, longitude, timezone, history_days=7)
+    history = fetch_history(latitude, longitude, timezone, history_days=history_days)
     return {
         "label": label,
         "query": region["query"],
@@ -322,49 +368,65 @@ def _build_region_brief(region: dict[str, str]) -> dict[str, Any]:
     }
 
 
-def build_brief_digest(set_name: str, *, base_url: str = "") -> str:
+def build_brief_digest(
+    set_name: str,
+    *,
+    base_url: str = "",
+    history_days: int | None = None,
+) -> str:
     regions = CANONICAL_REGION_SETS.get(set_name)
     if not regions:
         supported = ", ".join(sorted(CANONICAL_REGION_SETS))
         raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
+    resolved_history_days = resolve_digest_history_days(history_days)
 
     return reports.build_brief_digest(
         set_name,
         regions=regions,
         base_url=base_url,
+        history_days=resolved_history_days,
         digest_url=digest_url,
         full_digest_url=full_digest_url,
         canonical_region_set_urls=canonical_region_set_urls,
-        build_region_brief=_build_region_brief,
+        build_region_brief=lambda region: _build_region_brief(region, history_days=resolved_history_days),
     )
 
 
-def build_digest(set_name: str, *, base_url: str = "", mode: str = "brief") -> str:
+def build_digest(
+    set_name: str,
+    *,
+    base_url: str = "",
+    mode: str = "brief",
+    history_days: int | None = None,
+) -> str:
     regions = CANONICAL_REGION_SETS.get(set_name)
     if not regions:
         supported = ", ".join(sorted(CANONICAL_REGION_SETS))
         raise ValueError(f"Unknown digest set '{set_name}'. Supported sets: {supported}.")
+    resolved_history_days = resolve_digest_history_days(history_days)
 
     def aggregate_weather_for_region(region: dict[str, str]) -> dict[str, Any]:
         latitude, longitude, timezone, label = resolve_region_location(region)
-        return aggregate_weather(latitude, longitude, timezone, label, history_days=7)
+        return aggregate_weather(latitude, longitude, timezone, label, history_days=resolved_history_days)
 
     return reports.build_digest(
         set_name,
         regions=regions,
         base_url=base_url,
         mode=mode,
+        history_days=resolved_history_days,
         digest_url=digest_url,
         canonical_region_set_urls=canonical_region_set_urls,
         aggregate_weather_for_region=aggregate_weather_for_region,
-        build_brief_digest_fn=lambda requested_set_name, *, regions, base_url: reports.build_brief_digest(
+        build_brief_digest_fn=lambda requested_set_name, *, regions, base_url, history_days: reports.build_brief_digest(
             requested_set_name,
             regions=regions,
             base_url=base_url,
+            history_days=history_days,
             digest_url=digest_url,
             full_digest_url=full_digest_url,
             canonical_region_set_urls=canonical_region_set_urls,
-            build_region_brief=_build_region_brief,
+            build_region_brief=lambda region: _build_region_brief(region, history_days=history_days),
         ),
         build_report_fn=lambda payload, *, base_url, include_related: reports.build_report(
             payload,

@@ -24,9 +24,20 @@ class handler(BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         set_name = (params.get("set", ["cropdynamics"])[0] or "cropdynamics").strip().lower()
         mode = (params.get("mode", ["brief"])[0] or "brief").strip().lower()
+        history_days_value = params.get("history_days", [None])[0]
+        try:
+            history_days = int(history_days_value) if history_days_value else None
+        except ValueError:
+            send_error(self, HTTPStatus.BAD_REQUEST, "history_days must be a positive integer.", head_only=head_only)
+            return
 
         try:
-            digest_text = lib.build_digest(set_name, base_url=request_base_url(self), mode=mode)
+            digest_text = lib.build_digest(
+                set_name,
+                base_url=request_base_url(self),
+                mode=mode,
+                history_days=history_days,
+            )
             send_text(self, digest_text, head_only=head_only)
         except ValueError as exc:
             send_error(self, HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)

@@ -5,11 +5,12 @@ AceWeather exposes a plain-text weather report endpoint for any searched or save
 For agent workflows that need a standard regional bundle from one unlocked URL, use:
 
 - `https://aceweather.app/api/digest?set=cropdynamics`
+- `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
 
 That Crop Dynamics bundle is intentionally slim. It returns, for each region:
 
-- observed rainfall for the last 7 days
-- observed temperature highs and lows for the last 7 days
+- observed rainfall for the requested historical window, defaulting to the last 7 days
+- observed temperature highs and lows for the requested historical window
 - forecast rainfall for the next 7 days
 - forecast temperature highs and lows for the next 7 days
 
@@ -37,6 +38,7 @@ Current deployed site:
 - `https://aceweather.app/api/report?query=Pocklington`
 - `https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom`
 - `https://aceweather.app/api/digest?set=cropdynamics`
+- `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
 
 Local development:
 
@@ -57,6 +59,8 @@ Local development:
 
 This is the fixed LLM-friendly bundle endpoint. It is shorter than the full report flow and is meant to reduce timeouts.
 
+Add `history_days=<days>` to change how many historical days are pulled back from the current day. Historical observations end yesterday, so on 4 June 2026, `history_days=29` covers 6 May through 3 June.
+
 ## Related Endpoint
 
 If you need the JSON payload that powers the dashboard, use:
@@ -71,12 +75,11 @@ If you need a compact AppSheet-friendly JSON webhook response, use:
 
 The canonical Crop Dynamics regional URLs are:
 
-- `https://aceweather.app/api/report?query=Pocklington`
-- `https://aceweather.app/api/report?query=Boroughbridge`
-- `https://aceweather.app/api/report?query=Alford%2C%20Lincolnshire`
-- `https://aceweather.app/api/report?query=Sleaford`
 - `https://aceweather.app/api/report?query=Scotch%20Corner`
-- `https://aceweather.app/api/report?query=Longhirst`
+- `https://aceweather.app/api/report?query=Boroughbridge`
+- `https://aceweather.app/api/report?query=Pocklington`
+- `https://aceweather.app/api/report?query=Sleaford`
+- `https://aceweather.app/api/report?query=Longhirst%2C%20Northumberland%2C%20England`
 - `https://aceweather.app/api/report?query=Berwick-upon-Tweed`
 
 ## AppSheet Snapshot Endpoint

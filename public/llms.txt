@@ -8,20 +8,20 @@ Preferred endpoint for report text:
 
 Canonical regional digest:
 - GET https://aceweather.app/api/digest?set=cropdynamics
+- GET https://aceweather.app/api/digest?set=cropdynamics&history_days=<days>
 
 The Crop Dynamics digest is intentionally minimal:
-- observed rainfall for the last 7 days
-- observed temperature highs and lows for the last 7 days
+- observed rainfall for the requested historical window, defaulting to the last 7 days
+- observed temperature highs and lows for the requested historical window
 - forecast rainfall for the next 7 days
 - forecast temperature highs and lows for the next 7 days
 
 Crop Dynamics direct report URLs:
-- https://aceweather.app/api/report?query=Pocklington
-- https://aceweather.app/api/report?query=Boroughbridge
-- https://aceweather.app/api/report?query=Alford%2C%20Lincolnshire
-- https://aceweather.app/api/report?query=Sleaford
 - https://aceweather.app/api/report?query=Scotch%20Corner
-- https://aceweather.app/api/report?query=Longhirst
+- https://aceweather.app/api/report?query=Boroughbridge
+- https://aceweather.app/api/report?query=Pocklington
+- https://aceweather.app/api/report?query=Sleaford
+- https://aceweather.app/api/report?query=Longhirst%2C%20Northumberland%2C%20England
 - https://aceweather.app/api/report?query=Berwick-upon-Tweed
 
 Structured JSON endpoint:
@@ -45,6 +45,7 @@ Machine-readable API discovery:
 Examples:
 - https://aceweather.app/api/report?query=Pocklington
 - https://aceweather.app/api/digest?set=cropdynamics
+- https://aceweather.app/api/digest?set=cropdynamics&history_days=29
 - https://aceweather.app/api/snapshot?query=Pocklington
 - https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom
 
@@ -52,5 +53,5 @@ Notes:
 - /api/report returns text/plain.
 - /api/weather returns application/json.
 - /api/snapshot returns application/json and supports GET or POST.
-- /api/digest?set=cropdynamics returns the slim regional text bundle for LLM reading.
+- /api/digest?set=cropdynamics returns the slim regional text bundle for LLM reading. Add history_days=29 for the window from 6 May to 3 June when today is 4 June.
 - For the simplest workflow, fetch https://aceweather.app/api/digest?set=cropdynamics once or call https://aceweather.app/api/report directly with ?query=...
