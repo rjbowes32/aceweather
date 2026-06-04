@@ -78,6 +78,7 @@ The canonical Crop Dynamics regional URLs are:
 - `https://aceweather.app/api/report?query=Scotch%20Corner`
 - `https://aceweather.app/api/report?query=Boroughbridge`
 - `https://aceweather.app/api/report?query=Pocklington`
+- `https://aceweather.app/api/report?query=Alford%2C%20Lincolnshire`
 - `https://aceweather.app/api/report?query=Sleaford`
 - `https://aceweather.app/api/report?query=Longhirst%2C%20Northumberland%2C%20England`
 - `https://aceweather.app/api/report?query=Berwick-upon-Tweed`

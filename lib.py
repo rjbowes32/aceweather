@@ -42,6 +42,14 @@ CANONICAL_REGION_SETS: dict[str, list[dict[str, str]]] = {
             "label": "Pocklington, England, United Kingdom",
         },
         {
+            "slug": "alford-east-lindsey",
+            "query": "Alford, Lincolnshire",
+            "latitude": "53.2591409",
+            "longitude": "0.1777346",
+            "timezone": "Europe/London",
+            "label": "Alford / East Lindsey, England, United Kingdom",
+        },
+        {
             "slug": "sleaford",
             "query": "Sleaford",
             "latitude": "52.99826",

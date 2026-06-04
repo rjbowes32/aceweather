@@ -30,6 +30,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                     absolute("/api/report?query=Scotch%20Corner"),
                     absolute("/api/report?query=Boroughbridge"),
                     absolute("/api/report?query=Pocklington"),
+                    absolute("/api/report?query=Alford%2C%20Lincolnshire"),
                     absolute("/api/report?query=Sleaford"),
                     absolute("/api/report?query=Longhirst%2C%20Northumberland%2C%20England"),
                     absolute("/api/report?query=Berwick-upon-Tweed"),
