@@ -18,7 +18,7 @@ import { LunarChip } from "./lunar";
 import { NowFx } from "./now-fx";
 import { RainGauge } from "./rain-gauge";
 import { MobileLocationLists } from "./mobile-locations";
-import { fmt0, fmt1, requestBrowserLocation, searchMobileLocations } from "./helpers";
+import { fmt0, fmt1, requestBrowserLocation, reverseGeocodeLocation, searchMobileLocations } from "./helpers";
 import { WeatherIcon } from "./icons";
 import { MobileRainChart } from "./mobile-rain-chart";
 import { MobileWindDial } from "./mobile-wind-dial";
@@ -35,6 +35,11 @@ import { UpdateNotice } from "./update-notice";
 
 const MOBILE_PREFS_KEY = "aceweather.mobile.prefs.v1";
 const STALE_WEATHER_MS = 60 * 60 * 1000;
+const MOBILE_GPS_TIMEOUT_MS = 8000;
+const MOBILE_GPS_OPTIONS = {
+  reverseGeocode: false,
+  maximumAge: 15 * 60 * 1000,
+};
 
 function readMobilePrefs() {
   if (typeof window === "undefined") return { startupLocationMode: "gps" };
@@ -204,6 +209,18 @@ export const Mobile = () => {
   const weatherAlerts = buildWeatherAlerts(data, c, next24, next24p);
   const statusTone = isRefreshingLocation ? "loading" : isStale ? "stale" : weatherSource === "cached" ? "cached" : weatherSource === "live" ? "live" : "offline";
 
+  function refineLocationName(location) {
+    const targetId = awLocationId(location.lat, location.lon);
+    reverseGeocodeLocation(location, 1800)
+      .then((namedLocation) => {
+        if (namedLocation.name === "My location" && !namedLocation.region) return;
+        setMobileLocation((current) => (
+          awLocationId(current.lat, current.lon) === targetId ? namedLocation : current
+        ));
+      })
+      .catch(() => {});
+  }
+
   useEffect(() => {
     setHasMounted(true);
     setNowTick(Date.now());
@@ -274,19 +291,23 @@ export const Mobile = () => {
     startupLoadStartedRef.current = true;
     let cancelled = false;
     setIsRefreshingLocation(true);
-    withTimeout(requestBrowserLocation(), 12000, "Location timed out")
+    setLocationStatus("Detecting location");
+    withTimeout(requestBrowserLocation(MOBILE_GPS_TIMEOUT_MS, MOBILE_GPS_OPTIONS), MOBILE_GPS_TIMEOUT_MS + 1000, "Location timed out")
       .then(async (loc) => {
         if (cancelled) return;
-        setLocationStatus("Refreshing");
+        const fixAt = Date.now();
+        setMobileLocation(loc);
+        setLocationFixAt(fixAt);
+        setLocationStatus("GPS fix");
+        refineLocationName(loc);
         const id = awLocationId(loc.lat, loc.lon);
         try {
           const live = await awFetchLive(loc.lat, loc.lon, undefined, loc.tz);
           if (cancelled) return;
           setData(mergeOpenMeteo(AW_FALLBACK, live));
-          setMobileLocation(loc);
-          setLocationStatus(`Located ${loc.name}`);
+          setLocationStatus(loc.name === "Current location" ? "GPS fix loaded" : `Located ${loc.name}`);
           setWeatherFetchedAt(Date.now());
-          setLocationFixAt(Date.now());
+          setLocationFixAt(fixAt);
           setWeatherSource("live");
           awSetCachedPayload(id, "openmeteo", live).catch(() => {});
         } catch {
@@ -294,10 +315,9 @@ export const Mobile = () => {
           const cached = await awGetCachedPayload(id, "openmeteo");
           if (cached && cached.payload) {
             setData(mergeOpenMeteo(AW_FALLBACK, cached.payload));
-            setMobileLocation(loc);
             const ageMin = Math.round((Date.now() - cached.fetchedAt) / 60000);
             setWeatherFetchedAt(cached.fetchedAt);
-            setLocationFixAt(Date.now());
+            setLocationFixAt(fixAt);
             setWeatherSource("cached");
             setLocationStatus(`Offline copy | ${ageMin} min old`);
           } else {
@@ -353,9 +373,16 @@ export const Mobile = () => {
     setIsRefreshingLocation(true);
     setLocationStatus("Detecting location");
     try {
-      const loc = await withTimeout(requestBrowserLocation(), 12000, "Location timed out");
+      const loc = await withTimeout(
+        requestBrowserLocation(MOBILE_GPS_TIMEOUT_MS, { ...MOBILE_GPS_OPTIONS, maximumAge: 60 * 1000 }),
+        MOBILE_GPS_TIMEOUT_MS + 1000,
+        "Location timed out",
+      );
       setLocationFixAt(Date.now());
+      setMobileLocation(loc);
+      setLocationStatus("GPS fix");
       await loadLocation(loc, reason);
+      refineLocationName(loc);
       return true;
     } catch (err) {
       setLocationStatus(err && err.code === 1 ? "Location permission denied" : "Location unavailable");

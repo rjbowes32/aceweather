@@ -28,6 +28,9 @@ export const Desktop = () => {
   const [desktopLocation, setDesktopLocation] = useState(AW_LOCATION);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches) {
+      return;
+    }
     let cancelled = false;
     setLive("loading");
     requestBrowserLocation()

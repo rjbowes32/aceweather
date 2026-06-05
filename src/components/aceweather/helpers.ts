@@ -32,10 +32,12 @@ export async function searchMobileLocations(query) {
   return (payload.results || []).slice(0, 5).map(mobileLocationFromSearch);
 }
 
-async function reverseGeocode(lat, lon) {
+async function reverseGeocode(lat, lon, timeoutMs = 2500) {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? globalThis.setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await fetch(url, { cache: "no-store", signal: controller?.signal });
     if (!response.ok) throw new Error(`Reverse ${response.status}`);
     const payload = await response.json();
     return {
@@ -45,33 +47,58 @@ async function reverseGeocode(lat, lon) {
     };
   } catch {
     return { name: "My location", region: "", country: "" };
+  } finally {
+    if (timer) globalThis.clearTimeout(timer);
   }
 }
 
-export function requestBrowserLocation(timeoutMs = 10000) {
+function locationFromPosition(position, place = null) {
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  const tz = (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "auto";
+  return {
+    name: place?.name || "Current location",
+    region: place?.region || "GPS fix",
+    country: place?.country || "",
+    lat,
+    lon,
+    elev: position.coords.altitude ?? null,
+    tz,
+  };
+}
+
+export async function reverseGeocodeLocation(location, timeoutMs = 2500) {
+  const place = await reverseGeocode(location.lat, location.lon, timeoutMs);
+  return {
+    ...location,
+    name: place.name || location.name,
+    region: place.region || location.region,
+    country: place.country || location.country,
+  };
+}
+
+export function requestBrowserLocation(timeoutMs = 10000, options = {}) {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       reject(new Error("Geolocation unavailable"));
       return;
     }
+    const shouldReverseGeocode = options.reverseGeocode !== false;
+    const maximumAge = options.maximumAge ?? 5 * 60 * 1000;
+    const enableHighAccuracy = options.enableHighAccuracy ?? false;
+    const reverseTimeoutMs = options.reverseTimeoutMs ?? 2500;
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const place = await reverseGeocode(lat, lon);
-        const tz = (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "auto";
-        resolve({
-          name: place.name,
-          region: place.region,
-          country: place.country,
-          lat,
-          lon,
-          elev: position.coords.altitude ?? null,
-          tz,
-        });
+        const rawLocation = locationFromPosition(position);
+        if (!shouldReverseGeocode) {
+          resolve(rawLocation);
+          return;
+        }
+        const place = await reverseGeocode(rawLocation.lat, rawLocation.lon, reverseTimeoutMs);
+        resolve(locationFromPosition(position, place));
       },
       (err) => reject(err),
-      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 5 * 60 * 1000 }
+      { enableHighAccuracy, timeout: timeoutMs, maximumAge }
     );
   });
 }
