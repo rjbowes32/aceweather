@@ -18,7 +18,7 @@ import { LunarChip } from "./lunar";
 import { NowFx } from "./now-fx";
 import { RainGauge } from "./rain-gauge";
 import { MobileLocationLists } from "./mobile-locations";
-import { dirToCompass, fmt0, fmt1, requestBrowserLocation, searchMobileLocations } from "./helpers";
+import { fmt0, fmt1, requestBrowserLocation, searchMobileLocations } from "./helpers";
 import { WeatherIcon } from "./icons";
 import { MobileRainChart } from "./mobile-rain-chart";
 import { MobileWindDial } from "./mobile-wind-dial";
@@ -107,6 +107,27 @@ function withTimeout(promise, timeoutMs, message = "Request timed out") {
   ]).finally(() => window.clearTimeout(timer));
 }
 
+const SearchGlyph = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="11" cy="11" r="6" />
+    <path d="M16 16l4 4" />
+  </svg>
+);
+
+const GpsGlyph = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+  </svg>
+);
+
+const MenuGlyph = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </svg>
+);
+
 export const Mobile = () => {
   const [data, setData] = useState(AW_FALLBACK);
   const [mobileLocation, setMobileLocation] = useState(AW_LOCATION);
@@ -124,6 +145,7 @@ export const Mobile = () => {
   const [nowTick, setNowTick] = useState(null);
   const [expandedDayIdx, setExpandedDayIdx] = useState(null);
   const [hasMounted, setHasMounted] = useState(false);
+  const [savedMenuOpen, setSavedMenuOpen] = useState(false);
   const startupLoadStartedRef = useRef(false);
   const c = data.current;
   const tHi = Math.max(...data.hourly.temperature_2m.slice(24, 48));
@@ -385,6 +407,38 @@ export const Mobile = () => {
     <div className="aw2 aw2-mobile" data-screen-label="02 Mobile PWA">
       <InstallPrompt />
       <header className="aw2-m-head">
+        <form className="aw2-m-location-search" onSubmit={submitLocationSearch}>
+          <div className="aw2-m-search-field">
+            <button type="submit" aria-label="Search">
+              <SearchGlyph />
+            </button>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search location"
+              aria-label="Search location"
+            />
+          </div>
+          <button
+            className={`aw2-m-icon-button${isRefreshingLocation ? " is-loading" : ""}`}
+            type="button"
+            onClick={() => refreshCurrentLocation("Updated")}
+            aria-label="Use current location"
+            disabled={isRefreshingLocation}
+          >
+            <GpsGlyph />
+          </button>
+          <button
+            className="aw2-m-icon-button"
+            type="button"
+            onClick={() => setSavedMenuOpen((open) => !open)}
+            aria-label="Saved places"
+            aria-controls="aw2-m-saved-menu"
+            aria-expanded={savedMenuOpen}
+          >
+            <MenuGlyph />
+          </button>
+        </form>
         <div className="row">
           <div className="mark">AceWeather</div>
           <div className="aw2-m-head-right">
@@ -404,23 +458,6 @@ export const Mobile = () => {
           <b>{!hasMounted ? "--" : isStale ? "Stale" : "Fresh"}</b>
         </div>
         <ReportAction status={reportStatus} onShare={() => shareWeatherReport(setReportStatus, mobileLocation)} compact />
-        <form className="aw2-m-location-search" onSubmit={submitLocationSearch}>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search location"
-            aria-label="Search location"
-          />
-          <button type="submit">Search</button>
-          <button className={isRefreshingLocation ? "is-loading" : ""} type="button" onClick={() => refreshCurrentLocation("Updated")} aria-label="Refresh current location" disabled={isRefreshingLocation}>
-            {isRefreshingLocation ? "Fixing" : "Refresh"}
-          </button>
-          <button type="button" onClick={() => saveMobileLocation()}>Save</button>
-        </form>
-        <div className="aw2-m-startup-mode" role="group" aria-label="Startup location mode">
-          <button type="button" aria-pressed={mobilePrefs.startupLocationMode === "gps"} onClick={() => setMobilePrefs({ startupLocationMode: "gps" })}>GPS launch</button>
-          <button type="button" aria-pressed={mobilePrefs.startupLocationMode === "saved"} onClick={() => setMobilePrefs({ startupLocationMode: "saved" })}>Saved launch</button>
-        </div>
         <div className="aw2-m-location-status" role="status" aria-live="polite">{locationStatus}</div>
         {gpsFallbackAvailable && savedLocations[0] ? (
           <button className="aw2-m-fallback" type="button" onClick={() => loadLocation(savedLocations[0], "Loaded")}>
@@ -429,16 +466,34 @@ export const Mobile = () => {
         ) : null}
         <MobileLocationLists
           suggestions={suggestions}
-          savedLocations={savedLocations}
+          savedLocations={[]}
           onPick={loadLocation}
           onRemove={removeMobileLocation}
         />
-        <div className="aw2-m-quick-actions">
-          <button type="button" onClick={() => shareWeatherReport(setReportStatus, mobileLocation)}>Copy report</button>
-          <button type="button" onClick={() => saveMobileLocation()}>Save</button>
-          <button type="button" onClick={() => refreshCurrentLocation("Updated")} disabled={isRefreshingLocation}>GPS</button>
-          {savedLocations[0] ? <button type="button" onClick={() => loadLocation(savedLocations[0], "Loaded")}>Saved</button> : null}
-        </div>
+        {savedMenuOpen ? (
+          <div className="aw2-m-saved-menu" id="aw2-m-saved-menu">
+            <div className="aw2-m-menu-actions">
+              <button type="button" onClick={() => saveMobileLocation()}>Save current place</button>
+            </div>
+            <div className="aw2-m-startup-mode" role="group" aria-label="Startup location mode">
+              <button type="button" aria-pressed={mobilePrefs.startupLocationMode === "gps"} onClick={() => setMobilePrefs({ startupLocationMode: "gps" })}>GPS launch</button>
+              <button type="button" aria-pressed={mobilePrefs.startupLocationMode === "saved"} onClick={() => setMobilePrefs({ startupLocationMode: "saved" })}>Saved launch</button>
+            </div>
+            {savedLocations.length ? (
+              <div className="aw2-m-saved-locations" aria-label="Saved places">
+                {savedLocations.map((location) => (
+                  <button key={`${location.lat}-${location.lon}`} type="button" onClick={() => { setSavedMenuOpen(false); loadLocation(location); }}>
+                    <WeatherIcon code={data.current.weather_code} />
+                    <span>{location.name}</span>
+                    <small>{location.region || `${location.lat.toFixed(2)}, ${location.lon.toFixed(2)}`}</small>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="aw2-m-saved-empty">No saved places</div>
+            )}
+          </div>
+        ) : null}
       </header>
 
       <section className={`aw2-m-now ${condition.key} ${dayState} ${statusTone}`}>

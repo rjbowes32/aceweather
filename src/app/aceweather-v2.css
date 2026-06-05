@@ -23,6 +23,8 @@
   --hazard:       #b91c1c;
   --sun:          #d97706;
 
+  --radius-sm:    6px;
+
   --font-serif:   var(--font-newsreader), "Newsreader", "Source Serif Pro", Georgia, serif;
   --font-sans:    var(--font-ibm-plex-sans), "IBM Plex Sans", -apple-system, system-ui, sans-serif;
   --font-mono:    var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
@@ -667,54 +669,84 @@
 }
 .aw2-m-location-search {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 6px;
-  margin-top: 6px;
+  grid-template-columns: minmax(0, 1fr) 42px 42px;
+  gap: 8px;
+  align-items: stretch;
 }
-.aw2-m-location-search input {
+.aw2-m-search-field {
   min-width: 0;
-  border: 1px solid var(--rule);
-  padding: 5px 8px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--paper-3);
+  overflow: hidden;
+}
+.aw2-m-search-field input {
+  min-width: 0;
+  border: 0;
+  padding: 10px 8px 10px 0;
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.04em;
-  background: var(--paper);
+  background: transparent;
   color: var(--ink);
   outline: none;
 }
-.aw2-m-location-search button {
-  border: 1px solid var(--rule);
-  padding: 5px 7px;
+.aw2-m-search-field button,
+.aw2-m-icon-button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--ink);
-  background: var(--paper-2);
-  white-space: nowrap;
+  background: var(--paper-3);
 }
-.aw2-m-location-search button[type="submit"] {
+.aw2-m-search-field button {
+  min-height: 100%;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.aw2-m-search-field svg,
+.aw2-m-icon-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.aw2-m-icon-button[aria-expanded="true"] {
   background: var(--ink);
-  border-color: var(--ink);
   color: var(--paper);
 }
 .aw2-m-location-search button:disabled,
-.aw2-m-quick-actions button:disabled {
+.aw2-m-icon-button:disabled {
   opacity: 0.55;
 }
-.aw2-m-location-search button.is-loading {
+.aw2-m-icon-button.is-loading {
   position: relative;
-  padding-left: 18px;
+  color: transparent;
 }
-.aw2-m-location-search button.is-loading::before {
+.aw2-m-icon-button.is-loading::before {
   content: "";
   position: absolute;
-  left: 6px;
   top: 50%;
+  left: 50%;
   width: 8px;
   height: 8px;
-  margin-top: -5px;
+  margin: -5px 0 0 -5px;
   border: 1px solid currentColor;
+  border-color: var(--ink);
   border-right-color: transparent;
   border-radius: 50%;
   animation: aw2-spin 820ms linear infinite;
@@ -726,10 +758,10 @@
   margin-top: 6px;
 }
 .aw2-m-startup-mode button,
-.aw2-m-fallback,
-.aw2-m-quick-actions button {
-  border: 1px solid var(--rule);
-  background: var(--paper);
+.aw2-m-fallback {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--paper-3);
   color: var(--ink);
   font-family: var(--font-mono);
   font-size: 9px;
@@ -738,11 +770,10 @@
   white-space: nowrap;
 }
 .aw2-m-startup-mode button {
-  padding: 5px 7px;
+  padding: 8px 9px;
   color: var(--muted);
 }
 .aw2-m-startup-mode button[aria-pressed="true"] {
-  border-color: var(--ink);
   color: var(--paper);
   background: var(--ink);
 }
@@ -760,15 +791,76 @@
   padding: 6px 8px;
   background: color-mix(in srgb, var(--sun) 22%, var(--paper) 78%);
 }
-.aw2-m-quick-actions {
+.aw2-m-saved-menu {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-3);
 }
-.aw2-m-quick-actions button {
-  min-width: 0;
-  padding: 5px 4px;
+.aw2-m-menu-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.aw2-m-menu-actions button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+.aw2-m-saved-locations {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.aw2-m-saved-locations button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 8px 9px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--paper);
+  text-align: left;
+}
+.aw2-m-saved-locations button .aw2-weather-icon {
+  grid-row: 1 / 3;
+}
+.aw2-m-saved-locations button span {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aw2-m-saved-locations button small {
+  font-size: 8px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aw2-m-saved-empty {
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--paper);
+  border-radius: var(--radius-sm);
 }
 .aw2-m-location-suggestions {
   display: flex;
