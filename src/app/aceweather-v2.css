@@ -1,32 +1,32 @@
-/* AceWeather v2 — Met-Office Report aesthetic
-   Light cream paper · ink · rust + teal · Newsreader serif + IBM Plex
+/* AceWeather v2 - minimal weather workspace
+   White paper, black ink, measured weather color accents, Jakarta Sans
    Built around horizontal meteogram time-tracks. */
 
 :root {
-  --paper:        #f5f1e8;
-  --paper-2:      #ede8db;
-  --paper-3:      #e3ddcc;
-  --ink:          #14140f;
-  --ink-2:        #2a2924;
-  --ink-3:        #4a463e;
-  --muted:        #756e62;
-  --muted-2:      #a09784;
-  --rule:         rgba(20,20,15,0.18);
-  --rule-faint:   rgba(20,20,15,0.08);
-  --rule-soft:    rgba(20,20,15,0.04);
+  --paper:        #ffffff;
+  --paper-2:      #fafafa;
+  --paper-3:      #f4f4f5;
+  --ink:          #09090b;
+  --ink-2:        #27272a;
+  --ink-3:        #52525b;
+  --muted:        #71717a;
+  --muted-2:      #a1a1aa;
+  --rule:         rgba(9, 9, 11, 0.10);
+  --rule-faint:   rgba(9, 9, 11, 0.06);
+  --rule-soft:    #f4f4f5;
 
-  --rust:         #c2410c;
-  --rust-2:       #9a3210;
-  --teal:         #155e75;
-  --teal-2:       #0e4a5c;
-  --frost:        #1e4ea6;
-  --hazard:       #b91c1c;
-  --sun:          #d97706;
+  --rust:         #ea580c;
+  --rust-2:       #c2410c;
+  --teal:         #2563eb;
+  --teal-2:       #1d4ed8;
+  --frost:        #0284c7;
+  --hazard:       #dc2626;
+  --sun:          #f59e0b;
 
   --radius-sm:    6px;
 
-  --font-serif:   var(--font-newsreader), "Newsreader", "Source Serif Pro", Georgia, serif;
-  --font-sans:    var(--font-ibm-plex-sans), "IBM Plex Sans", -apple-system, system-ui, sans-serif;
+  --font-serif:   var(--font-jakarta), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans:    var(--font-jakarta), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono:    var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
 }
 
