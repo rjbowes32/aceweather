@@ -12,6 +12,10 @@ const DATA_CACHE = "aw-data-v1";
 const APP_SHELL = [
   "/",
   "/offline.html",
+  "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/icon-maskable-512.png",
   "/icons/aceweather-icon.svg",
   "/icons/aceweather-icon-maskable.svg",
   "/icons/aceweather-icon-mono.svg",
@@ -170,9 +174,85 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "aw-skip-waiting") {
+  if (event.data && (event.data.type === "aw-skip-waiting" || event.data.type === "SKIP_WAITING")) {
     self.skipWaiting();
   }
+});
+
+async function checkRain() {
+  const cache = await caches.open("awx-runtime");
+  const locRes = await cache.match("/__awx_location");
+  if (!locRes) return;
+  const loc = await locRes.json();
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + loc.lat + "&longitude=" + loc.lon
+    + "&timezone=" + encodeURIComponent(loc.tz || "auto") + "&forecast_days=2"
+    + "&current=temperature_2m,precipitation&hourly=precipitation,precipitation_probability";
+  const response = await fetch(url);
+  if (!response.ok) return;
+  const data = await response.json();
+  const times = data.hourly?.time || [];
+  const precipitation = data.hourly?.precipitation || [];
+  const probability = data.hourly?.precipitation_probability || [];
+  const nowTime = data.current?.time || times[0];
+  let nowIndex = times.findIndex((time) => time > nowTime);
+  nowIndex = nowIndex === -1 ? times.length - 1 : Math.max(0, nowIndex - 1);
+  let hit = null;
+  for (let i = nowIndex; i < Math.min(times.length, nowIndex + 6); i += 1) {
+    if ((precipitation[i] || 0) >= 0.5) {
+      let mm = 0;
+      let cursor = i;
+      while (cursor < times.length && (precipitation[cursor] || 0) > 0) {
+        mm += precipitation[cursor];
+        cursor += 1;
+      }
+      hit = {
+        atKey: times[i].slice(0, 13),
+        atLabel: times[i].slice(11, 16),
+        mm: Math.round(mm * 10) / 10,
+        prob: probability[i] ?? null,
+        inHours: i - nowIndex,
+      };
+      break;
+    }
+  }
+  if (!hit) return;
+  const key = loc.name + "|" + hit.atKey;
+  const notRes = await cache.match("/__awx_rain_notified");
+  if (notRes && (await notRes.text()) === key) return;
+  await self.registration.showNotification("Rain expected - " + loc.name, {
+    body: hit.mm + " mm around " + hit.atLabel + (hit.prob != null ? " (" + hit.prob + "% chance)" : "") + ", in ~" + hit.inHours + "h.",
+    tag: "awx-rain",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+  });
+  await cache.put("/__awx_rain_notified", new Response(key));
+}
+
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag === "awx-rain-check") event.waitUntil(checkRain());
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try { payload = event.data?.json() || {}; } catch { payload = {}; }
+  event.waitUntil(self.registration.showNotification(payload.title || "AceWeather", {
+    body: payload.body || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: payload.tag || "awx",
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of all) {
+      if ("focus" in client) return client.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow("/");
+    return undefined;
+  })());
 });
 `;
 

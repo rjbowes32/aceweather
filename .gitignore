@@ -30,3 +30,10 @@ Thumbs.db
 *.swo
 
 .vercel
+
+# Build artifacts
+*.tsbuildinfo
+.next-dev.log
+
+# Claude Code (local worktrees, plans, settings)
+.claude/

@@ -7,6 +7,12 @@ import { migrateFromLocalStorage } from "@/lib/store";
 const PWA_UPDATE_CHECK_MS = 60 * 60 * 1000;
 const SKIP_WAITING_MESSAGE = { type: "aw-skip-waiting" };
 
+function activateWaitingWorker(worker?: ServiceWorker | null) {
+  if (!worker) return;
+  window.dispatchEvent(new Event("aceweather:pwa-update-ready"));
+  worker.postMessage(SKIP_WAITING_MESSAGE);
+}
+
 export function PwaBootstrap() {
   useEffect(() => {
     migrateFromLocalStorage().catch(() => {});
@@ -52,14 +58,14 @@ export function PwaBootstrap() {
         .register("/service-worker.js", { scope: "/", updateViaCache: "none" })
         .then((registration) => {
           if (registration.waiting) {
-            registration.waiting.postMessage(SKIP_WAITING_MESSAGE);
+            activateWaitingWorker(registration.waiting);
           }
           registration.addEventListener("updatefound", () => {
             const installing = registration.installing;
             if (!installing) return;
             installing.addEventListener("statechange", () => {
               if (installing.state === "installed" && navigator.serviceWorker.controller) {
-                installing.postMessage(SKIP_WAITING_MESSAGE);
+                activateWaitingWorker(installing);
               }
             });
           });
@@ -70,6 +76,7 @@ export function PwaBootstrap() {
           console.warn("AceWeather service worker registration failed", error);
         });
     };
+
     if (document.readyState === "complete") {
       register();
     } else {

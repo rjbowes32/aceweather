@@ -8,11 +8,12 @@ import urllib.parse
 from datetime import date
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
 import periods
-from helpers import send_error, send_text
+from helpers import send_error, send_json, send_text
 
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
@@ -31,6 +32,51 @@ def _build_request_query_string(params: dict[str, list[str]]) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
+    def _parse_observations(self, params: dict[str, list[str]]) -> dict[str, Any] | None:
+        def parse_float(name: str) -> float | None:
+            raw_value = params.get(name, [None])[0]
+            if raw_value in (None, ""):
+                return None
+            try:
+                return float(raw_value)
+            except ValueError as exc:
+                raise ValueError(f"{name} must be numeric.") from exc
+
+        source_type = params.get("obs_source_type", [None])[0]
+        source_name = params.get("obs_source_name", [None])[0]
+        observed_at = params.get("obs_observed_at", [None])[0]
+        rain_24h_mm = parse_float("obs_rain_24h_mm")
+        rain_7d_mm = parse_float("obs_rain_7d_mm")
+        wind_kph = parse_float("obs_wind_kph")
+        gust_kph = parse_float("obs_gust_kph")
+        soil_moisture_surface = parse_float("obs_soil_moisture_surface")
+
+        if all(
+            value is None
+            for value in [
+                source_type,
+                source_name,
+                observed_at,
+                rain_24h_mm,
+                rain_7d_mm,
+                wind_kph,
+                gust_kph,
+                soil_moisture_surface,
+            ]
+        ):
+            return None
+
+        return lib.normalize_observations(
+            source_type=source_type or "manual",
+            source_name=source_name,
+            observed_at=observed_at,
+            rain_24h_mm=rain_24h_mm,
+            rain_7d_mm=rain_7d_mm,
+            wind_kph=wind_kph,
+            gust_kph=gust_kph,
+            soil_moisture_surface=soil_moisture_surface,
+        )
+
     def _handle(self, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         location_query = params.get("query", [None])[0]
@@ -101,11 +147,16 @@ class handler(BaseHTTPRequestHandler):
                     return
                 label = params.get("label", [None])[0]
 
+            observations_payload = self._parse_observations(params)
             payload = lib.aggregate_weather(
-                latitude, longitude, timezone, label,
+                latitude,
+                longitude,
+                timezone,
+                label,
                 history_days=history_days,
                 history_start=history_start,
                 history_end=history_end,
+                observations_payload=observations_payload,
             )
 
             if format_value == "csv":
@@ -113,7 +164,6 @@ class handler(BaseHTTPRequestHandler):
                 send_text(self, csv_body, head_only=head_only, content_type="text/csv; charset=utf-8")
                 return
             if format_value == "json":
-                from helpers import send_json
                 send_json(self, payload, head_only=head_only)
                 return
 

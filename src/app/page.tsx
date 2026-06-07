@@ -1,5 +1,5 @@
-import { AceWeatherV2Synoptic } from "@/components/aceweather-v2-synoptic";
+import { AceWeatherApp } from "@/components/aceweather-x/app";
 
 export default function HomePage() {
-  return <AceWeatherV2Synoptic />;
+  return <AceWeatherApp />;
 }
