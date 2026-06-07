@@ -38,7 +38,7 @@ FORECAST_HOURLY = [
     "weather_code", "pressure_msl", "surface_pressure", "cloud_cover", "cloud_cover_low",
     "cloud_cover_mid", "cloud_cover_high", "visibility", "evapotranspiration",
     "et0_fao_evapotranspiration", "vapour_pressure_deficit", "wind_speed_10m",
-    "wind_direction_10m", "wind_gusts_10m", "soil_temperature_0cm", "soil_moisture_0_to_1cm",
+    "wind_direction_10m", "wind_gusts_10m", "soil_temperature_0cm", "soil_temperature_6cm", "soil_moisture_0_to_1cm",
     "uv_index", "uv_index_clear_sky", "sunshine_duration",
 ]
 

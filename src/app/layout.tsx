@@ -1,27 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
 
-import "./globals.css";
-import "./aceweather-v2.css";
-import "./radar.css";
-import "./chips.css";
-import "./onthisday.css";
-import "./models.css";
-import "./tropical.css";
-import "./pwa.css";
+import "./aceweather-x.css";
+import "./aceweather-x-cards.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["200", "300", "400", "500", "600", "700"],
 });
 
 export const viewport: Viewport = {
@@ -31,18 +19,19 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0b0d" },
   ],
 };
 
 export const metadata: Metadata = {
-  title: "AceWeather",
-  description: "Synoptic weather and farm intelligence — installable PWA.",
+  title: "AceWeather - Field weather console",
+  description:
+    "Calm, premium field-weather intelligence: rainfall, radar, temperatures, 14-day outlook, agronomy and seasonal context. Powered by Open-Meteo.",
   applicationName: "AceWeather",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "AceWeather",
   },
   formatDetection: { telephone: false },
@@ -51,13 +40,10 @@ export const metadata: Metadata = {
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
       { url: "/icons/aceweather-icon.svg", type: "image/svg+xml" },
+      { url: "/icons/aceweather-icon-maskable.svg", type: "image/svg+xml" },
     ],
-    apple: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    other: [
-      { rel: "mask-icon", url: "/icons/aceweather-icon-mono.svg", color: "#09090b" },
-    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    other: [{ rel: "mask-icon", url: "/icons/aceweather-icon-mono.svg", color: "#0a0b0d" }],
   },
 };
 
@@ -67,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} ${ibmPlexMono.variable}`}>
+    <html lang="en" data-awx="1" data-theme="dark" className={inter.variable}>
       <head>
         <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
       </head>

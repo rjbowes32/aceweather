@@ -1,0 +1,247 @@
+/* ======================================================================
+   AceWeather — X-design cards & charts. See DESIGN.md.
+   ====================================================================== */
+.awx-card { border-bottom: 1px solid var(--awx-line); padding: 22px; display: grid; gap: 16px; }
+.awx-card.is-hidden { display: none; }
+.awx-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.awx-card-head .awx-title { display: grid; gap: 4px; min-width: 0; }
+.awx-card-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.awx-card-head .awx-meta { font-size: 12.5px; color: var(--awx-faint); }
+.awx-card-head .awx-meta b { color: var(--awx-text); font-weight: 600; }
+.awx-tick { width: 8px; height: 8px; border-radius: 3px; background: var(--awx-accent); margin-top: 5px; flex: 0 0 auto; }
+.awx-tick-sun { background: var(--awx-sun); } .awx-tick-rain { background: var(--awx-accent); }
+.awx-tick-go { background: var(--awx-go); } .awx-tick-cool { background: var(--awx-cool); }
+.awx-tick-violet { background: var(--awx-violet); } .awx-tick-risk { background: var(--awx-risk); }
+
+/* ---- NOW / HERO ---- */
+.awx-now { display: grid; grid-template-columns: minmax(0, 1fr) 192px; gap: 26px; align-items: stretch; }
+.awx-now-read { display: flex; align-items: flex-start; gap: 8px; }
+.awx-now-read .awx-val { font-size: clamp(74px, 10vw, 112px); font-weight: 200; letter-spacing: -0.045em; line-height: 0.82; }
+.awx-now-read .awx-deg { margin-top: 8px; font-size: 26px; font-weight: 300; color: var(--awx-muted); }
+.awx-now-cond { margin: 14px 0 0; font-size: 15px; color: var(--awx-text); }
+.awx-now-sub { margin-top: 4px; font-size: 13.5px; color: var(--awx-muted); }
+.awx-now-sub b { color: var(--awx-text); font-weight: 600; }
+.awx-now-summary { margin: 14px 0 0; max-width: 38rem; color: var(--awx-muted); font-size: 14px; line-height: 1.55; }
+
+.awx-sky {
+  position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--awx-line);
+  background: linear-gradient(176deg, var(--awx-sky-1), var(--awx-sky-2)); min-height: 158px;
+}
+.awx-sky .awx-orb {
+  position: absolute; right: 26%; top: 26%; width: 86px; height: 86px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #f3d79a, var(--awx-sun));
+  box-shadow: 0 0 60px 18px var(--awx-glow);
+}
+.awx-sky.is-cloud .awx-orb { opacity: 0.55; filter: blur(1px); }
+.awx-sky.is-night { background: linear-gradient(176deg, #11151c, #06080c); }
+.awx-sky.is-night .awx-orb { background: radial-gradient(circle at 50% 45%, #e8edf5, #aeb8c6); box-shadow: 0 0 40px 10px rgba(174,184,198,0.35); }
+.awx-sky .awx-horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--awx-sky-2) 70%, #000 30%)); }
+.awx-sky .awx-sky-label { position: absolute; left: 14px; bottom: 12px; font-size: 11.5px; color: rgba(255,255,255,0.78); }
+[data-theme="light"] .awx-sky .awx-sky-label { color: rgba(20,23,28,0.66); }
+
+/* ---- METRICS ---- */
+.awx-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-metric { background: var(--awx-surface); padding: 13px 14px; display: grid; gap: 6px; }
+.awx-metric .awx-k { font-size: 11.5px; color: var(--awx-faint); }
+.awx-metric .awx-v { font-size: 19px; font-weight: 500; letter-spacing: -0.01em; }
+.awx-metric .awx-v small { font-size: 12px; color: var(--awx-muted); font-weight: 400; margin-left: 3px; }
+.awx-v-warn { color: var(--awx-warn); } .awx-v-risk { color: var(--awx-risk); } .awx-v-go { color: var(--awx-go); }
+
+/* ---- TAGS ---- */
+.awx-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.awx-tag {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 27px; padding: 0 11px;
+  border-radius: var(--awx-pill); border: 1px solid var(--awx-line-2); color: var(--awx-muted);
+  font-size: 12px; font-weight: 500;
+}
+.awx-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--awx-tone, var(--awx-muted)); }
+.awx-t-go { --awx-tone: var(--awx-go); } .awx-t-warn { --awx-tone: var(--awx-warn); } .awx-t-rain { --awx-tone: var(--awx-accent); }
+.awx-t-risk { --awx-tone: var(--awx-risk); } .awx-t-cool { --awx-tone: var(--awx-cool); } .awx-t-sun { --awx-tone: var(--awx-sun); } .awx-t-violet { --awx-tone: var(--awx-violet); }
+
+/* ---- DISCLOSURE ---- */
+.awx-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.awx-disclosure { display: inline-flex; align-items: center; gap: 6px; color: var(--awx-muted); font-size: 13px; font-weight: 500; padding: 4px 0; }
+.awx-disclosure:hover { color: var(--awx-text); }
+.awx-disclosure svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 180ms ease; }
+.awx-card.is-open .awx-disclosure svg { transform: rotate(180deg); }
+.awx-card-foot .awx-note { font-size: 12.5px; color: var(--awx-faint); }
+.awx-detail { display: none; color: var(--awx-muted); font-size: 13.5px; line-height: 1.55; padding: 14px; border-radius: var(--awx-radius-sm); background: var(--awx-surface-2); }
+.awx-card.is-open .awx-detail { display: block; }
+.awx-detail-grid { display: grid; gap: 10px; }
+
+/* ---- CHART CARD / BARS / LINE ---- */
+.awx-chart-card { border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--awx-line); }
+.awx-chart-head .awx-cap { font-size: 12.5px; color: var(--awx-muted); }
+.awx-range { display: flex; gap: 2px; padding: 3px; border-radius: var(--awx-pill); background: var(--awx-surface-2); }
+.awx-range button { min-height: 26px; padding: 0 11px; border-radius: var(--awx-pill); color: var(--awx-faint); font-size: 11.5px; font-weight: 600; }
+.awx-range button[aria-pressed="true"] { background: var(--awx-surface); color: var(--awx-text); box-shadow: var(--awx-shadow); }
+
+.awx-bars { height: 148px; display: grid; align-items: end; gap: 6px; padding: 18px 14px 26px; }
+.awx-bar { position: relative; min-height: 2px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, var(--awx-accent), color-mix(in srgb, var(--awx-accent) 38%, transparent)); }
+.awx-bar.is-dry { background: var(--awx-surface-3); }
+.awx-bar::after { content: attr(data-label); position: absolute; left: 50%; bottom: -19px; transform: translateX(-50%); color: var(--awx-faint); font-size: 10px; white-space: nowrap; }
+.awx-bar.is-now::before { content: ""; position: absolute; inset: -2px -1px 0; border: 1px solid var(--awx-accent-line); border-radius: 5px 5px 0 0; }
+
+.awx-line { width: 100%; height: auto; display: block; }
+.awx-line .awx-grid { stroke: var(--awx-line); stroke-width: 1; }
+.awx-line .awx-area { fill: color-mix(in srgb, var(--awx-sun) 14%, transparent); stroke: none; }
+.awx-line .awx-temp { stroke: var(--awx-sun); fill: none; stroke-width: 2.4; }
+.awx-line .awx-rain { stroke: var(--awx-accent); fill: none; stroke-width: 2; stroke-dasharray: 1 6; stroke-linecap: round; }
+.awx-line .awx-press { stroke: var(--awx-violet); fill: none; stroke-width: 2; opacity: 0.8; }
+.awx-line .awx-now-line { stroke: var(--awx-accent-line); stroke-width: 1; stroke-dasharray: 3 3; }
+.awx-line text { fill: var(--awx-faint); font-size: 10px; }
+
+/* ---- DECISION METERS ---- */
+.awx-decisions { display: grid; gap: 2px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-decision { background: var(--awx-surface); padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 14px; align-items: center; }
+.awx-decision .awx-d-title { font-size: 14px; font-weight: 500; }
+.awx-decision .awx-d-sub { font-size: 12.5px; color: var(--awx-faint); margin-top: 3px; }
+.awx-meter-wrap { display: grid; gap: 6px; justify-items: end; }
+.awx-meter { width: 120px; height: 5px; border-radius: var(--awx-pill); background: var(--awx-surface-3); overflow: hidden; }
+.awx-meter i { display: block; height: 100%; width: var(--awx-v); border-radius: var(--awx-pill); background: var(--awx-tone, var(--awx-accent)); }
+.awx-meter-val { font-size: 11.5px; color: var(--awx-muted); }
+.awx-m-go { --awx-tone: var(--awx-go); } .awx-m-warn { --awx-tone: var(--awx-warn); } .awx-m-risk { --awx-tone: var(--awx-risk); }
+
+/* ---- 14-DAY CALENDAR GRID ---- */
+.awx-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-cal-dow { background: var(--awx-surface); padding: 7px 8px; text-align: center; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--awx-faint); }
+.awx-cal-day { background: var(--awx-surface); display: grid; gap: 6px; padding: 9px 8px 10px; text-align: left; align-content: start; min-height: 96px; transition: background 140ms ease; }
+.awx-cal-day:hover { background: var(--awx-surface-2); }
+.awx-cal-day[aria-pressed="true"] { background: var(--awx-accent-weak); }
+.awx-cal-day.is-empty { background: color-mix(in srgb, var(--awx-surface) 50%, transparent); pointer-events: none; }
+.awx-cal-day .awx-date { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--awx-faint); }
+.awx-cal-day.is-today .awx-date b { color: var(--awx-accent); }
+.awx-cal-day .awx-date b { font-weight: 700; color: var(--awx-text); }
+.awx-cal-day .awx-cal-icon { width: 16px; height: 16px; stroke: var(--awx-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.awx-cal-temps { font-size: 14px; font-weight: 500; }
+.awx-cal-temps .awx-lo { color: var(--awx-muted); font-weight: 400; }
+.awx-cal-rain { font-size: 11.5px; color: var(--awx-accent); font-weight: 500; }
+.awx-cal-rain.is-dry { color: var(--awx-faint); }
+.awx-cal-rainbar { height: 3px; border-radius: var(--awx-pill); background: var(--awx-surface-3); overflow: hidden; }
+.awx-cal-rainbar i { display: block; height: 100%; width: var(--awx-v); background: var(--awx-accent); border-radius: var(--awx-pill); }
+
+/* ---- STATUS ROWS / SOIL ---- */
+.awx-rows { display: grid; gap: 1px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-row-item { background: var(--awx-surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; font-size: 13.5px; }
+.awx-row-item .awx-k { color: var(--awx-muted); }
+.awx-row-item .awx-v { font-weight: 500; }
+.awx-soil-row { background: var(--awx-surface); display: grid; grid-template-columns: 74px 1fr 52px; gap: 12px; align-items: center; padding: 11px 14px; }
+.awx-soil-row .awx-depth { font-size: 13px; font-weight: 500; }
+.awx-soil-row .awx-depth small { display: block; color: var(--awx-faint); font-size: 11px; font-weight: 400; }
+.awx-soil-row .awx-soil-meter { height: 5px; border-radius: var(--awx-pill); background: var(--awx-surface-3); overflow: hidden; }
+.awx-soil-row .awx-soil-meter i { display: block; height: 100%; width: var(--awx-v); background: var(--awx-cool); border-radius: var(--awx-pill); }
+.awx-soil-row .awx-soil-fig { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.awx-soil-row .awx-soil-fig small { color: var(--awx-faint); }
+
+/* ---- SEASONAL ---- */
+.awx-season-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-season-stats > div { background: var(--awx-surface); padding: 13px 14px; display: grid; gap: 5px; }
+.awx-season-stats .awx-k { font-size: 11px; color: var(--awx-faint); }
+.awx-season-stats .awx-v { font-size: 20px; font-weight: 400; letter-spacing: -0.02em; }
+.awx-season-stats .awx-v.warm { color: var(--awx-sun); } .awx-season-stats .awx-v.cool { color: var(--awx-cool); }
+
+/* ---- RADAR (RainViewer / maplibre) ---- */
+.awx-radar { border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-radar-map { width: 100%; background: var(--awx-surface-2); }
+.awx-radar-controls { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--awx-line); }
+.awx-radar-play { width: 30px; height: 30px; border-radius: var(--awx-pill); background: var(--awx-surface-2); color: var(--awx-text); display: grid; place-items: center; flex: 0 0 auto; }
+.awx-radar-controls input[type="range"] { flex: 1; accent-color: var(--awx-accent); }
+.awx-radar-time { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--awx-muted); font-variant-numeric: tabular-nums; }
+.awx-radar-time .awx-tag-sm { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; color: var(--awx-go); }
+.awx-radar-time.forecast .awx-tag-sm { color: var(--awx-accent); }
+.awx-radar-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--awx-line); font-size: 11.5px; color: var(--awx-faint); }
+.awx-radar-status { padding: 20px 14px; text-align: center; color: var(--awx-faint); font-size: 13px; }
+
+/* maplibre overrides to match the dark, quiet theme */
+.awx-radar-map .maplibregl-ctrl-attrib { font-size: 9px; background: color-mix(in srgb, var(--awx-bg) 70%, transparent); }
+.awx-radar-map .maplibregl-ctrl-group { background: var(--awx-surface); border: 1px solid var(--awx-line-2); }
+.awx-radar-map .maplibregl-ctrl-group button + button { border-top: 1px solid var(--awx-line); }
+
+/* ---- HOURLY DETAIL (selected calendar day) ---- */
+.awx-cal-day.is-sel { box-shadow: inset 0 0 0 1.5px var(--awx-accent-line); }
+.awx-hourly { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-surface-2); }
+.awx-hourly-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; }
+.awx-hourly-head strong { font-size: 14px; font-weight: 600; }
+.awx-hourly-head span { font-size: 12.5px; color: var(--awx-muted); font-variant-numeric: tabular-nums; }
+.awx-hourly-chart { background: var(--awx-surface); border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); }
+.awx-hours-cap { font-size: 11px; color: var(--awx-faint); }
+.awx-hours { display: grid; grid-auto-flow: column; grid-auto-columns: 46px; gap: 1px; overflow-x: auto; background: var(--awx-line); border-radius: var(--awx-radius-sm); }
+.awx-hours::-webkit-scrollbar { height: 6px; }
+.awx-hours::-webkit-scrollbar-thumb { background: var(--awx-line-2); border-radius: 999px; }
+.awx-hour { background: var(--awx-surface); display: grid; gap: 3px; padding: 9px 4px; text-align: center; }
+.awx-hour .awx-h-h { font-size: 10.5px; color: var(--awx-faint); }
+.awx-hour .awx-h-t { font-size: 13px; font-weight: 600; }
+.awx-hour .awx-h-r { font-size: 11px; color: var(--awx-faint); }
+.awx-hour .awx-h-r.wet { color: var(--awx-accent); font-weight: 600; }
+.awx-hour .awx-h-w { font-size: 11px; color: var(--awx-muted); }
+
+/* ---- SPRAYING + DISEASE (Field) ---- */
+.awx-verdict { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--awx-radius-sm); border: 1px solid var(--awx-line); background: var(--awx-surface-2); }
+.awx-vd-badge { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: var(--awx-pill); color: #fff; white-space: nowrap; }
+.awx-vd-reason { font-size: 13px; color: var(--awx-muted); }
+.awx-vd-go { border-color: color-mix(in srgb, var(--awx-go) 40%, var(--awx-line)); }
+.awx-vd-go .awx-vd-badge { background: var(--awx-go); }
+.awx-vd-warn { border-color: color-mix(in srgb, var(--awx-warn) 40%, var(--awx-line)); }
+.awx-vd-warn .awx-vd-badge { background: var(--awx-warn); color: #1c1305; }
+.awx-vd-risk { border-color: color-mix(in srgb, var(--awx-risk) 40%, var(--awx-line)); }
+.awx-vd-risk .awx-vd-badge { background: var(--awx-risk); }
+
+.awx-deltat { display: grid; gap: 8px; }
+.awx-deltat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.awx-deltat-head > span { font-size: 12px; color: var(--awx-faint); }
+.awx-deltat-head b { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.awx-deltat-head small { color: var(--awx-muted); font-weight: 400; font-size: 12px; }
+.awx-deltat-track { position: relative; height: 8px; border-radius: var(--awx-pill); background: var(--awx-surface-3); }
+.awx-deltat-band { position: absolute; top: 0; bottom: 0; border-radius: var(--awx-pill); background: color-mix(in srgb, var(--awx-go) 40%, transparent); }
+.awx-deltat-marker { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--awx-text); transform: translateX(-50%); }
+.awx-deltat-cap { font-size: 11px; color: var(--awx-faint); }
+
+.awx-riskstrip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; margin-top: 6px; }
+.awx-risk-cell { display: grid; gap: 5px; justify-items: center; padding: 9px 2px; border-radius: 9px; background: var(--awx-surface-2); }
+.awx-rc-d { font-size: 11px; font-weight: 600; color: var(--awx-faint); }
+.awx-rc-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--awx-tone, var(--awx-muted)); }
+.awx-rc-h { font-size: 10px; color: var(--awx-muted); font-variant-numeric: tabular-nums; }
+.awx-rc-go { --awx-tone: var(--awx-go); } .awx-rc-warn { --awx-tone: var(--awx-warn); } .awx-rc-risk { --awx-tone: var(--awx-risk); }
+.awx-rc-muted { --awx-tone: var(--awx-faint); }
+
+.awx-ops { display: grid; gap: 1px; background: var(--awx-line); border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; margin-top: 6px; }
+.awx-ops-h { background: var(--awx-surface); padding: 8px 6px; font-size: 10.5px; font-weight: 600; color: var(--awx-faint); text-align: center; text-transform: uppercase; letter-spacing: 0.04em; }
+.awx-ops-label { background: var(--awx-surface); padding: 10px 12px; font-size: 13px; font-weight: 500; display: flex; align-items: center; }
+.awx-ops-cell { background: var(--awx-surface); display: grid; place-items: center; padding: 8px; }
+.awx-ops-dot { width: 16px; height: 16px; border-radius: 6px; background: var(--awx-od, var(--awx-muted)); }
+.awx-od-go { --awx-od: var(--awx-go); } .awx-od-warn { --awx-od: var(--awx-warn); } .awx-od-risk { --awx-od: var(--awx-risk); }
+
+/* ---- HOURLY TABLE (rest of today) ---- */
+.awx-htable { border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
+.awx-htable-head, .awx-htable-row { display: grid; grid-template-columns: 50px repeat(6, 1fr); gap: 6px; padding: 9px 12px; align-items: center; font-variant-numeric: tabular-nums; }
+.awx-htable-head { background: var(--awx-surface-2); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--awx-faint); }
+.awx-htable-scroll { max-height: 360px; overflow-y: auto; }
+.awx-htable-scroll::-webkit-scrollbar { width: 6px; }
+.awx-htable-scroll::-webkit-scrollbar-thumb { background: var(--awx-line-2); border-radius: 999px; }
+.awx-htable-row { font-size: 13px; border-top: 1px solid var(--awx-line); }
+.awx-htable-row .awx-htt-h { color: var(--awx-faint); font-weight: 600; }
+.awx-htable-row .awx-htt-feels { color: var(--awx-muted); }
+.awx-htable-row .awx-htt-wet { color: var(--awx-accent); font-weight: 600; }
+.awx-htable-day { padding: 7px 12px; background: var(--awx-surface-2); font-size: 11px; font-weight: 600; color: var(--awx-faint); border-top: 1px solid var(--awx-line); }
+
+/* ---- SUN ARC ---- */
+.awx-sunarc { width: 100%; max-width: 320px; margin: 2px auto 0; display: block; }
+.awx-sunarc-track { fill: none; stroke: var(--awx-line-2); stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; }
+.awx-sunarc-done { fill: none; stroke: var(--awx-sun); stroke-width: 2.5; stroke-linecap: round; }
+.awx-sunarc-horizon { stroke: var(--awx-line); stroke-width: 1; }
+.awx-sunarc-dot { fill: var(--awx-sun); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--awx-sun) 60%, transparent)); }
+.awx-sunarc-t { fill: var(--awx-faint); font-size: 11px; }
+
+@media (max-width: 540px) {
+  .awx-card { padding-inline: 16px; }
+  .awx-htable-head, .awx-htable-row { grid-template-columns: 42px repeat(6, 1fr); gap: 3px; padding-inline: 10px; font-size: 11.5px; }
+  .awx-now { grid-template-columns: 1fr; }
+  .awx-sky { min-height: 132px; }
+  .awx-metrics { grid-template-columns: repeat(2, 1fr); }
+  .awx-now-read .awx-val { font-size: 78px; }
+  .awx-decision { grid-template-columns: 1fr; }
+  .awx-meter-wrap { justify-items: start; }
+  .awx-meter { width: 100%; }
+  .awx-cal-day { min-height: 84px; }
+}

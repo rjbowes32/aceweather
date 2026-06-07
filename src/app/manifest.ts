@@ -11,7 +11,13 @@ type ExtendedManifest = MetadataRoute.Manifest & {
   protocol_handlers?: { protocol: string; url: string }[];
   launch_handler?: { client_mode: string | string[] };
   display_override?: string[];
-  shortcuts?: { name: string; short_name?: string; url: string; description?: string; icons?: { src: string; sizes?: string; type?: string }[] }[];
+  shortcuts?: {
+    name: string;
+    short_name?: string;
+    url: string;
+    description?: string;
+    icons?: { src: string; sizes?: string; type?: string }[];
+  }[];
 };
 
 export default function manifest(): ExtendedManifest {
@@ -19,14 +25,15 @@ export default function manifest(): ExtendedManifest {
     id: "/",
     name: "AceWeather",
     short_name: "AceWeather",
-    description: "Synoptic weather + farm intelligence — installable PWA with live radar, model comparison, ERA5 climatology, and tropical tracking.",
+    description:
+      "Minimalist field-weather console with live radar, rainfall, seasonal context, and agronomy guidance.",
     start_url: "/",
     scope: "/",
     display: "standalone",
     display_override: ["standalone", "minimal-ui"],
     orientation: "any",
-    background_color: "#ffffff",
-    theme_color: "#ffffff",
+    background_color: "#0a0b0d",
+    theme_color: "#0a0b0d",
     lang: "en",
     dir: "ltr",
     categories: ["weather", "productivity", "utilities"],
@@ -60,17 +67,17 @@ export default function manifest(): ExtendedManifest {
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
       {
-        name: "On this day",
-        short_name: "History",
-        url: "/?focus=onthisday",
-        description: "Open historical climatology for today.",
+        name: "Seasonal context",
+        short_name: "Seasonal",
+        url: "/?focus=seasonal",
+        description: "Open seasonal rainfall and temperature context.",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
       {
-        name: "Tropical systems",
-        short_name: "Tropics",
-        url: "/?focus=tropical",
-        description: "Active NHC + JTWC storms.",
+        name: "Field guidance",
+        short_name: "Field",
+        url: "/?focus=field",
+        description: "Open spray, disease, and soil water guidance.",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
     ],

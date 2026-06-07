@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AceWeather — field weather console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ======================================================================
+       AceWeather — refined console
+       Calm, near-monochrome, one accent. No cartoon scenes, no social cosplay.
+       ====================================================================== */
+    :root {
+      --bg: #0a0b0d;
+      --surface: #101216;
+      --surface-2: #15181d;
+      --surface-3: #1c2026;
+      --line: rgba(255, 255, 255, 0.07);
+      --line-2: rgba(255, 255, 255, 0.13);
+      --text: #e9eaec;
+      --muted: #9aa0a8;
+      --faint: #6a7079;
+      --accent: #6ea0ff;
+      --accent-weak: rgba(110, 160, 255, 0.13);
+      --accent-line: rgba(110, 160, 255, 0.34);
+      --sun: #e0b15e;
+      --warn: #d6a45c;
+      --go: #5cb98c;
+      --risk: #db7d84;
+      --cool: #7fb6d9;
+      --violet: #a596e8;
+      --sky-1: #1b2536;
+      --sky-2: #0d131b;
+      --glow: rgba(224, 177, 94, 0.50);
+      --radius: 16px;
+      --radius-sm: 11px;
+      --pill: 999px;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 30px rgba(0, 0, 0, 0.18);
+      color-scheme: dark;
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-feature-settings: "cv05", "ss01";
+    }
+
+    [data-theme="light"] {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f1f3f6;
+      --surface-3: #e8ecf1;
+      --line: rgba(12, 16, 22, 0.09);
+      --line-2: rgba(12, 16, 22, 0.16);
+      --text: #14171c;
+      --muted: #5c636d;
+      --faint: #8a929c;
+      --accent: #2f6cf0;
+      --accent-weak: rgba(47, 108, 240, 0.10);
+      --accent-line: rgba(47, 108, 240, 0.32);
+      --sun: #c98a2b;
+      --warn: #b67d2c;
+      --go: #2f9d6b;
+      --risk: #cf5158;
+      --cool: #3d86b3;
+      --violet: #7b6bd6;
+      --sky-1: #cfe0f4;
+      --sky-2: #eef3fa;
+      --glow: rgba(224, 177, 94, 0.65);
+      --shadow: 0 1px 2px rgba(12, 16, 22, 0.06), 0 10px 30px rgba(12, 16, 22, 0.06);
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body { overflow-x: hidden; font-size: 15px; line-height: 1.5; }
+    button, input { font: inherit; color: inherit; }
+    button { border: 0; background: transparent; cursor: pointer; }
+    svg { display: block; }
+    .tnum { font-variant-numeric: tabular-nums; }
+    .kicker {
+      font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--faint);
+    }
+
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+    /* ===================== APP SHELL ===================== */
+    .app {
+      display: grid;
+      grid-template-columns: minmax(76px, 232px) minmax(0, 600px) minmax(280px, 348px);
+      justify-content: center;
+      gap: 0;
+      min-height: 100vh;
+    }
+
+    .rail, .side { position: sticky; top: 0; height: 100vh; }
+    .rail {
+      display: flex; flex-direction: column; gap: 22px;
+      padding: 22px 16px;
+      border-right: 1px solid var(--line);
+    }
+    .side {
+      padding: 18px 18px 40px;
+      border-left: 1px solid var(--line);
+      overflow-y: auto;
+    }
+
+    /* ===================== RAIL ===================== */
+    .brand { display: flex; align-items: center; gap: 11px; padding: 2px 10px; text-decoration: none; color: var(--text); }
+    .brand-mark {
+      display: grid; place-items: center; width: 30px; height: 30px;
+      border-radius: 9px; background: var(--accent); color: #fff;
+      font-weight: 700; font-size: 13px; letter-spacing: -0.02em;
+    }
+    [data-theme="light"] .brand-mark { color: #fff; }
+    .brand-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+    .brand-sub { font-size: 10.5px; color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1px; }
+
+    .nav { display: grid; gap: 2px; }
+    .nav button {
+      position: relative;
+      display: flex; align-items: center; gap: 13px;
+      min-height: 40px; padding: 0 12px;
+      border-radius: 10px; color: var(--muted);
+      font-size: 14.5px; font-weight: 500;
+      transition: background 140ms ease, color 140ms ease;
+      white-space: nowrap;
+    }
+    .nav button:hover { background: var(--surface-2); color: var(--text); }
+    .nav button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); font-weight: 600; }
+    .nav button[aria-pressed="true"]::before {
+      content: ""; position: absolute; left: 0; top: 9px; bottom: 9px;
+      width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
+    }
+    .nav svg { width: 19px; height: 19px; flex: 0 0 auto; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+    .rail-spacer { flex: 1; }
+    .rail-foot { display: grid; gap: 12px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 42px; padding: 0 16px; border-radius: 11px;
+      font-size: 14px; font-weight: 600; transition: background 140ms ease, border-color 140ms ease, transform 120ms ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.06); }
+    .btn-ghost { border: 1px solid var(--line-2); color: var(--text); background: transparent; }
+    .btn-ghost:hover { background: var(--surface-2); }
+    .btn svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .segmented { display: flex; gap: 2px; padding: 3px; border-radius: var(--pill); background: var(--surface-2); }
+    .segmented button {
+      flex: 1; min-height: 30px; border-radius: var(--pill);
+      color: var(--muted); font-size: 12.5px; font-weight: 600;
+      transition: background 140ms ease, color 140ms ease;
+    }
+    .segmented button.is-on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+    [data-theme="light"] .segmented button.is-on { background: #fff; }
+
+    /* ===================== FEED ===================== */
+    .feed { min-width: 0; border-right: 1px solid var(--line); }
+    .mobile-top { display: none; }
+
+    .feed-head {
+      position: sticky; top: 0; z-index: 12;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      min-height: 60px; padding: 12px 22px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      backdrop-filter: blur(18px) saturate(1.4);
+    }
+    .feed-head h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+    .feed-head .sub { display: block; margin-top: 2px; font-size: 12px; color: var(--faint); }
+    .status {
+      display: inline-flex; align-items: center; gap: 7px;
+      min-height: 30px; padding: 0 12px; border-radius: var(--pill);
+      border: 1px solid var(--line-2); color: var(--muted);
+      font-size: 12px; font-weight: 600;
+    }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--go); box-shadow: 0 0 0 3px color-mix(in srgb, var(--go) 22%, transparent); }
+
+    .composer { padding: 14px 22px; border-bottom: 1px solid var(--line); }
+    .search {
+      display: flex; align-items: center; gap: 10px;
+      min-height: 46px; padding: 0 15px;
+      border-radius: 13px; background: var(--surface-2);
+      border: 1px solid transparent; transition: border-color 140ms ease, background 140ms ease;
+    }
+    .search:focus-within { border-color: var(--accent-line); background: var(--surface); }
+    .search svg { width: 18px; height: 18px; stroke: var(--faint); fill: none; stroke-width: 1.8; stroke-linecap: round; }
+    .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 15px; }
+    .search input::placeholder { color: var(--faint); }
+    .search .go { color: var(--accent); font-weight: 600; font-size: 13.5px; padding: 6px 4px; }
+
+    .feed-list { display: grid; }
+    .card {
+      border-bottom: 1px solid var(--line);
+      padding: 22px;
+      display: grid; gap: 16px;
+    }
+    .card.is-hidden { display: none; }
+
+    .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .card-head .title { display: grid; gap: 4px; min-width: 0; }
+    .card-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .card-head .meta { font-size: 12.5px; color: var(--faint); }
+    .accent-tick { width: 8px; height: 8px; border-radius: 3px; background: var(--accent); margin-top: 5px; flex: 0 0 auto; }
+    .tick-sun { background: var(--sun); } .tick-rain { background: var(--accent); }
+    .tick-go { background: var(--go); } .tick-cool { background: var(--cool); }
+    .tick-violet { background: var(--violet); }
+
+    /* ---- NOW / HERO ---- */
+    .now { display: grid; grid-template-columns: minmax(0, 1fr) 192px; gap: 26px; align-items: stretch; }
+    .now-read { display: flex; align-items: flex-start; gap: 8px; }
+    .now-read .val { font-size: clamp(74px, 10vw, 112px); font-weight: 200; letter-spacing: -0.045em; line-height: 0.82; }
+    .now-read .deg { margin-top: 8px; font-size: 26px; font-weight: 300; color: var(--muted); }
+    .now-cond { margin: 14px 0 0; font-size: 15px; color: var(--text); }
+    .now-sub { margin-top: 4px; font-size: 13.5px; color: var(--muted); }
+    .now-sub b { color: var(--text); font-weight: 600; }
+    .now-summary { margin: 14px 0 0; max-width: 38rem; color: var(--muted); font-size: 14px; line-height: 1.55; }
+
+    .sky {
+      position: relative; overflow: hidden;
+      border-radius: 14px; border: 1px solid var(--line);
+      background: linear-gradient(176deg, var(--sky-1), var(--sky-2));
+      min-height: 158px;
+    }
+    .sky .orb {
+      position: absolute; right: 26%; top: 26%;
+      width: 86px; height: 86px; border-radius: 50%;
+      background: radial-gradient(circle at 50% 45%, #f3d79a, var(--sun));
+      box-shadow: 0 0 60px 18px var(--glow);
+    }
+    .sky .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--sky-2) 70%, #000 30%)); }
+    .sky .label { position: absolute; left: 14px; bottom: 12px; font-size: 11.5px; color: rgba(255,255,255,0.78); letter-spacing: 0.02em; }
+    [data-theme="light"] .sky .label { color: rgba(20,23,28,0.66); }
+
+    /* ---- METRICS ---- */
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .metric { background: var(--surface); padding: 13px 14px; display: grid; gap: 6px; }
+    .metric .k { font-size: 11.5px; color: var(--faint); }
+    .metric .v { font-size: 19px; font-weight: 500; letter-spacing: -0.01em; }
+    .metric .v small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+    .v-warn { color: var(--warn); }
+
+    /* ---- TAGS ---- */
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      min-height: 27px; padding: 0 11px; border-radius: var(--pill);
+      border: 1px solid var(--line-2); color: var(--muted);
+      font-size: 12px; font-weight: 500;
+    }
+    .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tone, var(--muted)); }
+    .t-go { --tone: var(--go); } .t-warn { --tone: var(--warn); } .t-rain { --tone: var(--accent); }
+    .t-risk { --tone: var(--risk); } .t-cool { --tone: var(--cool); } .t-sun { --tone: var(--sun); } .t-violet { --tone: var(--violet); }
+
+    /* ---- DISCLOSURE ---- */
+    .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .disclosure { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 500; padding: 4px 0; }
+    .disclosure:hover { color: var(--text); }
+    .disclosure svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 180ms ease; }
+    .card.is-open .disclosure svg { transform: rotate(180deg); }
+    .card-foot .note { font-size: 12.5px; color: var(--faint); }
+    .detail { display: none; color: var(--muted); font-size: 13.5px; line-height: 1.55; padding: 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
+    .card.is-open .detail { display: block; }
+
+    /* ---- CHARTS ---- */
+    .chart-card { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .chart-head .cap { font-size: 12.5px; color: var(--muted); }
+    .range { display: flex; gap: 2px; padding: 3px; border-radius: var(--pill); background: var(--surface-2); }
+    .range button { min-height: 26px; padding: 0 11px; border-radius: var(--pill); color: var(--faint); font-size: 11.5px; font-weight: 600; }
+    .range button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+    .bars { height: 148px; display: grid; grid-template-columns: repeat(12, 1fr); align-items: end; gap: 6px; padding: 18px 14px 26px; }
+    .bar { position: relative; min-height: 2px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 40%, transparent)); opacity: 0.92; }
+    .bar::after { content: attr(data-label); position: absolute; left: 50%; bottom: -19px; transform: translateX(-50%); color: var(--faint); font-size: 10px; }
+
+    .line-chart { width: 100%; height: auto; display: block; }
+    .line-chart .grid { stroke: var(--line); stroke-width: 1; }
+    .line-chart .area { fill: color-mix(in srgb, var(--sun) 14%, transparent); stroke: none; }
+    .line-chart .temp { stroke: var(--sun); fill: none; stroke-width: 2.4; }
+    .line-chart .rain { stroke: var(--accent); fill: none; stroke-width: 2; stroke-dasharray: 1 6; stroke-linecap: round; }
+    .line-chart .press { stroke: var(--violet); fill: none; stroke-width: 2; opacity: 0.8; }
+
+    /* ---- DECISION METERS ---- */
+    .decisions { display: grid; gap: 2px; background: var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .decision { background: var(--surface); padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 14px; align-items: center; }
+    .decision .d-title { font-size: 14px; font-weight: 500; }
+    .decision .d-sub { font-size: 12.5px; color: var(--faint); margin-top: 3px; }
+    .meter-wrap { display: grid; gap: 6px; justify-items: end; }
+    .meter { width: 120px; height: 5px; border-radius: var(--pill); background: var(--surface-3); overflow: hidden; }
+    .meter i { display: block; height: 100%; width: var(--v); border-radius: var(--pill); background: var(--tone, var(--accent)); }
+    .meter-val { font-size: 11.5px; color: var(--muted); }
+    .m-go { --tone: var(--go); } .m-warn { --tone: var(--warn); } .m-risk { --tone: var(--risk); }
+
+    /* ---- DAY STRIP ---- */
+    .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .day { background: var(--surface); display: grid; gap: 8px; padding: 13px 10px; text-align: left; align-content: start; min-height: 116px; transition: background 140ms ease; }
+    .day:hover { background: var(--surface-2); }
+    .day[aria-pressed="true"] { background: var(--accent-weak); }
+    .day .dow { font-size: 11px; font-weight: 600; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
+    .day .hi { font-size: 17px; font-weight: 500; }
+    .day .lo { font-size: 13px; color: var(--muted); }
+    .day .rain { font-size: 12px; color: var(--accent); font-weight: 500; }
+    .day .rain.dry { color: var(--faint); }
+    .day .spark { height: 28px; }
+    .day .spark path { stroke: var(--sun); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+
+    /* ---- STATUS LIST ---- */
+    .rows { display: grid; gap: 1px; background: var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .row-item { background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; font-size: 13.5px; }
+    .row-item .k { color: var(--muted); }
+    .row-item .v { font-weight: 500; }
+    .v-go { color: var(--go); } .v-mut { color: var(--faint); } .v-warn { color: var(--warn); }
+
+    /* ===================== SIDEBAR ===================== */
+    .side-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); margin-bottom: 14px; overflow: hidden; }
+    .side-card h3 { margin: 0; padding: 14px 16px 10px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    .side-body { padding: 0 12px 12px; display: grid; gap: 8px; }
+    .side-search { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 0 13px; border-radius: 11px; background: var(--surface-2); }
+    .side-search svg { width: 16px; height: 16px; stroke: var(--faint); fill: none; stroke-width: 1.8; }
+    .side-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 14px; }
+    .side-search input::placeholder { color: var(--faint); }
+
+    .place { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 10px 11px; border-radius: 11px; text-align: left; color: var(--text); transition: background 140ms ease; }
+    .place:hover, .place[aria-pressed="true"] { background: var(--surface-2); }
+    .place .name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .place .region { font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .place .temp { font-size: 15px; color: var(--muted); font-weight: 400; }
+    .place[aria-pressed="true"] .temp { color: var(--text); }
+
+    .glance { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+    .glance div { background: var(--surface); padding: 12px 13px; display: grid; gap: 5px; }
+    .glance .k { font-size: 11.5px; color: var(--faint); }
+    .glance .v { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+
+    /* ===================== MOBILE NAV ===================== */
+    .mobile-nav { display: none; }
+
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 76px minmax(0, 600px) minmax(260px, 320px); }
+      .brand-name, .brand-sub, .nav button span, .btn-primary span, .btn-ghost span { display: none; }
+      .brand { justify-content: center; padding: 2px; }
+      .nav button { justify-content: center; padding: 0; }
+      .nav button[aria-pressed="true"]::before { display: none; }
+      .btn { padding: 0; width: 44px; }
+      .segmented { flex-direction: column; }
+    }
+
+    @media (max-width: 900px) {
+      .app { display: block; padding-bottom: 72px; }
+      .rail, .side { display: none; }
+      .feed { border-right: 0; }
+      .mobile-top {
+        position: sticky; top: 0; z-index: 20;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        min-height: 56px; padding: 10px 16px;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        backdrop-filter: blur(18px);
+      }
+      .mobile-top .brand-mark { width: 28px; height: 28px; }
+      .mobile-top strong { font-size: 15px; font-weight: 600; }
+      .feed-head { position: static; }
+      .now { grid-template-columns: 1fr; }
+      .sky { min-height: 132px; }
+      .mobile-nav {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+        display: grid; grid-template-columns: repeat(5, 1fr);
+        min-height: 64px;
+        border-top: 1px solid var(--line);
+        background: color-mix(in srgb, var(--bg) 86%, transparent);
+        backdrop-filter: blur(20px);
+      }
+      .mobile-nav button { display: grid; place-items: center; gap: 3px; color: var(--faint); font-size: 10px; font-weight: 600; }
+      .mobile-nav button[aria-pressed="true"] { color: var(--accent); }
+      .mobile-nav svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    }
+
+    @media (max-width: 540px) {
+      .card, .composer, .feed-head { padding-inline: 16px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .now-read .val { font-size: 78px; }
+      .decision { grid-template-columns: 1fr; }
+      .meter-wrap { justify-items: start; }
+      .meter { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- ============ RAIL ============ -->
+    <aside class="rail" aria-label="Primary">
+      <a class="brand" href="#top" aria-label="AceWeather home">
+        <span class="brand-mark">A</span>
+        <span><span class="brand-name">AceWeather</span><span class="brand-sub">Field console</span></span>
+      </a>
+
+      <nav class="nav" aria-label="Sections">
+        <button type="button" data-view="all" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <span>Overview</span>
+        </button>
+        <button type="button" data-view="now" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>
+          <span>Now</span>
+        </button>
+        <button type="button" data-view="rain" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15.5h9.5a3.6 3.6 0 0 0 .5-7.2 5.5 5.5 0 0 0-10.4 1.5A3 3 0 0 0 7 15.5z"/><path d="M9 18.5l-.8 2M13 18.5l-.8 2M17 18.5l-.8 2"/></svg>
+          <span>Rain</span>
+        </button>
+        <button type="button" data-view="field" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6"/><path d="M3 13c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6"/></svg>
+          <span>Field</span>
+        </button>
+        <button type="button" data-view="outlook" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+          <span>Outlook</span>
+        </button>
+        <button type="button" data-view="sources" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.3 2.6 14.7 0 17M12 3.5c-2.6 2.3-2.6 14.7 0 17"/></svg>
+          <span>Sources</span>
+        </button>
+      </nav>
+
+      <div class="rail-spacer"></div>
+
+      <div class="rail-foot">
+        <button class="btn btn-primary" type="button" id="shareReport">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M12 15V4M8 8l4-4 4 4"/></svg>
+          <span>Share report</span>
+        </button>
+        <div class="segmented" role="group" aria-label="Theme">
+          <button type="button" id="themeDark" class="is-on">Dark</button>
+          <button type="button" id="themeLight">Light</button>
+        </div>
+        <div class="segmented" role="group" aria-label="Units">
+          <button type="button" id="unitC" class="is-on">°C</button>
+          <button type="button" id="unitF">°F</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ FEED ============ -->
+    <main class="feed" id="top">
+      <header class="mobile-top">
+        <span class="brand-mark">A</span>
+        <strong id="mobileLocation">Bishopton</strong>
+        <span class="status" id="mobileStatus">Live</span>
+      </header>
+
+      <div class="feed-head">
+        <div>
+          <h1 id="feedHeading">Bishopton</h1>
+          <span class="sub" id="feedSub">Stockton-on-Tees · updated 18:40 BST</span>
+        </div>
+        <span class="status" id="liveStatus">Live</span>
+      </div>
+
+      <form class="composer" id="locationForm">
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="locationInput" type="search" placeholder="Search a town, postcode or field" autocomplete="off">
+          <button class="go" type="submit">Load</button>
+        </label>
+      </form>
+
+      <section class="feed-list" aria-label="Weather">
+        <!-- NOW -->
+        <article class="card" data-section="now">
+          <div class="card-head">
+            <div class="title">
+              <div class="kicker">Conditions now</div>
+              <span class="meta">Observed 18m ago · open-meteo</span>
+            </div>
+            <span class="accent-tick tick-sun"></span>
+          </div>
+          <div class="now">
+            <div>
+              <div class="now-read">
+                <span class="val tnum" data-temp-c="14" data-current="true">14</span>
+                <span class="deg"><span class="temp-unit">°C</span></span>
+              </div>
+              <p class="now-cond">Overcast · light south-westerly</p>
+              <p class="now-sub">Feels <b class="tnum" data-temp-c="12">12</b><span class="temp-unit">°</span> · High <b class="tnum" data-temp-c="14">14</b><span class="temp-unit">°</span> · Low <b class="tnum" data-temp-c="7">7</b><span class="temp-unit">°</span></p>
+              <p class="now-summary">Dry but narrow field window before overnight rain. Gusts are the main limiter for fine spray work this afternoon.</p>
+            </div>
+            <div class="sky" aria-hidden="true">
+              <div class="orb"></div>
+              <div class="horizon"></div>
+              <div class="label">Cloud breaking · UV 4</div>
+            </div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><span class="k">Wind</span><span class="v tnum">14<small>km/h</small></span></div>
+            <div class="metric"><span class="k">Gust</span><span class="v tnum v-warn">25<small>km/h</small></span></div>
+            <div class="metric"><span class="k">Humidity</span><span class="v tnum">71<small>%</small></span></div>
+            <div class="metric"><span class="k">Pressure</span><span class="v tnum">1011<small>hPa</small></span></div>
+          </div>
+          <div class="tags">
+            <span class="tag t-go">Live data</span>
+            <span class="tag t-warn">Gust watch</span>
+            <span class="tag t-rain">Rain after 02:00</span>
+          </div>
+          <div class="card-foot">
+            <button class="disclosure" type="button" aria-expanded="false">
+              Details <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <span class="note">Dew point 9° · Visibility good</span>
+          </div>
+          <div class="detail">Delay fine spray while gusts hold above 24 km/h. Broad-acre passes remain workable where soil trafficability is already good; reassess after the 14:00 model refresh.</div>
+        </article>
+
+        <!-- RAIN -->
+        <article class="card" data-section="rain">
+          <div class="card-head">
+            <div class="title">
+              <div class="kicker">Rainfall</div>
+              <span class="meta"><b class="tnum" id="rainTotal" style="color:var(--text);font-weight:600">9.8 mm</b> expected · peak chance 88%</span>
+            </div>
+            <span class="accent-tick tick-rain"></span>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head">
+              <span class="cap" id="rainCap">Hourly accumulation</span>
+              <div class="range" role="group" aria-label="Range">
+                <button type="button" data-range="24h" aria-pressed="true">24h</button>
+                <button type="button" data-range="7d" aria-pressed="false">7d</button>
+                <button type="button" data-range="14d" aria-pressed="false">14d</button>
+              </div>
+            </div>
+            <div class="bars" id="rainChart" aria-hidden="true">
+              <i class="bar" style="height:8%" data-label="0"></i>
+              <i class="bar" style="height:6%" data-label="2"></i>
+              <i class="bar" style="height:10%" data-label="4"></i>
+              <i class="bar" style="height:18%" data-label="6"></i>
+              <i class="bar" style="height:30%" data-label="8"></i>
+              <i class="bar" style="height:48%" data-label="10"></i>
+              <i class="bar" style="height:78%" data-label="12"></i>
+              <i class="bar" style="height:92%" data-label="14"></i>
+              <i class="bar" style="height:62%" data-label="16"></i>
+              <i class="bar" style="height:34%" data-label="18"></i>
+              <i class="bar" style="height:16%" data-label="20"></i>
+              <i class="bar" style="height:7%" data-label="22"></i>
+            </div>
+          </div>
+          <div class="card-foot">
+            <button class="disclosure" type="button" aria-expanded="false">
+              Details <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <span class="note">Observed 7-day total 28.6 mm</span>
+          </div>
+          <div class="detail">The seven-day context stays wet enough to keep low-field access marginal after heavier overnight rain. Compare against the local gauge before committing machinery.</div>
+        </article>
+
+        <!-- FIELD -->
+        <article class="card" data-section="field">
+          <div class="card-head">
+            <div class="title">
+              <div class="kicker">Field decisions</div>
+              <span class="meta">Confidence medium-high · updated now</span>
+            </div>
+            <span class="accent-tick tick-go"></span>
+          </div>
+          <div class="decisions">
+            <div class="decision">
+              <div><div class="d-title">Spray window</div><div class="d-sub">~6h open — wind is the limiter</div></div>
+              <div class="meter-wrap"><div class="meter m-go" style="--v:62%"><i></i></div><span class="meter-val">62 · Go</span></div>
+            </div>
+            <div class="decision">
+              <div><div class="d-title">Field access</div><div class="d-sub">Good on lighter soils, caution low ground</div></div>
+              <div class="meter-wrap"><div class="meter m-warn" style="--v:48%"><i></i></div><span class="meter-val">48 · Watch</span></div>
+            </div>
+            <div class="decision">
+              <div><div class="d-title">Fungal pressure</div><div class="d-sub">Humidity and overnight rain raise risk</div></div>
+              <div class="meter-wrap"><div class="meter m-risk" style="--v:76%"><i></i></div><span class="meter-val">76 · High</span></div>
+            </div>
+          </div>
+          <div class="card-foot">
+            <button class="disclosure" type="button" aria-expanded="false">
+              Details <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <span class="note">Based on soil, wind & leaf-wetness</span>
+          </div>
+          <div class="detail">Prioritise fungicide cover on susceptible varieties before the overnight band. Hold travel on heavy low ground until the morning model run confirms drainage.</div>
+        </article>
+
+        <!-- PULSE -->
+        <article class="card" data-section="now">
+          <div class="card-head">
+            <div class="title">
+              <div class="kicker">24-hour trend</div>
+              <span class="meta">Temperature, rain & pressure · −12h to +24h</span>
+            </div>
+            <span class="accent-tick tick-violet"></span>
+          </div>
+          <div class="chart-card">
+            <svg class="line-chart" viewBox="0 0 560 180" role="img" aria-label="24 hour trend">
+              <path class="grid" d="M28 30H540M28 75H540M28 120H540"/>
+              <path class="area" d="M28 126L74 118L116 98L158 78L200 62L242 55L284 52L326 58L368 75L410 93L452 111L494 124L540 132L540 160L28 160Z"/>
+              <path class="press" d="M28 78L74 80L116 83L158 84L200 87L242 93L284 98L326 106L368 114L410 122L452 128L494 126L540 120"/>
+              <path class="rain" d="M28 151L74 150L116 145L158 132L200 118L242 90L284 74L326 58L368 82L410 112L452 136L494 148L540 151"/>
+              <path class="temp" d="M28 126L74 118L116 98L158 78L200 62L242 55L284 52L326 58L368 75L410 93L452 111L494 124L540 132"/>
+            </svg>
+          </div>
+          <div class="tags">
+            <span class="tag t-sun">Temp peak +6h</span>
+            <span class="tag t-rain">Rain peak +14h</span>
+            <span class="tag t-violet">Pressure easing</span>
+          </div>
+        </article>
+
+        <!-- OUTLOOK -->
+        <article class="card" data-section="outlook">
+          <div class="card-head">
+            <div class="title">
+              <div class="kicker">14-day outlook</div>
+              <span class="meta" id="selectedDay">Today selected</span>
+            </div>
+            <span class="accent-tick tick-cool"></span>
+          </div>
+          <div class="days" role="group" aria-label="Forecast days">
+            <button class="day" type="button" aria-pressed="true" data-day="Today">
+              <span class="dow">Today</span>
+              <span><span class="hi tnum" data-temp-c="14">14</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="7">7</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 20L14 12L26 8L38 14L50 10L58 16"/></svg>
+              <span class="rain tnum">1.4 mm</span>
+            </button>
+            <button class="day" type="button" aria-pressed="false" data-day="Thu">
+              <span class="dow">Thu</span>
+              <span><span class="hi tnum" data-temp-c="12">12</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="6">6</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 12L14 16L26 18L38 14L50 18L58 20"/></svg>
+              <span class="rain tnum">9.8 mm</span>
+            </button>
+            <button class="day" type="button" aria-pressed="false" data-day="Fri">
+              <span class="dow">Fri</span>
+              <span><span class="hi tnum" data-temp-c="11">11</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="6">6</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 14L14 16L26 14L38 18L50 16L58 18"/></svg>
+              <span class="rain tnum">6.4 mm</span>
+            </button>
+            <button class="day" type="button" aria-pressed="false" data-day="Sat">
+              <span class="dow">Sat</span>
+              <span><span class="hi tnum" data-temp-c="12">12</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="6">6</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 16L14 12L26 10L38 12L50 8L58 12"/></svg>
+              <span class="rain tnum">1.8 mm</span>
+            </button>
+            <button class="day" type="button" aria-pressed="false" data-day="Sun">
+              <span class="dow">Sun</span>
+              <span><span class="hi tnum" data-temp-c="15">15</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="7">7</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 18L14 12L26 8L38 6L50 8L58 6"/></svg>
+              <span class="rain dry tnum">0.4 mm</span>
+            </button>
+            <button class="day" type="button" aria-pressed="false" data-day="Mon">
+              <span class="dow">Mon</span>
+              <span><span class="hi tnum" data-temp-c="16">16</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="9">9</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 16L14 10L26 6L38 8L50 4L58 6"/></svg>
+              <span class="rain dry tnum">0.0 mm</span>
+            </button>
+            <button class="day" type="button" aria-pressed="false" data-day="Tue">
+              <span class="dow">Tue</span>
+              <span><span class="hi tnum" data-temp-c="17">17</span><span class="temp-unit" style="color:var(--muted)">°</span> <span class="lo tnum" data-temp-c="9">9</span><span class="temp-unit" style="color:var(--muted)">°</span></span>
+              <svg class="spark" viewBox="0 0 60 28"><path d="M2 14L14 10L26 8L38 4L50 6L58 2"/></svg>
+              <span class="rain dry tnum">0.0 mm</span>
+            </button>
+          </div>
+          <div class="card-foot">
+            <button class="disclosure" type="button" aria-expanded="false">
+              Details <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <span class="note">Drier, settling spell from Sunday</span>
+          </div>
+          <div class="detail">High pressure builds from the west over the weekend, opening a longer dry working window early next week with overnight grass-frost risk easing by Monday.</div>
+        </article>
+
+        <!-- SOURCES -->
+        <article class="card" data-section="sources">
+          <div class="card-head">
+            <div class="title">
+              <div class="kicker">Data sources</div>
+              <span class="meta">Station BSH-054 · 30 m elevation</span>
+            </div>
+            <span class="accent-tick tick-go"></span>
+          </div>
+          <div class="rows">
+            <div class="row-item"><span class="k">Open-Meteo forecast</span><span class="v v-go">Live</span></div>
+            <div class="row-item"><span class="k">ECMWF cross-check</span><span class="v v-mut">Optional</span></div>
+            <div class="row-item"><span class="k">Manual rain gauge</span><span class="v v-warn">Needs sync</span></div>
+            <div class="row-item"><span class="k">Report API</span><span class="v v-go">Ready</span></div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="side" aria-label="Utilities">
+      <div class="side-card">
+        <h3>Find a location</h3>
+        <div class="side-body">
+          <label class="side-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="sideSearch" type="search" placeholder="Town, postcode, field">
+          </label>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <h3>Saved places</h3>
+        <div class="side-body">
+          <button class="place" type="button" data-location="Bishopton" data-region="Stockton-on-Tees" data-temp="14" aria-pressed="true">
+            <span><span class="name">Bishopton</span><span class="region">Stockton-on-Tees</span></span>
+            <span class="temp tnum">14°</span>
+          </button>
+          <button class="place" type="button" data-location="Pocklington" data-region="East Yorkshire" data-temp="13" aria-pressed="false">
+            <span><span class="name">Pocklington</span><span class="region">East Yorkshire</span></span>
+            <span class="temp tnum">13°</span>
+          </button>
+          <button class="place" type="button" data-location="York" data-region="North Yorkshire" data-temp="15" aria-pressed="false">
+            <span><span class="name">York</span><span class="region">North Yorkshire</span></span>
+            <span class="temp tnum">15°</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <h3>Today at a glance</h3>
+        <div class="side-body">
+          <div class="glance">
+            <div><span class="k">High</span><span class="v tnum"><span data-temp-c="14" data-current="true">14</span><span class="temp-unit">°</span></span></div>
+            <div><span class="k">Low</span><span class="v tnum"><span data-temp-c="7">7</span><span class="temp-unit">°</span></span></div>
+            <div><span class="k">Rain · 24h</span><span class="v tnum" style="color:var(--accent)">9.8 mm</span></div>
+            <div><span class="k">Spray window</span><span class="v tnum" style="color:var(--go)">~6h</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============ MOBILE NAV ============ -->
+  <nav class="mobile-nav" aria-label="Mobile">
+    <button type="button" data-view="all" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Overview</button>
+    <button type="button" data-view="now" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Now</button>
+    <button type="button" data-view="rain" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M7 15.5h9.5a3.6 3.6 0 0 0 .5-7.2 5.5 5.5 0 0 0-10.4 1.5A3 3 0 0 0 7 15.5z"/></svg>Rain</button>
+    <button type="button" data-view="field" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 17c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6"/></svg>Field</button>
+    <button type="button" data-view="outlook" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg>Days</button>
+  </nav>
+
+  <script>
+    const root = document.documentElement;
+    const navButtons = Array.from(document.querySelectorAll("[data-view]"));
+    const cards = Array.from(document.querySelectorAll(".card"));
+    const tempValues = Array.from(document.querySelectorAll("[data-temp-c]"));
+    const tempUnits = Array.from(document.querySelectorAll(".temp-unit"));
+    const feedHeading = document.querySelector("#feedHeading");
+    const feedSub = document.querySelector("#feedSub");
+    const mobileLocation = document.querySelector("#mobileLocation");
+    const liveStatus = document.querySelector("#liveStatus");
+    const mobileStatus = document.querySelector("#mobileStatus");
+    const locationInput = document.querySelector("#locationInput");
+    const sideSearch = document.querySelector("#sideSearch");
+    let unit = "c";
+
+    function setView(view) {
+      navButtons.forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === view ? "true" : "false"));
+      cards.forEach((card) => card.classList.toggle("is-hidden", !(view === "all" || card.dataset.section === view)));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    navButtons.forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+    function cToF(v) { return Math.round((Number(v) * 9) / 5 + 32); }
+    function renderUnit() {
+      tempValues.forEach((n) => { n.textContent = unit === "c" ? Math.round(Number(n.dataset.tempC)) : cToF(n.dataset.tempC); });
+      tempUnits.forEach((n) => { n.textContent = n.textContent.includes("C") || n.textContent.includes("F") ? (unit === "c" ? "°C" : "°F") : "°"; });
+      document.querySelector("#unitC").classList.toggle("is-on", unit === "c");
+      document.querySelector("#unitF").classList.toggle("is-on", unit === "f");
+    }
+    document.querySelector("#unitC").addEventListener("click", () => { unit = "c"; renderUnit(); });
+    document.querySelector("#unitF").addEventListener("click", () => { unit = "f"; renderUnit(); });
+
+    function setTheme(theme) {
+      root.dataset.theme = theme;
+      document.querySelector("#themeDark").classList.toggle("is-on", theme === "dark");
+      document.querySelector("#themeLight").classList.toggle("is-on", theme === "light");
+    }
+    document.querySelector("#themeDark").addEventListener("click", () => setTheme("dark"));
+    document.querySelector("#themeLight").addEventListener("click", () => setTheme("light"));
+
+    document.querySelectorAll(".disclosure").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest(".card");
+        const open = card.classList.toggle("is-open");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.childNodes[0].nodeValue = open ? "Hide " : "Details ";
+      });
+    });
+
+    const rainData = {
+      "24h": { total: "9.8 mm", cap: "Hourly accumulation", h: [8,6,10,18,30,48,78,92,62,34,16,7], l: ["0","2","4","6","8","10","12","14","16","18","20","22"] },
+      "7d": { total: "28.6 mm", cap: "Daily totals · past & next 7 days", h: [6,2,18,36,4,14,2,10,88,56,18,3], l: ["W","T","F","S","S","M","T","·","T","F","S","S"] },
+      "14d": { total: "42.4 mm", cap: "Two-week rainfall shape", h: [10,88,56,18,3,2,2,4,13,30,43,28], l: ["1","2","3","4","5","6","7","8","9","10","11","12"] }
+    };
+    document.querySelectorAll("[data-range]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-range]").forEach((b) => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+        const d = rainData[btn.dataset.range];
+        document.querySelector("#rainTotal").textContent = d.total;
+        document.querySelector("#rainCap").textContent = d.cap;
+        document.querySelectorAll("#rainChart .bar").forEach((bar, i) => {
+          bar.style.height = (d.h[i] || 1) + "%";
+          bar.dataset.label = d.l[i] || "";
+        });
+      });
+    });
+
+    document.querySelectorAll(".day").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".day").forEach((d) => d.setAttribute("aria-pressed", d === btn ? "true" : "false"));
+        document.querySelector("#selectedDay").textContent = btn.dataset.day + " selected";
+      });
+    });
+
+    function setLocation(name, region) {
+      feedHeading.textContent = name;
+      if (region) feedSub.textContent = region + " · updated 18:40 BST";
+      mobileLocation.textContent = name;
+      locationInput.value = name;
+      sideSearch.value = name;
+    }
+    document.querySelectorAll(".place").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".place").forEach((p) => p.setAttribute("aria-pressed", p === btn ? "true" : "false"));
+        document.querySelectorAll("[data-current]").forEach((n) => { n.dataset.tempC = btn.dataset.temp; });
+        setLocation(btn.dataset.location, btn.dataset.region);
+        renderUnit();
+      });
+    });
+
+    document.querySelector("#locationForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = locationInput.value.trim();
+      if (!v) return;
+      setLocation(v, "Custom location");
+      liveStatus.textContent = "Loaded"; mobileStatus.textContent = "Loaded";
+      setTimeout(() => { liveStatus.textContent = "Live"; mobileStatus.textContent = "Live"; }, 1200);
+    });
+    sideSearch.addEventListener("input", () => { locationInput.value = sideSearch.value; });
+
+    document.querySelector("#shareReport").addEventListener("click", () => {
+      liveStatus.textContent = "Copied"; mobileStatus.textContent = "Copied";
+      setTimeout(() => { liveStatus.textContent = "Live"; mobileStatus.textContent = "Live"; }, 1400);
+    });
+
+    renderUnit();
+  </script>
+</body>
+</html>

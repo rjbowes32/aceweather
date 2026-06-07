@@ -25,6 +25,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
             "cropdynamics": {
                 "json": absolute("/api/cropdynamics"),
                 "digest": absolute("/api/digest?set=cropdynamics"),
+                "last14DaysDigest": absolute("/api/digest?set=cropdynamics&history_days=14"),
                 "shortDigest": absolute("/api/digest?set=cropdynamics&history_days=29&format=short"),
                 "last29DaysDigest": absolute("/api/digest?set=cropdynamics&history_days=29"),
                 "fullDigest": absolute("/api/digest?set=cropdynamics&mode=full"),
@@ -108,7 +109,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "responseFormat": "application/json",
                 "requiredParamsOneOf": [["query"], ["lat", "lon"]],
                 "optionalParams": [
-                    "timezone", "label", "history_days", "history_start", "history_end", "period", "station", "site_id",
+                    "timezone", "label", "history_days", "history_start", "history_end", "period", "station", "site_id", "target_date",
                 ],
                 "supportedPeriods": list(periods.supported_periods()),
                 "description": "Compact JSON weather snapshot. Same period / history_start / history_end / history_days controls as /api/report.",

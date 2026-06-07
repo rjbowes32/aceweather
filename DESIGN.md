@@ -1,160 +1,112 @@
 ---
-version: alpha
+version: 1
 name: AceWeather
-description: Agronomy-focused weather intelligence with atmospheric depth, expressive Material-inspired surfaces, and dense field decision support.
-colors:
-  primary: "#08111F"
-  secondary: "#0E1F36"
-  tertiary: "#5AA7FF"
-  accent-warm: "#FFB86A"
-  accent-cool: "#8CE7FF"
-  accent-rain: "#6E7DFF"
-  neutral: "#EDF4FF"
-  success: "#7AE7AE"
-  warning: "#FFD36D"
-  danger: "#FF8A7A"
-typography:
-  display-xl:
-    fontFamily: Sora
-    fontSize: 4.5rem
-    fontWeight: 800
-    lineHeight: 0.92
-  headline-lg:
-    fontFamily: Sora
-    fontSize: 2.4rem
-    fontWeight: 700
-    lineHeight: 1
-  title-md:
-    fontFamily: Plus Jakarta Sans
-    fontSize: 1.1rem
-    fontWeight: 700
-    lineHeight: 1.2
-  body-md:
-    fontFamily: Plus Jakarta Sans
-    fontSize: 1rem
-    fontWeight: 500
-    lineHeight: 1.6
-  label-caps:
-    fontFamily: IBM Plex Mono
-    fontSize: 0.78rem
-    fontWeight: 500
-    lineHeight: 1.3
-    letterSpacing: 0.16em
-  metric-md:
-    fontFamily: IBM Plex Mono
-    fontSize: 1.45rem
-    fontWeight: 500
-    lineHeight: 1.2
-rounded:
-  sm: 14px
-  md: 22px
-  lg: 30px
-  full: 999px
-spacing:
-  xs: 4px
-  sm: 8px
-  md: 12px
-  lg: 16px
-  xl: 24px
-  2xl: 32px
-  3xl: 48px
-components:
-  app-shell:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.neutral}"
-  glass-panel:
-    backgroundColor: "{colors.secondary}"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  button-primary:
-    backgroundColor: "{colors.accent-warm}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.full}"
-    padding: 16px
-  metric-chip:
-    backgroundColor: "{colors.secondary}"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.full}"
-    padding: 12px
-  risk-card:
-    backgroundColor: "{colors.secondary}"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.md}"
-    padding: 16px
-  chart-primary:
-    backgroundColor: "{colors.tertiary}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.md}"
-    padding: 12px
-  chart-rain:
-    backgroundColor: "{colors.accent-rain}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.md}"
-    padding: 12px
-  focus-ring:
-    backgroundColor: "{colors.accent-cool}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.full}"
-    padding: 4px
-  status-positive:
-    backgroundColor: "{colors.success}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.full}"
-    padding: 8px
-  status-warning:
-    backgroundColor: "{colors.warning}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.full}"
-    padding: 8px
-  status-danger:
-    backgroundColor: "{colors.danger}"
-    textColor: "{colors.primary}"
-    rounded: "{rounded.full}"
-    padding: 8px
+description: A calm, premium field-weather console for farmers and agronomists. Near-monochrome, dark-first, one accent. Restraint over decoration.
+theme: dark-first (light parity required)
+tokens:
+  color-dark:
+    bg: "#0a0b0d"          # app background (near-black, slightly warm-neutral)
+    surface: "#101216"     # cards / panels
+    surface-2: "#15181d"   # insets, search fields, segmented tracks
+    surface-3: "#1c2026"   # hover / active inset
+    line: "rgba(255,255,255,0.07)"   # hairline dividers
+    line-2: "rgba(255,255,255,0.13)" # stronger hairline / control borders
+    text: "#e9eaec"        # primary text
+    muted: "#9aa0a8"       # secondary text
+    faint: "#6a7079"       # tertiary text / kickers / axis labels
+    accent: "#6ea0ff"      # THE single interactive accent (links, active, rain)
+    accent-weak: "rgba(110,160,255,0.13)"
+    accent-line: "rgba(110,160,255,0.34)"
+  color-light:
+    bg: "#f6f7f9"
+    surface: "#ffffff"
+    surface-2: "#f1f3f6"
+    surface-3: "#e8ecf1"
+    line: "rgba(12,16,22,0.09)"
+    line-2: "rgba(12,16,22,0.16)"
+    text: "#14171c"
+    muted: "#5c636d"
+    faint: "#8a929c"
+    accent: "#2f6cf0"
+  semantic:               # DESATURATED. Small indicators only — never fills/backgrounds.
+    sun: "#e0b15e"        # temperature, sun, UV, heat
+    warn: "#d6a45c"       # watch / marginal (amber)
+    go: "#5cb98c"         # go / live / good (green)
+    risk: "#db7d84"       # severe / disease / frost risk (red)
+    cool: "#7fb6d9"       # frost / cold / snow
+    violet: "#a596e8"     # pressure / anomaly
+  radius:
+    card: 16px
+    inset: 11px
+    pill: 999px
+  type:
+    family: "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    display:  { weight: 200, tracking: "-0.045em", note: "huge temperature/numerals — thin & elegant" }
+    title:    { size: 15px, weight: 600, tracking: "-0.01em" }
+    body:     { size: 15px, weight: 400, lineHeight: 1.5 }
+    label:    { size: 12-13px, weight: 500, muted: true }
+    kicker:   { size: 10.5px, weight: 600, tracking: "0.14em", transform: uppercase, color: faint }
+    numbers:  "font-variant-numeric: tabular-nums on every figure that can change"
+  motion:
+    base: "140-180ms ease"
+    rule: "subtle only; respect prefers-reduced-motion (disable all)"
 ---
 
-## Overview
-AceWeather should feel like a premium field observatory for farmers and agronomists, not a generic consumer weather app. The interface pairs atmospheric beauty with operational clarity so a grower can assess spray windows, field access, disease pressure, rainfall totals, wind behavior, and soil conditions at a glance.
+# AceWeather — Design System
 
-## Colors
-The palette is night-led and luminous. Deep navy surfaces create room for weather-driven accents to glow without feeling neon or synthetic.
+This document is the **source of truth**. Anything added to AceWeather must adhere to it. When in doubt, choose the quieter option.
 
-- **Primary (`#08111F`)** anchors the full canvas and major text contrast.
-- **Secondary (`#0E1F36`)** carries the glass panels and inner surfaces.
-- **Tertiary (`#5AA7FF`)** is the core signal color for data emphasis and charts.
-- **Accent Warm (`#FFB86A`)** is reserved for actions, sun-driven metrics, and emphasis.
-- **Accent Cool (`#8CE7FF`)** supports light, air, and focus states.
-- **Accent Rain (`#6E7DFF`)** belongs to rainfall, cloud, and moisture narratives.
-- **Neutral (`#EDF4FF`)** keeps the page readable against translucent dark layers.
+## 1. Philosophy
+A calm, premium **instrument** for making field decisions — not a consumer weather toy and not a social feed. The look is **near-monochrome, dark-first, with a single accent**. Beauty comes from typography, spacing, and restraint, never from saturated colour or illustration. Every screen should feel like a quiet, well-made console a grower trusts at a glance.
 
-## Typography
-Typography should separate atmosphere from instrumentation. `Sora` handles the emotional top line and hero moments. `Plus Jakarta Sans` keeps explanatory copy clean and modern. `IBM Plex Mono` is for values, units, and agronomic metrics so the data reads like instrumentation rather than decoration.
+Three words: **calm, precise, premium.**
 
-## Layout
-The page should breathe like a landscape dashboard:
+## 2. Colour
+- The canvas is near-black (`bg`); cards sit one step up (`surface`); insets one step further (`surface-2/3`). Separation comes from these **tints + hairlines**, not shadows or borders-everywhere.
+- **One accent** (`accent`, a calm blue) carries all interactivity: links, active nav, focus, primary buttons, rainfall. Do not introduce a second interactive colour.
+- **Semantic colours are desaturated and used sparingly** — as a small dot, a thin meter fill, a single value's text colour. Never as a filled badge background, never as a card background. (sun=temp, warn=watch, go=good, risk=danger, cool=frost, violet=pressure.)
+- Light theme must reach the same contrast and calm. Every colour has a light-mode token; build with the CSS variables, never hard-coded hex.
 
-- The hero area is immersive and expressive.
-- The main grid is dense but calm, with information broken into purposeful field workflows.
-- Historical context should sit near forecast content so anomalies are obvious.
-- Agronomy-specific cards should be visually prominent, not treated as secondary add-ons.
+## 3. Typography
+- **Inter only.** Hierarchy comes from **weight + size + spacing**, not many families.
+- **Display numerals are thin** (weight 200, tight tracking). The big temperature is the one heroic moment per screen — keep it light and elegant, never an 800-weight block.
+- **Kickers** (tiny uppercase, tracked, `faint`) label sections quietly — use instead of heavy headers.
+- **Tabular numbers everywhere** a figure changes, so values don't jitter.
+- Avoid ALL-CAPS body text and decorative mono. Sentence case for copy.
 
-## Elevation & Depth
-Depth comes from blur, glow, inner highlights, and large-radius translucent panels. Avoid hard black shadows or flat blocks. The UI should feel like layered glass over a living sky map.
+## 4. Layout
+- **Three columns** on desktop: nav **rail** (`min 76 → 232`) · **feed** (`max 600`) · **sidebar** (`280–348`), centred. Hairline dividers between columns.
+- The feed is a **vertical stack of section cards** — one concern per card, generous padding (~22px), separated by a single hairline. Let it breathe; density lives *inside* a card or behind *Details*, not in the spacing.
+- **Responsive:** `≤1080px` collapse rail to icons; `≤900px` drop rail+sidebar to a single feed with a fixed **bottom tab bar**; `≤540px` tighten metrics to 2-up and shrink the display numeral. Mobile is the PWA's primary surface — it must feel first-class.
 
-## Shapes
-Rounded corners should be generous. Pills and chips should feel equipment-grade and tactile. Charts and cards should keep soft radii even in high-density sections.
+## 5. The card pattern (use for every new section)
+1. **Header:** a `kicker` + a short `meta` line, with a small semantic `accent-tick` square top-right.
+2. **Body:** the minimal, scannable summary (a number, a small chart, a few quiet rows).
+3. **Footer:** a `Details` disclosure (chevron) on the left, a quiet `note` on the right.
+4. **Detail:** hidden by default; expands to the rich/dense view (full chart, more numbers, methodology).
 
-## Components
-- **Hero panel:** cinematic current conditions with summary text grounded in field relevance.
-- **Agronomy insight card:** concise risk or opportunity statement with supporting numbers.
-- **Metric chip:** compact, high-signal, unit-explicit field metric.
-- **Chart panel:** dark, luminous, and readable at a distance.
-- **Provider card:** trustworthy source status with graceful handling of unavailable premium data.
+This **minimal-by-default, depth-on-demand** rhythm is mandatory — never dump everything into the default view.
 
-## Do's and Don'ts
-- Do privilege field decisions over generic consumer novelty.
-- Do show rainfall totals, wind, humidity, leaf-wetness proxies, and soil data together when discussing disease or spray timing.
-- Do explain that disease outputs are heuristic risk models unless validated against local pathology systems.
-- Do not let beauty reduce readability.
-- Do not hide unavailable premium data behind broken UI.
+## 6. Components
+- **Charts:** thin strokes, soft low-opacity area fills, **faint** gridlines, no bright caps. Bars are slim with a subtle gradient. A line chart may use `sun` (temp), `accent` (rain, dashed), `violet` (pressure). Keep them readable at a glance, detailed on expand.
+- **Meters:** thin (≈5px) rounded track on `surface-3`; fill in a single semantic colour; a small value label beside it.
+- **Controls:** pill segmented switches for binary/range choices (theme, units, chart range); ghost or solid-accent buttons. Active state = `surface` lift + accent text, never a glowing dot.
+- **Tags:** hairline-outlined, `muted` text, a tiny semantic dot. Never saturated fills.
+- **Sky panel** (current conditions): a soft gradient with a single glowing orb — abstract, not an illustration.
+
+## 7. Do / Don't
+**Do**
+- Privilege field decisions (spray window, access, disease, frost, rainfall, soil) and present related signals together.
+- Label model outputs as **heuristic** where they are (agronomy, disease, "approx" radar derivations).
+- Build with the CSS variables and the card pattern so new sections are consistent for free.
+- Keep source files small and focused (see the repo's ≤400-line UI convention).
+
+**Don't**
+- ❌ Cartoon weather illustrations, emoji, or bouncing animations.
+- ❌ Social-media cosplay (avatars, @handles, "18m" timestamps, like/reply rows).
+- ❌ Rainbows of saturated filled badges, or a second interactive colour.
+- ❌ Heavy 700–800 weights as the default; hard black shadows; boxes around everything.
+- ❌ Let beauty reduce readability, or hide unavailable data behind broken UI — degrade gracefully.
+
+## 8. Data & honesty
+Primary source is **Open-Meteo** (forecast: current/hourly/daily incl. soil; 7 past days; 14 forecast days). **Radar** is **RainViewer** (Open-Meteo has no radar). Climate normals come from the **Open-Meteo archive**. Always show source and freshness; when a value is derived/approximate, say so quietly in the card's note or Details.
