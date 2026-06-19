@@ -2,7 +2,7 @@
 // @ts-nocheck
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, Tags, Meter, Bars, LineTrend, Sky, SoilRows, ConditionIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix, SunArc } from "./ui";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -156,27 +156,104 @@ function HourlyDetail({ day, unit, windUnit }) {
   );
 }
 
+function outlookRainNumber(v) {
+  if (v == null) return "—";
+  return (v || 0) < 0.1 ? "0" : v.toFixed(1);
+}
+
+function outlookRainText(v) {
+  if (v == null) return "—";
+  return `${outlookRainNumber(v)} mm`;
+}
+
+function outlookChanceText(v) {
+  return v == null ? "—" : `${Math.round(v)}%`;
+}
+
+function outlookWind(day, windUnit) {
+  const wind = day?.hours?.windMax;
+  return wind == null ? "—" : wSpd(wind, windUnit);
+}
+
+function outlookWindText(day, windUnit) {
+  const wind = day?.hours?.windMax;
+  return wind == null ? "—" : `${wSpd(wind, windUnit)} ${WU(windUnit)}`;
+}
+
+function outlookTone(day) {
+  const rain = day?.rain ?? 0;
+  const chance = day?.prob ?? 0;
+  const wind = day?.hours?.windMax ?? 0;
+  if (rain >= 5 || chance >= 70) return " is-wet";
+  if (wind >= 30) return " is-breezy";
+  return "";
+}
+
 export function CalendarCard({ model, unit, windUnit, view }) {
   const [sel, setSel] = useState(0);
+  const selectedDayRef = useRef(null);
   const day = model.calendar[sel] || model.calendar[0];
   const leading = Array.from({ length: model.calendarOffset });
+  const trailing = Array.from({ length: (7 - ((leading.length + model.calendar.length) % 7)) % 7 });
+
+  useEffect(() => {
+    if (view === "outlook") {
+      selectedDayRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+    }
+  }, [sel, view]);
+
   return (
     <Card section="outlook" currentView={view} tick="cool" kicker="14-day outlook"
-      meta={day ? `${day.weekday} ${day.dayNum}: ${tC(day.hi, unit)}° / ${tC(day.lo, unit)}° · ${day.rain == null ? "—" : day.rain.toFixed(1)} mm` : "—"}
+      meta={day ? `${day.weekday} ${day.dayNum}: ${tC(day.hi, unit)}° / ${tC(day.lo, unit)}° · ${outlookRainText(day.rain)} · ${outlookChanceText(day.prob)} rain · wind ${outlookWindText(day, windUnit)}` : "—"}
       note="Tap any day for its hour-by-hour detail">
+      {day && (
+        <div className={"awx-outlook-lead" + outlookTone(day)}>
+          <div className="awx-outlook-lead-main">
+            <ConditionIcon className="awx-outlook-icon" k={day.condition.key} />
+            <div>
+              <span>{day.weekday} {day.dayNum}</span>
+              <strong>{day.condition.label}</strong>
+            </div>
+          </div>
+          <div className="awx-outlook-stat">
+            <span>High / low</span>
+            <b className="awx-tnum">{tC(day.hi, unit)}° / {tC(day.lo, unit)}°</b>
+          </div>
+          <div className="awx-outlook-stat">
+            <span>Rain</span>
+            <b className="awx-tnum">{outlookRainText(day.rain)} <small>{outlookChanceText(day.prob)}</small></b>
+          </div>
+          <div className="awx-outlook-stat">
+            <span>Wind</span>
+            <b className="awx-tnum">{outlookWind(day, windUnit)} <small>{day?.hours?.windMax == null ? "" : WU(windUnit)}</small></b>
+          </div>
+        </div>
+      )}
       <div className="awx-cal">
         {DOW.map((dn) => <div key={dn} className="awx-cal-dow">{dn}</div>)}
         {leading.map((_, i) => <div key={"e" + i} className="awx-cal-day is-empty" />)}
-        {model.calendar.map((c, i) => (
-          <button key={c.dateKey} type="button"
-            className={"awx-cal-day" + (c.isToday ? " is-today" : "") + (sel === i ? " is-sel" : "")}
-            aria-pressed={sel === i} onClick={() => setSel(i)}>
-            <div className="awx-date"><b>{c.dayNum}</b><ConditionIcon className="awx-cal-icon" k={c.condition.key} /></div>
-            <div className="awx-cal-temps awx-tnum">{tC(c.hi, unit)}° <span className="awx-lo">{tC(c.lo, unit)}°</span></div>
-            <div className="awx-cal-rainbar"><i style={{ width: c.rainPct + "%" }} /></div>
-            <div className={"awx-cal-rain awx-tnum" + ((c.rain ?? 0) < 0.1 ? " is-dry" : "")}>{(c.rain ?? 0) < 0.1 ? "—" : c.rain.toFixed(1)}</div>
-          </button>
-        ))}
+        {model.calendar.map((c, i) => {
+          const dry = (c.rain ?? 0) < 0.1;
+          const wind = c.hours?.windMax;
+          return (
+            <button key={c.dateKey} type="button"
+              ref={sel === i ? selectedDayRef : null}
+              className={"awx-cal-day" + (c.isToday ? " is-today" : "") + (sel === i ? " is-sel" : "") + outlookTone(c)}
+              aria-pressed={sel === i}
+              aria-label={`${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°, rain ${outlookRainText(c.rain)}, chance ${outlookChanceText(c.prob)}, wind ${outlookWindText(c, windUnit)}`}
+              onClick={() => setSel(i)}>
+              <div className="awx-date"><b>{c.dayNum}</b><ConditionIcon className="awx-cal-icon" k={c.condition.key} /></div>
+              <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
+              <div className="awx-cal-rainbar" aria-hidden="true"><i style={{ width: c.rainPct + "%" }} /></div>
+              <div className="awx-cal-meta">
+                <span className={"awx-cal-mini awx-cal-rain" + (dry ? " is-dry" : "")} title="Rainfall"><b>{outlookRainNumber(c.rain)}</b><small>mm</small></span>
+                <span className="awx-cal-mini" title="Rain chance"><b>{outlookChanceText(c.prob)}</b><small>rain</small></span>
+                <span className="awx-cal-mini awx-cal-wind" title="Max wind"><b>{wind == null ? "—" : wSpd(wind, windUnit)}</b><small>{wind == null ? "" : WU(windUnit)}</small></span>
+              </div>
+            </button>
+          );
+        })}
+        {trailing.map((_, i) => <div key={"t" + i} className="awx-cal-day is-empty" />)}
       </div>
       <HourlyDetail day={day} unit={unit} windUnit={windUnit} />
     </Card>
