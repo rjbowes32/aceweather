@@ -120,6 +120,12 @@ html[data-awx] body {
 
 .awx-rail-spacer { flex: 1; }
 .awx-rail-foot { display: grid; gap: 12px; }
+.awx-settings-panel { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--awx-line); }
+.awx-settings-head { display: flex; align-items: center; gap: 10px; min-height: 34px; color: var(--awx-text); }
+.awx-settings-head svg { width: 18px; height: 18px; stroke: var(--awx-accent); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.awx-settings-head strong { display: block; font-size: 13.5px; font-weight: 650; }
+.awx-settings-head small { display: block; margin-top: 1px; color: var(--awx-muted); font-size: 11.5px; line-height: 1.25; }
+.awx-settings-body { display: grid; gap: 10px; }
 .awx-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 42px; padding: 0 16px; border-radius: 11px;
@@ -224,6 +230,8 @@ html[data-awx] body {
   .awx-nav button[aria-pressed="true"]::before { display: none; }
   .awx-btn { padding: 0; width: 44px; }
   .awx-segmented { flex-direction: column; }
+  .awx-settings-head { justify-content: center; }
+  .awx-settings-head span { display: none; }
   .awx-docs-rail { display: none; }
 }
 

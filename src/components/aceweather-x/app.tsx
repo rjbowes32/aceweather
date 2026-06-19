@@ -233,8 +233,19 @@ export function AceWeatherApp() {
         <div className="awx-rail-spacer" />
         <div className="awx-rail-foot">
           <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
-          {settingsControls}
-          <EndpointDocs rail />
+          <section className="awx-settings-panel" aria-label="Settings">
+            <div className="awx-settings-head">
+              <SettingsIcon />
+              <span>
+                <strong>Settings</strong>
+                <small>Display, units and docs</small>
+              </span>
+            </div>
+            <div className="awx-settings-body">
+              {settingsControls}
+              <EndpointDocs rail />
+            </div>
+          </section>
         </div>
       </aside>
 
