@@ -51,6 +51,50 @@ const SEED_SAVED = [
   { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
 ];
 
+function EndpointDocs({ rail = false }: { rail?: boolean }) {
+  const content = (
+    <div className="awx-docs-list">
+      {DOC_ENDPOINTS.map((endpoint) => (
+        <a key={endpoint.href} className="awx-doc-link" href={endpoint.href} target="_blank" rel="noreferrer">
+          <span>
+            <b>{endpoint.label}</b>
+            <small>{endpoint.detail}</small>
+          </span>
+          <code>{endpoint.href.replace("https://aceweather.app", "")}</code>
+        </a>
+      ))}
+    </div>
+  );
+
+  if (rail) {
+    return (
+      <details className="awx-docs awx-docs-rail" aria-label="Endpoint documentation">
+        <summary className="awx-docs-head">
+          <DocsIcon />
+          <span>
+            <strong>Docs</strong>
+            <small>Endpoint guide</small>
+          </span>
+        </summary>
+        {content}
+      </details>
+    );
+  }
+
+  return (
+    <section className="awx-docs" aria-label="Endpoint documentation">
+      <div className="awx-docs-head">
+        <DocsIcon />
+        <div>
+          <strong>Docs</strong>
+          <span>Endpoints for agents, dashboards and AppSheet workflows.</span>
+        </div>
+      </div>
+      {content}
+    </section>
+  );
+}
+
 export function AceWeatherApp() {
   const [location, setLocation] = useState(DEFAULT_LOCATION);
   const [raw, setRaw] = useState(null);
@@ -190,6 +234,7 @@ export function AceWeatherApp() {
         <div className="awx-rail-foot">
           <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
           {settingsControls}
+          <EndpointDocs rail />
         </div>
       </aside>
 
@@ -305,26 +350,7 @@ export function AceWeatherApp() {
                 <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>Use my location</span></button>
                 <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
               </div>
-              <section className="awx-docs" aria-label="Endpoint documentation">
-                <div className="awx-docs-head">
-                  <DocsIcon />
-                  <div>
-                    <strong>Docs</strong>
-                    <span>Endpoints for agents, dashboards and AppSheet workflows.</span>
-                  </div>
-                </div>
-                <div className="awx-docs-list">
-                  {DOC_ENDPOINTS.map((endpoint) => (
-                    <a key={endpoint.href} className="awx-doc-link" href={endpoint.href} target="_blank" rel="noreferrer">
-                      <span>
-                        <b>{endpoint.label}</b>
-                        <small>{endpoint.detail}</small>
-                      </span>
-                      <code>{endpoint.href.replace("https://aceweather.app", "")}</code>
-                    </a>
-                  ))}
-                </div>
-              </section>
+              <EndpointDocs />
             </div>
           </div>
         </div>

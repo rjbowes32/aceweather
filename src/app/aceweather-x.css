@@ -224,6 +224,7 @@ html[data-awx] body {
   .awx-nav button[aria-pressed="true"]::before { display: none; }
   .awx-btn { padding: 0; width: 44px; }
   .awx-segmented { flex-direction: column; }
+  .awx-docs-rail { display: none; }
 }
 
 @media (max-width: 900px) {
@@ -278,6 +279,20 @@ html[data-awx] body {
 .awx-docs-head strong { display: block; font-size: 14px; font-weight: 650; }
 .awx-docs-head span { display: block; margin-top: 2px; color: var(--awx-muted); font-size: 12.5px; line-height: 1.4; }
 .awx-docs-list { display: grid; gap: 7px; }
+.awx-docs-rail { margin-top: 2px; padding-top: 10px; }
+.awx-docs-rail .awx-docs-head {
+  cursor: pointer; padding: 7px 2px; border-radius: 10px; align-items: center;
+}
+.awx-docs-rail .awx-docs-head::-webkit-details-marker { display: none; }
+.awx-docs-rail .awx-docs-head::marker { content: ""; }
+.awx-docs-rail .awx-docs-head::after {
+  content: "+"; margin-left: auto; color: var(--awx-faint); font-size: 18px; line-height: 1;
+}
+.awx-docs-rail[open] .awx-docs-head::after { content: "-"; }
+.awx-docs-rail .awx-docs-head:hover { background: var(--awx-surface-2); }
+.awx-docs-rail .awx-docs-head small { display: block; margin-top: 2px; color: var(--awx-muted); font-size: 11.5px; line-height: 1.2; }
+.awx-docs-rail .awx-docs-list { margin-top: 8px; max-height: 42vh; overflow-y: auto; padding-right: 2px; }
+.awx-docs-rail .awx-doc-link { padding: 9px 10px; gap: 6px; }
 .awx-doc-link {
   display: grid; gap: 8px; padding: 11px 12px; border: 1px solid var(--awx-line);
   border-radius: 11px; background: var(--awx-surface-2); color: var(--awx-text);
