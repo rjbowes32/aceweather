@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 
 import { buildModel } from "@/lib/aceweather/derive";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations } from "@/lib/aceweather/open-meteo";
-import { NavIcon, SearchIcon, ShareIcon, GpsIcon, SettingsIcon, BellIcon } from "./icons";
+import { NavIcon, SearchIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon } from "./icons";
 import { NowCard, TrendCard, SunCard, RainCard, CalendarCard, SprayCard, DiseaseCard, SoilWaterCard, SeasonCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
 
@@ -27,8 +27,10 @@ const SEED_SAVED = [
 export function AceWeatherApp() {
   const [location, setLocation] = useState(DEFAULT_LOCATION);
   const [raw, setRaw] = useState(null);
+  const [rawCacheMode, setRawCacheMode] = useState(undefined);
   const [seasonal, setSeasonal] = useState(null);
   const [status, setStatus] = useState("loading");
+  const [loadRequest, setLoadRequest] = useState({ nonce: 0, cache: undefined });
   const [theme, setTheme] = useState("dark");
   const [unit, setUnit] = useState("c");
   const [windUnit, setWindUnit] = useState("kmh");
@@ -66,20 +68,21 @@ export function AceWeatherApp() {
   // fetch forecast on location change
   useEffect(() => {
     const ctrl = new AbortController();
-    setStatus("loading");
-    fetchForecast(location, ctrl.signal)
-      .then((data) => { setRaw(data); setStatus("live"); })
+    const cacheMode = loadRequest.cache;
+    setStatus(cacheMode === "reload" ? "refreshing" : "loading");
+    fetchForecast(location, ctrl.signal, cacheMode)
+      .then((data) => { setRaw(data); setRawCacheMode(cacheMode); setStatus("live"); })
       .catch((e) => { if (e.name !== "AbortError") setStatus("error"); });
     return () => ctrl.abort();
-  }, [location]);
+  }, [location, loadRequest]);
 
   // seasonal (best-effort, async; forecast actuals fill the archive's recent-day gap)
   useEffect(() => {
     if (!raw) return undefined;
     const ctrl = new AbortController();
-    fetchSeasonal(location, raw.daily, ctrl.signal).then(setSeasonal).catch(() => setSeasonal(null));
+    fetchSeasonal(location, raw.daily, ctrl.signal, rawCacheMode).then(setSeasonal).catch(() => setSeasonal(null));
     return () => ctrl.abort();
-  }, [location, raw]);
+  }, [location, raw, rawCacheMode]);
 
   // search debounce
   useEffect(() => {
@@ -95,6 +98,7 @@ export function AceWeatherApp() {
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
 
   function loadLocation(loc) {
+    setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
     setLocation(loc); setQuery(""); setSuggestions([]); setView("all");
     setSaved((prev) => {
       const next = [loc, ...prev.filter((p) => p.name !== loc.name)].slice(0, 8);
@@ -117,14 +121,21 @@ export function AceWeatherApp() {
     setShareLabel("Copied"); setTimeout(() => setShareLabel("Share report"), 1400);
   }
 
+  function reloadData() {
+    setStatus("refreshing");
+    setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: "reload" }));
+  }
+
   async function toggleRainAlerts() {
     if (rainAlerts) { setRainAlerts(false); return; }
     const perm = await enableRainAlerts();
     if (perm === "granted") { setRainAlerts(true); saveLocationForSync(location); if (model) maybeNotifyRain(model, location.name); }
   }
 
-  const statusCls = status === "live" ? "" : status === "loading" ? " is-stale" : " is-offline";
-  const statusText = status === "live" ? "Live" : status === "loading" ? "Fetching" : "Offline";
+  const isFetching = status === "loading" || status === "refreshing";
+  const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
+  const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
+  const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
 
   const settingsControls = (
     <>
@@ -173,6 +184,7 @@ export function AceWeatherApp() {
           <strong>{location.name}</strong>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
+            <button className={"awx-icon-btn awx-refresh-icon" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} aria-label="Reload weather data" title={reloadLabel}><RefreshIcon /></button>
             <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(true)} aria-label="Settings"><SettingsIcon /></button>
           </div>
         </header>
@@ -181,7 +193,12 @@ export function AceWeatherApp() {
             <h1>{location.name}</h1>
             <span className="awx-sub">{[location.region, model ? `updated ${freshness}` : "loading"].filter(Boolean).join(" · ")}</span>
           </div>
-          <span className={"awx-status" + statusCls}>{statusText}</span>
+          <div className="awx-head-actions">
+            <span className={"awx-status" + statusCls}>{statusText}</span>
+            <button className={"awx-btn awx-btn-ghost awx-refresh-btn" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} title={reloadLabel}>
+              <RefreshIcon /><span>{reloadLabel}</span>
+            </button>
+          </div>
         </div>
         <form className="awx-composer" onSubmit={onSubmit}>
           <label className="awx-search">

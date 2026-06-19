@@ -1,18 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a1c2d"/>
-      <stop offset="55%" stop-color="#14324b"/>
-      <stop offset="100%" stop-color="#235879"/>
+    <clipPath id="tile"><rect width="192" height="192" rx="42" ry="42"/></clipPath>
+    <linearGradient id="bg" x1="30" y1="16" x2="163" y2="174" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d1218"/>
+      <stop offset="0.58" stop-color="#111b24"/>
+      <stop offset="1" stop-color="#182c37"/>
     </linearGradient>
-    <linearGradient id="rain" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#8ce7ff"/>
-      <stop offset="100%" stop-color="#57b7ff"/>
+    <radialGradient id="sun" cx="38%" cy="34%" r="64%">
+      <stop offset="0" stop-color="#ffe39a"/>
+      <stop offset="0.62" stop-color="#f0b657"/>
+      <stop offset="1" stop-color="#d8943f"/>
+    </radialGradient>
+    <linearGradient id="cloud" x1="49" y1="63" x2="143" y2="134" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfeaf2"/>
     </linearGradient>
   </defs>
-  <rect width="192" height="192" rx="42" fill="url(#bg)"/>
-  <circle cx="56" cy="52" r="22" fill="#ffcb6b" opacity="0.95"/>
-  <path d="M56 117c0-21 17-38 38-38 12 0 24 5 31 14 3-1 5-1 8-1 16 0 29 13 29 29s-13 29-29 29H63c-20 0-36-15-36-33 0-17 13-31 29-33Z" fill="#eef6ff"/>
-  <path d="M70 151c-5 10-10 17-10 23a10 10 0 1 0 20 0c0-6-5-13-10-23Zm30-4c-5 10-10 17-10 23a10 10 0 1 0 20 0c0-6-5-13-10-23Zm30 4c-5 10-10 17-10 23a10 10 0 1 0 20 0c0-6-5-13-10-23Z" fill="url(#rain)"/>
-  <path d="M97 54 66 136h17l-7 31 50-73H106l19-40Z" fill="#071622" opacity="0.92"/>
+  <g clip-path="url(#tile)">
+    <rect width="192" height="192" fill="url(#bg)"/>
+    <circle cx="68" cy="61" r="33" fill="url(#sun)"/>
+    <g stroke="#f3c96f" stroke-width="5" stroke-linecap="round" opacity="0.72">
+      <path d="M68 16v14"/>
+      <path d="M68 92v14"/>
+      <path d="M23 61h14"/>
+      <path d="M99 61h14"/>
+      <path d="M37 29l9 9"/>
+      <path d="M90 82l9 9"/>
+      <path d="M99 29l-9 9"/>
+      <path d="M46 82l-9 9"/>
+    </g>
+    <path fill="url(#cloud)" d="M57 132c-15 0-28-12-28-26 0-14 11-25 24-26 6-16 21-28 39-28 16 0 30 9 37 22 2-1 4-1 6-1 15 0 27 12 27 27s-12 27-27 27H57z"/>
+    <text x="96" y="110" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="47" font-weight="800" letter-spacing="-3" fill="#101820">aw</text>
+  </g>
 </svg>

@@ -1,18 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a1c2d"/>
-      <stop offset="55%" stop-color="#14324b"/>
-      <stop offset="100%" stop-color="#235879"/>
+    <clipPath id="tile"><rect width="512" height="512" rx="112" ry="112"/></clipPath>
+    <linearGradient id="bg" x1="80" y1="42" x2="435" y2="465" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d1218"/>
+      <stop offset="0.58" stop-color="#111b24"/>
+      <stop offset="1" stop-color="#182c37"/>
     </linearGradient>
-    <linearGradient id="rain" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#8ce7ff"/>
-      <stop offset="100%" stop-color="#57b7ff"/>
+    <radialGradient id="sun" cx="38%" cy="34%" r="64%">
+      <stop offset="0" stop-color="#ffe39a"/>
+      <stop offset="0.62" stop-color="#f0b657"/>
+      <stop offset="1" stop-color="#d8943f"/>
+    </radialGradient>
+    <linearGradient id="cloud" x1="130" y1="168" x2="382" y2="357" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfeaf2"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="148" cy="138" r="58" fill="#ffcb6b" opacity="0.95"/>
-  <path d="M150 309c0-57 46-103 103-103 35 0 66 16 86 41 8-2 14-3 21-3 43 0 78 35 78 78s-35 78-78 78H168c-55 0-98-40-98-90 0-47 35-84 80-89Z" fill="#eef6ff"/>
-  <path d="M186 405c-14 27-27 48-27 63a27 27 0 1 0 54 0c0-15-13-36-27-63Zm80-10c-14 27-27 48-27 63a27 27 0 1 0 54 0c0-15-13-36-27-63Zm80 10c-14 27-27 48-27 63a27 27 0 1 0 54 0c0-15-13-36-27-63Z" fill="url(#rain)"/>
-  <path d="M260 144 178 355h45l-20 78 132-186h-54l49-103Z" fill="#071622" opacity="0.92"/>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <circle cx="182" cy="163" r="89" fill="url(#sun)"/>
+    <g stroke="#f3c96f" stroke-width="14" stroke-linecap="round" opacity="0.72">
+      <path d="M182 43v36"/>
+      <path d="M182 247v36"/>
+      <path d="M62 163h36"/>
+      <path d="M266 163h36"/>
+      <path d="M98 78l25 25"/>
+      <path d="M242 222l25 25"/>
+      <path d="M266 78l-25 25"/>
+      <path d="M123 222l-25 25"/>
+    </g>
+    <path fill="url(#cloud)" d="M153 351c-41 0-74-31-74-70 0-36 28-65 64-68 15-43 56-74 104-74 43 0 80 24 99 60 5-1 11-2 16-2 40 0 73 33 73 73s-33 73-73 73H153z"/>
+    <text x="256" y="293" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="125" font-weight="800" letter-spacing="-9" fill="#101820">aw</text>
+  </g>
 </svg>

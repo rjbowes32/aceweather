@@ -164,6 +164,21 @@ html[data-awx] body {
 .awx-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--awx-go); box-shadow: 0 0 0 3px color-mix(in srgb, var(--awx-go) 22%, transparent); }
 .awx-status.is-stale::before { background: var(--awx-warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--awx-warn) 22%, transparent); }
 .awx-status.is-offline::before { background: var(--awx-faint); box-shadow: none; }
+.awx-head-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.awx-refresh-btn {
+  min-height: 34px;
+  padding-inline: 12px;
+}
+.awx-refresh-btn:disabled,
+.awx-refresh-icon:disabled {
+  cursor: progress;
+  opacity: 0.62;
+}
+.awx-refresh-btn.is-loading svg,
+.awx-refresh-icon.is-loading svg {
+  animation: awx-spin 900ms linear infinite;
+}
+@keyframes awx-spin { to { transform: rotate(360deg); } }
 
 .awx-composer { padding: 14px 22px; border-bottom: 1px solid var(--awx-line); position: relative; }
 .awx-search {
@@ -236,7 +251,7 @@ html[data-awx] body {
     min-height: 56px; padding: 10px 16px; border-bottom: 1px solid var(--awx-line);
     background: color-mix(in srgb, var(--awx-bg) 82%, transparent); backdrop-filter: blur(18px);
   }
-  .awx-mobile-top strong { font-size: 15px; font-weight: 600; }
+  .awx-mobile-top strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; }
   .awx-feed-head { position: static; }
   .awx-mobile-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;

@@ -104,13 +104,14 @@ export function buildModel(raw) {
   const mkBars = (vals, labels, maxV) => vals.map((v, i) => ({
     h: clamp((v / (maxV || 1)) * 100, 1, 100), label: labels[i], dry: (v || 0) < 0.1, now: i === 0,
   }));
+  const rainHourLabels = Array.from({ length: 12 }, (_, i) => timeLabel(h.time[ni + i * 2] || ""));
   const dLabels = (start, n) => Array.from({ length: n }, (_, i) => weekdayShort(d.time[start + i] || "").slice(0, 1));
   const dNums = (start, n) => Array.from({ length: n }, (_, i) => String(dayOfMonth(d.time[start + i] || "1")));
   const rain = {
     sum24: +sum24.toFixed(1), peakProb, past7: +past7.toFixed(1), next7: +next7.toFixed(1),
     ranges: {
-      "24h": { cap: "Next 24h · hourly", total: +sum24.toFixed(1),
-        bars: mkBars(buckets12, Array.from({ length: 12 }, (_, i) => `+${i * 2}`), bMax) },
+      "24h": { cap: "Next 24h · 2-hour totals", total: +sum24.toFixed(1),
+        bars: mkBars(buckets12, rainHourLabels, bMax) },
       "7d": { cap: "Next 7 days · daily", total: +next7.toFixed(1),
         bars: mkBars(dailyP.slice(di, di + 7), dLabels(di, 7), Math.max(1, ...dailyP.slice(di, di + 7))) },
       "14d": { cap: "Next 14 days · daily", total: +next14.toFixed(1),

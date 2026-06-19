@@ -95,7 +95,8 @@ async function cacheFirst(request) {
 
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
+  const bypassCached = request.cache === "reload" || request.cache === "no-cache";
+  const cached = bypassCached ? null : await cache.match(request);
   const fetchPromise = fetch(request).then(async (response) => {
     if (response && response.ok) {
       const headers = new Headers(response.headers);
@@ -108,6 +109,14 @@ async function staleWhileRevalidate(request, cacheName) {
     }
     return response;
   }).catch(() => null);
+
+  if (bypassCached) {
+    const fresh = await fetchPromise;
+    if (fresh) return fresh;
+    const fallback = await cache.match(request);
+    if (fallback) return fallback;
+    throw new Error("Network failed and no cached copy");
+  }
 
   if (cached) {
     const cachedAt = cached.headers.get("x-aw-cached-at");

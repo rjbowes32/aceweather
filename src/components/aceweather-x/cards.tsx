@@ -326,6 +326,7 @@ export function SeasonalCard({ seasonal, view }) {
 }
 
 export function SourcesCard({ source, freshness, view }) {
+  if (source === "refreshing") source = "loading";
   return (
     <Card section="about" currentView={view} tick="go" kicker="Data sources"
       meta="What powers this view">

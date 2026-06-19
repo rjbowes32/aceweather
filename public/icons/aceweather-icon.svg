@@ -1,119 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AceWeather">
   <title>AceWeather</title>
   <defs>
-    <clipPath id="sq"><rect width="1024" height="1024" rx="224" ry="224"></rect></clipPath>
-    <radialGradient id="paper" cx="32%" cy="22%" r="80%">
-      <stop offset="0%" stop-color="#f3ede1"></stop>
-      <stop offset="55%" stop-color="#ece6da"></stop>
-      <stop offset="100%" stop-color="#d6cfbe"></stop>
+    <clipPath id="tile"><rect width="1024" height="1024" rx="224" ry="224"/></clipPath>
+    <linearGradient id="bg" x1="160" y1="84" x2="870" y2="930" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d1218"/>
+      <stop offset="0.58" stop-color="#111b24"/>
+      <stop offset="1" stop-color="#182c37"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="38%" cy="34%" r="64%">
+      <stop offset="0" stop-color="#ffe39a"/>
+      <stop offset="0.62" stop-color="#f0b657"/>
+      <stop offset="1" stop-color="#d8943f"/>
     </radialGradient>
+    <linearGradient id="cloud" x1="260" y1="336" x2="764" y2="714" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfeaf2"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="28" stdDeviation="32" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
   </defs>
-  <g clip-path="url(#sq)">
-    
-    <rect width="1024" height="1024" fill="url(#paper)"></rect>
-
-    
-    <g stroke="#141210" stroke-opacity="0.05" stroke-width="1.5">
-      <path d="M0 256 H1024 M0 512 H1024 M0 768 H1024 M256 0 V1024 M512 0 V1024 M768 0 V1024"></path>
+  <g clip-path="url(#tile)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <circle cx="365" cy="326" r="178" fill="url(#sun)"/>
+    <g stroke="#f3c96f" stroke-width="28" stroke-linecap="round" opacity="0.72">
+      <path d="M365 86v72"/>
+      <path d="M365 494v72"/>
+      <path d="M125 326h72"/>
+      <path d="M533 326h72"/>
+      <path d="M195 156l50 50"/>
+      <path d="M485 446l50 50"/>
+      <path d="M535 156l-50 50"/>
+      <path d="M245 446l-50 50"/>
     </g>
-
-    
-    <g stroke="#141210" stroke-opacity="0.35" stroke-width="3" fill="none">
-      <path d="M64 96 V64 H96"></path>
-      <path d="M928 64 H960 V96"></path>
-      <path d="M960 928 V960 H928"></path>
-      <path d="M96 960 H64 V928"></path>
-    </g>
-
-    
-    <g transform="translate(512 512)">
-      <circle r="392" fill="none" stroke="#141210" stroke-opacity="0.18" stroke-width="2"></circle>
-      <circle r="368" fill="none" stroke="#141210" stroke-opacity="0.30" stroke-width="2"></circle>
-      
-      <g stroke="#141210" stroke-opacity="0.55" stroke-width="4" stroke-linecap="square">
-        <line x1="0" y1="-388" x2="0" y2="-360"></line>
-        <line x1="194" y1="-336.0" x2="180" y2="-311.8"></line>
-        <line x1="336.0" y1="-194" x2="311.8" y2="-180"></line>
-        <line x1="388" y1="0" x2="360" y2="0"></line>
-        <line x1="336.0" y1="194" x2="311.8" y2="180"></line>
-        <line x1="194" y1="336.0" x2="180" y2="311.8"></line>
-        <line x1="0" y1="388" x2="0" y2="360"></line>
-        <line x1="-194" y1="336.0" x2="-180" y2="311.8"></line>
-        <line x1="-336.0" y1="194" x2="-311.8" y2="180"></line>
-        <line x1="-388" y1="0" x2="-360" y2="0"></line>
-        <line x1="-336.0" y1="-194" x2="-311.8" y2="-180"></line>
-        <line x1="-194" y1="-336.0" x2="-180" y2="-311.8"></line>
-      </g>
-      
-      <g stroke="#141210" stroke-opacity="0.30" stroke-width="2" stroke-linecap="square">
-        
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(6)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(12)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(18)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(24)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(36)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(42)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(48)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(54)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(66)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(72)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(78)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(84)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(96)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(102)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(108)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(114)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(126)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(132)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(138)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(144)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(156)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(162)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(168)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(174)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(186)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(192)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(198)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(204)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(216)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(222)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(228)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(234)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(246)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(252)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(258)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(264)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(276)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(282)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(288)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(294)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(306)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(312)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(318)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(324)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(336)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(342)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(348)"></line></g>
-        <g><line x1="0" y1="-388" x2="0" y2="-372" transform="rotate(354)"></line></g>
-      </g>
-
-      
-      <path d="M 0 -368 A 368 368 0 0 1 260.2 -260.2" fill="none" stroke="#b8722b" stroke-width="22" stroke-linecap="butt"></path>
-    </g>
-
-    
-    <g transform="translate(512 540)" font-family="&#39;Sora&#39;, &#39;Helvetica Neue&#39;, Arial, sans-serif" font-weight="700" font-size="480" text-anchor="middle" fill="#141210" letter-spacing="-32">
-      <text dominant-baseline="middle" y="0">AW</text>
-    </g>
-
-    
-    <g transform="translate(512 940)" font-family="&#39;JetBrains Mono&#39;, ui-monospace, monospace" fill="#141210" fill-opacity="0.55" text-anchor="middle">
-      <text font-size="34" letter-spacing="10">ACEWEATHER</text>
-    </g>
-
-    
-    <circle cx="928" cy="116" r="14" fill="#b8722b"></circle>
+    <path filter="url(#softShadow)" fill="url(#cloud)" d="M306 702c-82 0-148-62-148-139 0-72 56-130 128-136 29-87 111-149 207-149 85 0 160 48 197 119 10-2 21-3 32-3 80 0 145 65 145 145s-65 145-145 145H306z"/>
+    <path fill="#121b24" d="M306 702c-82 0-148-62-148-139 0-72 56-130 128-136 29-87 111-149 207-149 85 0 160 48 197 119 10-2 21-3 32-3 80 0 145 65 145 145s-65 145-145 145H306z" opacity="0.08"/>
+    <text x="512" y="586" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="250" font-weight="800" letter-spacing="-18" fill="#101820">aw</text>
   </g>
 </svg>

@@ -33,7 +33,14 @@ const FORECAST = "https://api.open-meteo.com/v1/forecast";
 const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 const ARCHIVE = "https://archive-api.open-meteo.com/v1/archive";
 
-export async function fetchForecast(loc: AwLocation, signal?: AbortSignal): Promise<ForecastResponse> {
+function fetchInit(signal?: AbortSignal, cache?: RequestCache): RequestInit {
+  const init: RequestInit = {};
+  if (signal) init.signal = signal;
+  if (cache) init.cache = cache;
+  return init;
+}
+
+export async function fetchForecast(loc: AwLocation, signal?: AbortSignal, cache?: RequestCache): Promise<ForecastResponse> {
   const params = new URLSearchParams({
     latitude: String(loc.lat),
     longitude: String(loc.lon),
@@ -59,7 +66,7 @@ export async function fetchForecast(loc: AwLocation, signal?: AbortSignal): Prom
       "sunrise", "sunset", "uv_index_max",
     ].join(","),
   });
-  const r = await fetch(`${FORECAST}?${params}`, { signal });
+  const r = await fetch(`${FORECAST}?${params}`, fetchInit(signal, cache));
   if (!r.ok) throw new Error(`Open-Meteo forecast ${r.status}`);
   return (await r.json()) as ForecastResponse;
 }
@@ -99,7 +106,7 @@ type DailyLite = { time?: string[]; precipitation_sum?: Series; temperature_2m_m
 
 /** Real seasonal picture: this month's rain-to-date (forecast actuals fill the
     archive's ~5-day lag) vs the same-day-of-month average across prior years. */
-export async function fetchSeasonal(loc: AwLocation, forecastDaily?: DailyLite, signal?: AbortSignal): Promise<SeasonalContext | null> {
+export async function fetchSeasonal(loc: AwLocation, forecastDaily?: DailyLite, signal?: AbortSignal, cache?: RequestCache): Promise<SeasonalContext | null> {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -115,7 +122,7 @@ export async function fetchSeasonal(loc: AwLocation, forecastDaily?: DailyLite, 
     end_date: end,
     daily: "precipitation_sum,temperature_2m_mean",
   });
-  const r = await fetch(`${ARCHIVE}?${params}`, { signal });
+  const r = await fetch(`${ARCHIVE}?${params}`, fetchInit(signal, cache));
   if (!r.ok) throw new Error(`Archive ${r.status}`);
   const body = (await r.json()) as {
     daily?: { time?: string[]; precipitation_sum?: Series; temperature_2m_mean?: Series };
