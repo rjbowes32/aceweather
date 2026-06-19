@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-static";
 export const revalidate = false;
 
-const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+const BUILD_ID =
+  process.env.NEXT_PUBLIC_BUILD_ID ||
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.VERCEL_GIT_COMMIT_REF ||
+  "dev";
 
 const SW_SOURCE = `
 const SW_VERSION = ${JSON.stringify(BUILD_ID)};
@@ -50,6 +54,13 @@ function isStaticAsset(url) {
   if (url.pathname.startsWith("/icons/")) return true;
   if (url.pathname === "/manifest.webmanifest") return true;
   if (url.pathname === "/offline.html") return true;
+  return false;
+}
+
+function isInstallAsset(url) {
+  if (url.origin !== self.location.origin) return false;
+  if (url.pathname === "/manifest.webmanifest") return true;
+  if (url.pathname.startsWith("/icons/")) return true;
   return false;
 }
 
@@ -170,6 +181,10 @@ self.addEventListener("fetch", (event) => {
   }
   if (isMapTileRequest(url)) {
     event.respondWith(staleWhileRevalidate(request, DATA_CACHE));
+    return;
+  }
+  if (isInstallAsset(url)) {
+    event.respondWith(networkFirst(request));
     return;
   }
   if (isStaticAsset(url)) {

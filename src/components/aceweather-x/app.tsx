@@ -161,7 +161,7 @@ export function AceWeatherApp() {
     <div className="awx">
       {/* RAIL */}
       <aside className="awx-rail" aria-label="Primary">
-        <a className="awx-brand" href="#top"><span className="awx-brand-mark">A</span>
+        <a className="awx-brand" href="#top"><span className="awx-brand-mark" aria-hidden="true" />
           <span><span className="awx-brand-name">AceWeather</span><span className="awx-brand-sub">Field console</span></span></a>
         <nav className="awx-nav" aria-label="Sections">
           {NAV.map(([k, label]) => (
@@ -180,7 +180,7 @@ export function AceWeatherApp() {
       {/* FEED */}
       <main className="awx-feed" id="top">
         <header className="awx-mobile-top">
-          <span className="awx-brand-mark">A</span>
+          <span className="awx-brand-mark" aria-hidden="true" />
           <strong>{location.name}</strong>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
