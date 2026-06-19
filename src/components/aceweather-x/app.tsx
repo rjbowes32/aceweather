@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 
 import { buildModel } from "@/lib/aceweather/derive";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations } from "@/lib/aceweather/open-meteo";
-import { NavIcon, SearchIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon } from "./icons";
+import { NavIcon, SearchIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { NowCard, TrendCard, SunCard, RainCard, CalendarCard, SprayCard, DiseaseCard, SoilWaterCard, SeasonCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
 
@@ -18,11 +18,82 @@ const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard),
 
 const NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["outlook", "Outlook"], ["seasonal", "Seasonal"]];
 const MOBILE_NAV = NAV.slice(0, 6);
+const DOC_ENDPOINTS = [
+  {
+    label: "Crop Dynamics JSON",
+    href: "https://aceweather.app/api/cropdynamics",
+    detail: "Fast summary for agents: rain_mm, high_c, low_c across the seven Crop Dynamics locations.",
+  },
+  {
+    label: "Regional text digest",
+    href: "https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short",
+    detail: "Plain-text comparison table for browser tools that prefer text over JSON.",
+  },
+  {
+    label: "Single-place report",
+    href: "https://aceweather.app/api/report?query=Pocklington&history_days=29",
+    detail: "Markdown report with observed daily rows, period summary, forecast, and agronomy context.",
+  },
+  {
+    label: "Discovery index",
+    href: "https://aceweather.app/api",
+    detail: "Machine-readable endpoint catalogue with docs, examples, and supported parameters.",
+  },
+  {
+    label: "OpenAPI",
+    href: "https://aceweather.app/openapi.json",
+    detail: "Schema reference for integrations and structured endpoint discovery.",
+  },
+];
 const SEED_SAVED = [
   DEFAULT_LOCATION,
   { name: "Pocklington", region: "East Yorkshire", country: "United Kingdom", lat: 53.93, lon: -0.78, elev: 25, tz: "Europe/London" },
   { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
 ];
+
+function EndpointDocs({ rail = false }: { rail?: boolean }) {
+  const content = (
+    <div className="awx-docs-list">
+      {DOC_ENDPOINTS.map((endpoint) => (
+        <a key={endpoint.href} className="awx-doc-link" href={endpoint.href} target="_blank" rel="noreferrer">
+          <span>
+            <b>{endpoint.label}</b>
+            <small>{endpoint.detail}</small>
+          </span>
+          <code>{endpoint.href.replace("https://aceweather.app", "")}</code>
+        </a>
+      ))}
+    </div>
+  );
+
+  if (rail) {
+    return (
+      <details className="awx-docs awx-docs-rail" aria-label="Endpoint documentation">
+        <summary className="awx-docs-head">
+          <DocsIcon />
+          <span>
+            <strong>Docs</strong>
+            <small>Endpoint guide</small>
+          </span>
+        </summary>
+        {content}
+      </details>
+    );
+  }
+
+  return (
+    <section className="awx-docs" aria-label="Endpoint documentation">
+      <div className="awx-docs-head">
+        <DocsIcon />
+        <div>
+          <strong>Docs</strong>
+          <span>Endpoints for agents, dashboards and AppSheet workflows.</span>
+        </div>
+      </div>
+      {content}
+    </section>
+  );
+}
 
 export function AceWeatherApp() {
   const [location, setLocation] = useState(DEFAULT_LOCATION);
@@ -173,7 +244,19 @@ export function AceWeatherApp() {
         <div className="awx-rail-spacer" />
         <div className="awx-rail-foot">
           <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
-          {settingsControls}
+          <section className="awx-settings-panel" aria-label="Settings">
+            <div className="awx-settings-head">
+              <SettingsIcon />
+              <span>
+                <strong>Settings</strong>
+                <small>Display, units and docs</small>
+              </span>
+            </div>
+            <div className="awx-settings-body">
+              {settingsControls}
+              <EndpointDocs rail />
+            </div>
+          </section>
         </div>
       </aside>
 
@@ -295,6 +378,7 @@ export function AceWeatherApp() {
                 <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>Use my location</span></button>
                 <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
               </div>
+              <EndpointDocs />
             </div>
           </div>
         </div>
