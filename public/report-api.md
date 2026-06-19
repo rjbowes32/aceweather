@@ -5,17 +5,19 @@ AceWeather exposes a plain-text weather report endpoint for any searched or save
 For agent workflows that need a standard regional bundle from one unlocked URL, use:
 
 - `https://aceweather.app/api/cropdynamics`
+- `https://aceweather.app/api/cropdynamics?include=daily`
 - `https://aceweather.app/api/digest?set=cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short`
 
 That Crop Dynamics bundle is intentionally slim. It returns, for each region:
 
-- JSON via `/api/cropdynamics`: location, date range, rain mm, high C, low C
-- observed rainfall for the requested historical window, defaulting to the last 7 days
+- JSON via `/api/cropdynamics`: exact date range, summary, rankings, confidence, location, rain mm, high C, low C
+- observed rainfall for the requested historical window; `/api/cropdynamics` defaults to 29 days and `/api/digest` defaults to 7 days
 - observed temperature highs and lows for the requested historical window
 - forecast rainfall for the next 7 days
 - forecast temperature highs and lows for the next 7 days
+- optional daily historical rows when `include=daily` is added to `/api/cropdynamics`
 
 Use `format=short` for a faster historical-only summary table without forecast or daily rows.
 
@@ -43,6 +45,7 @@ Current deployed site:
 - `https://aceweather.app/api/report?query=Pocklington`
 - `https://aceweather.app/api/report?lat=53.9093&lon=-0.7810&timezone=Europe/London&label=Pocklington,%20England,%20United%20Kingdom`
 - `https://aceweather.app/api/cropdynamics`
+- `https://aceweather.app/api/cropdynamics?include=daily`
 - `https://aceweather.app/api/digest?set=cropdynamics`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29`
 - `https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short`
@@ -65,6 +68,18 @@ Local development:
 `https://aceweather.app/api/cropdynamics`
 
 This is the fastest JSON endpoint for LLM or browser-fetch tools. It defaults to the last 29 historical days ending yesterday and returns one compact `locations` array.
+
+The JSON response also includes:
+
+- `date_range`: exact historical start and end dates
+- `summary`: wettest, driest, hottest, coldest, average rainfall, and largest single rain day
+- `rankings`: locations sorted by rainfall, heat, and low temperature
+- `confidence`: source/caveat metadata and missing-data counts
+- `locations[].data_quality`: observed days, missing days, and location confidence
+
+Add `include=daily` when an agent needs daily historical rows:
+
+`https://aceweather.app/api/cropdynamics?history_days=29&include=daily`
 
 `https://aceweather.app/api/digest?set=cropdynamics`
 

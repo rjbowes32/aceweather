@@ -393,38 +393,225 @@ def _build_region_history_summary(
     }
 
 
-def _summarize_history_region(item: dict[str, Any]) -> dict[str, Any]:
+def _daily_value(values: list[Any], index: int) -> Any:
+    return values[index] if index < len(values) else None
+
+
+def _daily_history_rows(history: dict[str, Any]) -> list[dict[str, Any]]:
+    dates = history.get("time", [])
+    rain_values = history.get("precipitation_sum") or []
+    high_values = history.get("temperature_2m_max") or []
+    low_values = history.get("temperature_2m_min") or []
+    rows: list[dict[str, Any]] = []
+    for index, day in enumerate(dates):
+        rain_value = _daily_value(rain_values, index)
+        high_value = _daily_value(high_values, index)
+        low_value = _daily_value(low_values, index)
+        rows.append(
+            {
+                "date": day,
+                "rain_mm": round(float(rain_value or 0.0), 1),
+                "high_c": round(float(high_value), 1) if high_value is not None else None,
+                "low_c": round(float(low_value), 1) if low_value is not None else None,
+            }
+        )
+    return rows
+
+
+def _largest_daily_rain(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+    wettest = max(rows, key=lambda row: row["rain_mm"])
+    return {
+        "date": wettest["date"],
+        "rain_mm": wettest["rain_mm"],
+    }
+
+
+def _history_confidence(*, requested_days: int, observed_days: int, missing_values: int) -> str:
+    if observed_days == 0:
+        return "low"
+    if observed_days < requested_days or missing_values:
+        return "medium"
+    return "high"
+
+
+def _summarize_history_region(
+    item: dict[str, Any],
+    *,
+    requested_days: int,
+    include_daily: bool = False,
+) -> dict[str, Any]:
     history = item["history"]
     rng = item.get("range") or {}
-    dates = history.get("time", [])
-    rain_values = [float(value or 0.0) for value in history.get("precipitation_sum", [])]
+    rows = _daily_history_rows(history)
+    dates = [row["date"] for row in rows]
+    rain_values = [row["rain_mm"] for row in rows]
     high_values = [
-        float(value)
-        for value in history.get("temperature_2m_max", [])
-        if value is not None
+        row["high_c"]
+        for row in rows
+        if row["high_c"] is not None
     ]
     low_values = [
-        float(value)
-        for value in history.get("temperature_2m_min", [])
-        if value is not None
+        row["low_c"]
+        for row in rows
+        if row["low_c"] is not None
     ]
     start_date = rng.get("startDate") or (dates[0] if dates else None)
     end_date = rng.get("endDate") or (dates[-1] if dates else None)
-    return {
+    requested_or_range_days = int(rng.get("days") or requested_days)
+    observed_days = len(dates)
+    missing_days = max(0, requested_or_range_days - observed_days)
+    missing_values = sum(
+        1
+        for row in rows
+        if row["high_c"] is None or row["low_c"] is None
+    )
+    summary = {
         "location": item["label"],
         "query": item["query"],
         "date_range": {
             "start": start_date,
             "end": end_date,
-            "days": rng.get("days") or len(dates),
+            "days": requested_or_range_days,
         },
         "rain_mm": round(sum(rain_values), 1),
         "high_c": round(max(high_values), 1) if high_values else None,
         "low_c": round(min(low_values), 1) if low_values else None,
+        "largest_daily_rain": _largest_daily_rain(rows),
+        "data_quality": {
+            "observed_days": observed_days,
+            "missing_days": missing_days,
+            "missing_temperature_values": missing_values,
+            "confidence": _history_confidence(
+                requested_days=requested_or_range_days,
+                observed_days=observed_days,
+                missing_values=missing_values,
+            ),
+        },
+    }
+    if include_daily:
+        summary["daily"] = rows
+    return summary
+
+
+def _rank_locations(
+    locations: list[dict[str, Any]],
+    field: str,
+    *,
+    reverse: bool,
+    label: str,
+) -> list[dict[str, Any]]:
+    ranked = sorted(
+        (location for location in locations if location.get(field) is not None),
+        key=lambda location: location[field],
+        reverse=reverse,
+    )
+    return [
+        {
+            "rank": index + 1,
+            "location": location["location"],
+            label: location[field],
+        }
+        for index, location in enumerate(ranked)
+    ]
+
+
+def _location_value(location: dict[str, Any], field: str) -> dict[str, Any] | None:
+    value = location.get(field)
+    if value is None:
+        return None
+    return {
+        "location": location["location"],
+        field: value,
     }
 
 
-def build_cropdynamics_json(*, base_url: str = "", history_days: int | None = None) -> dict[str, Any]:
+def _cropdynamics_summary(locations: list[dict[str, Any]]) -> dict[str, Any]:
+    if not locations:
+        return {}
+    wettest = max(locations, key=lambda location: location["rain_mm"])
+    driest = min(locations, key=lambda location: location["rain_mm"])
+    high_locations = [location for location in locations if location.get("high_c") is not None]
+    low_locations = [location for location in locations if location.get("low_c") is not None]
+    rain_day_candidates = [
+        {
+            "location": location["location"],
+            **location["largest_daily_rain"],
+        }
+        for location in locations
+        if location.get("largest_daily_rain")
+    ]
+    largest_rain_day = max(
+        rain_day_candidates,
+        key=lambda item: item["rain_mm"],
+    ) if rain_day_candidates else None
+    return {
+        "wettest_location": _location_value(wettest, "rain_mm"),
+        "driest_location": _location_value(driest, "rain_mm"),
+        "highest_temp_location": _location_value(
+            max(high_locations, key=lambda location: location["high_c"]),
+            "high_c",
+        ) if high_locations else None,
+        "lowest_temp_location": _location_value(
+            min(low_locations, key=lambda location: location["low_c"]),
+            "low_c",
+        ) if low_locations else None,
+        "largest_rain_day": largest_rain_day,
+        "average_rain_mm": round(
+            sum(location["rain_mm"] for location in locations) / len(locations),
+            1,
+        ),
+    }
+
+
+def _common_date_range(locations: list[dict[str, Any]]) -> dict[str, Any] | None:
+    ranges = [location["date_range"] for location in locations if location.get("date_range")]
+    if not ranges:
+        return None
+    first = ranges[0]
+    if all(rng == first for rng in ranges):
+        return first
+    starts = [rng["start"] for rng in ranges if rng.get("start")]
+    ends = [rng["end"] for rng in ranges if rng.get("end")]
+    return {
+        "start": min(starts) if starts else None,
+        "end": max(ends) if ends else None,
+        "days": max(rng.get("days", 0) for rng in ranges),
+        "varies_by_location": True,
+    }
+
+
+def _cropdynamics_confidence(locations: list[dict[str, Any]]) -> dict[str, Any]:
+    quality = [location.get("data_quality", {}) for location in locations]
+    missing_location_count = sum(1 for item in quality if item.get("observed_days", 0) == 0)
+    missing_day_count = sum(int(item.get("missing_days") or 0) for item in quality)
+    missing_temperature_value_count = sum(int(item.get("missing_temperature_values") or 0) for item in quality)
+    confidence = "high"
+    if missing_location_count:
+        confidence = "low"
+    elif missing_day_count or missing_temperature_value_count:
+        confidence = "medium"
+    return {
+        "level": confidence,
+        "source": "Open-Meteo historical archive",
+        "missing_location_count": missing_location_count,
+        "missing_day_count": missing_day_count,
+        "missing_temperature_value_count": missing_temperature_value_count,
+        "caveats": [
+            "Historical observations end yesterday.",
+            "Rainfall is modelled gridded archive data, not a farm rain gauge.",
+            "Point coordinates represent the named place, not every field within the surrounding area.",
+        ],
+    }
+
+
+def build_cropdynamics_json(
+    *,
+    base_url: str = "",
+    history_days: int | None = None,
+    include_daily: bool = False,
+) -> dict[str, Any]:
     resolved_history_days = resolve_digest_history_days(
         DEFAULT_CROPDYNAMICS_JSON_HISTORY_DAYS if history_days is None else history_days
     )
@@ -439,6 +626,15 @@ def build_cropdynamics_json(*, base_url: str = "", history_days: int | None = No
                 regions,
             )
         )
+    locations = [
+        _summarize_history_region(
+            item,
+            requested_days=resolved_history_days,
+            include_daily=include_daily,
+        )
+        for item in histories
+    ]
+    date_range = _common_date_range(locations)
 
     return {
         "name": "AceWeather Crop Dynamics Summary",
@@ -447,14 +643,27 @@ def build_cropdynamics_json(*, base_url: str = "", history_days: int | None = No
         "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "history_days": resolved_history_days,
         "window": "last N days ending yesterday",
+        "date_range": date_range,
         "units": {
             "rain_mm": "millimetres",
             "high_c": "degrees Celsius",
             "low_c": "degrees Celsius",
         },
-        "locations": [_summarize_history_region(item) for item in histories],
+        "summary": _cropdynamics_summary(locations),
+        "rankings": {
+            "rain_mm_desc": _rank_locations(locations, "rain_mm", reverse=True, label="rain_mm"),
+            "rain_mm_asc": _rank_locations(locations, "rain_mm", reverse=False, label="rain_mm"),
+            "high_c_desc": _rank_locations(locations, "high_c", reverse=True, label="high_c"),
+            "low_c_asc": _rank_locations(locations, "low_c", reverse=False, label="low_c"),
+        },
+        "confidence": _cropdynamics_confidence(locations),
+        "locations": locations,
         "links": {
             "self": absolute_public_url("/api/cropdynamics", base_url),
+            "daily_json": absolute_public_url(
+                f"/api/cropdynamics?history_days={resolved_history_days}&include=daily",
+                base_url,
+            ),
             "short_text": absolute_public_url(
                 f"/api/digest?set=cropdynamics&history_days={resolved_history_days}&format=short",
                 base_url,

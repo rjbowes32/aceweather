@@ -512,7 +512,7 @@
     "/api/cropdynamics": {
       "get": {
         "summary": "Get Crop Dynamics JSON summary",
-        "description": "Returns a fast JSON summary for the seven Crop Dynamics locations. Defaults to the last 29 historical days ending yesterday and includes rain_mm, high_c, and low_c per location.",
+        "description": "Returns a fast JSON summary for the seven Crop Dynamics locations. Defaults to the last 29 historical days ending yesterday and includes exact date range, executive summary, rankings, confidence metadata, and rain_mm/high_c/low_c per location. Add include=daily for daily rows.",
         "parameters": [
           {
             "name": "days",
@@ -525,6 +525,16 @@
               "default": 29
             },
             "description": "Historical days to include, counting back from yesterday. history_days is accepted as an alias."
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["daily"]
+            },
+            "description": "Set include=daily to add per-location daily rows with date, rain_mm, high_c, and low_c."
           }
         ],
         "responses": {

@@ -24,6 +24,7 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
         "regionalDigests": {
             "cropdynamics": {
                 "json": absolute("/api/cropdynamics"),
+                "jsonWithDailyRows": absolute("/api/cropdynamics?include=daily"),
                 "digest": absolute("/api/digest?set=cropdynamics"),
                 "last14DaysDigest": absolute("/api/digest?set=cropdynamics&history_days=14"),
                 "shortDigest": absolute("/api/digest?set=cropdynamics&history_days=29&format=short"),
@@ -131,8 +132,8 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "path": "/api/cropdynamics",
                 "method": "GET",
                 "responseFormat": "application/json",
-                "optionalParams": ["days", "history_days"],
-                "description": "Returns a fast JSON Crop Dynamics summary for LLM fetching. Defaults to the last 29 historical days ending yesterday.",
+                "optionalParams": ["days", "history_days", "include=daily"],
+                "description": "Returns a fast JSON Crop Dynamics summary for LLM fetching. Defaults to the last 29 historical days ending yesterday. Includes summary, rankings, confidence metadata, and compact per-location rain/high/low totals. Add include=daily for daily rows.",
             },
             {
                 "path": "/api/onthisday",
@@ -149,5 +150,5 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "description": "Aggregates active tropical systems from NHC (Atlantic + East Pacific JSON) and JTWC (West Pacific + Indian Ocean RSS). Returns one storm list normalized across both agencies with category, winds, pressure, position, and advisory link.",
             },
         ],
-        "agentHint": "If you need one standard Crop Dynamics regional summary, call /api/cropdynamics first. It returns compact JSON. If you need daily rows, call /api/digest?set=cropdynamics&history_days=29&format=short or /api/report for a single place.",
+        "agentHint": "If you need one standard Crop Dynamics regional summary, call /api/cropdynamics first. It returns compact JSON with summary, rankings, confidence, and per-location totals. If you need daily rows, call /api/cropdynamics?include=daily or /api/report for a single place.",
     }
