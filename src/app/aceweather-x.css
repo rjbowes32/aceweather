@@ -266,7 +266,7 @@ html[data-awx] body {
     background: color-mix(in srgb, var(--awx-bg) 82%, transparent); backdrop-filter: blur(18px);
   }
   .awx-mobile-top strong { font-size: 15px; font-weight: 600; }
-  .awx-feed-head { position: static; }
+  .awx-feed-head { display: none; }
   .awx-mobile-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     display: grid; grid-template-columns: repeat(6, 1fr); min-height: 64px;
