@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, react-hooks/set-state-in-effect */
 // @ts-nocheck
 "use client";
 
@@ -50,6 +49,19 @@ const SEED_SAVED = [
   { name: "Pocklington", region: "East Yorkshire", country: "United Kingdom", lat: 53.93, lon: -0.78, elev: 25, tz: "Europe/London" },
   { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
 ];
+
+function BrandMark() {
+  return (
+    <span className="awx-brand-mark" aria-hidden="true">
+      <span className="awx-brand-letters"><span>A</span><span className="awx-brand-w">w</span></span>
+      <svg className="awx-brand-weather" viewBox="0 0 36 28">
+        <circle className="awx-brand-sun" cx="24.5" cy="5.2" r="3.3" />
+        <path className="awx-brand-cloud" d="M8.5 11.7h13.7a3.7 3.7 0 0 0 .4-7.4 5.4 5.4 0 0 0-10.2 1.4 4 4 0 0 0-3.9 6z" />
+        <path className="awx-brand-rain" d="M14.2 15.5l-3.4 6.4M20.2 15l-3.8 7.2M26.1 14.4l-4.1 7.6" />
+      </svg>
+    </span>
+  );
+}
 
 function EndpointDocs({ rail = false }: { rail?: boolean }) {
   const content = (
@@ -221,7 +233,7 @@ export function AceWeatherApp() {
     <div className="awx">
       {/* RAIL */}
       <aside className="awx-rail" aria-label="Primary">
-        <a className="awx-brand" href="#top"><span className="awx-brand-mark">A</span>
+        <a className="awx-brand" href="#top"><BrandMark />
           <span><span className="awx-brand-name">AceWeather</span><span className="awx-brand-sub">Field console</span></span></a>
         <nav className="awx-nav" aria-label="Sections">
           {NAV.map(([k, label]) => (
@@ -252,7 +264,7 @@ export function AceWeatherApp() {
       {/* FEED */}
       <main className="awx-feed" id="top">
         <header className="awx-mobile-top">
-          <span className="awx-brand-mark">A</span>
+          <BrandMark />
           <strong>{location.name}</strong>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
