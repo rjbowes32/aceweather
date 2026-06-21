@@ -298,6 +298,7 @@ Hard mobile rules:
 - Radar controls must be thumb-sized; MapLibre zoom controls need mobile overrides or should be hidden/replaced.
 - Any fixed bottom nav must have enough content padding so the last card/action is never obscured.
 - Respect safe areas with `env(safe-area-inset-bottom)` and `env(safe-area-inset-top)` where relevant.
+- In standalone iOS PWA mode, the sticky mobile top bar must include `env(safe-area-inset-top)` so location/status/settings controls never sit under the Dynamic Island.
 - The app must behave cleanly after deploy/update in PWA mode. Stale service-worker/client mismatches are a real UX bug.
 
 ## Mobile Audit - 2026-06-21
@@ -356,6 +357,8 @@ Implemented mobile update - 2026-06-21:
 
 - Mobile top bar now has a single location trigger plus compact live status; the always-visible composer/search row is hidden on mobile.
 - Tapping the location opens a dedicated location sheet with search, geocoding suggestions, saved places, and "Use my location".
+- The mobile search input belongs inside that location sheet only; do not add a second persistent search bar to the top chrome.
+- "Use my location" opts into GPS follow mode. While enabled, foreground GPS updates refresh the active weather location as the device moves meaningfully; selecting a saved/search result turns GPS follow off.
 - Mobile bottom nav is `Overview`, `Now`, `Rain`, `Radar`, `Field`, `More`.
 - `More` exposes `Outlook`, `Seasonal`, `Sources`, and API/docs links.
 - Settings sheet is now settings/actions only: theme, units, wind unit, rain alerts, location, share.
@@ -376,20 +379,29 @@ Verification after the update:
 
 Top bar:
 
-- Height target: 56px to 64px including safe area.
+- Height target: 56px to 64px plus `env(safe-area-inset-top)` in standalone PWA mode.
 - Contains compact brand mark, location trigger, status, and settings.
 - Location is tappable and opens the search/location sheet.
 - Status is compact: dot plus `Live`, `Fetching`, or `Offline`.
+- Never place top-bar controls inside the iOS sensor/Dynamic Island safe area.
 
 Search:
 
 - Do not show a full search input on every tab by default.
+- Do not create a second mobile search bar. The location name in the top bar is the search entry point.
 - Use the search/location sheet:
   - focus input on open.
   - show saved locations first.
   - show geocoding suggestions as the user types.
   - close on selection.
   - keep tap targets 44px.
+
+GPS:
+
+- `Use my location` is an opt-in GPS follow mode, not just a one-time coordinate load.
+- Auto GPS refresh only works while the browser/PWA is allowed to provide foreground location updates.
+- A meaningful movement threshold should prevent noisy refetching from GPS jitter.
+- Selecting any saved or searched place should disable GPS follow.
 
 Bottom nav:
 
@@ -517,6 +529,7 @@ Keep this list current.
 - Mobile sheets use `role="dialog"` but do not yet trap focus or restore focus to the opener.
 - Overview can still become long on small phones; consider a compact "Today at a glance" block before the full card stack.
 - PWA update behavior is hardened in dev, but production update flow still needs a deliberate deploy/update test with a real build id.
+- GPS follow uses foreground `watchPosition`; true closed-app/background location updates are not available without platform-native app capabilities.
 - Docs/API links are now reachable through `More`; future passes may want a tighter developer-docs presentation.
 - Some older files and CSS remain in the repo; do not treat legacy UI as the active design unless asked.
 - README still references older Python API flow; the active Next/PWA direction may need documentation cleanup separately.

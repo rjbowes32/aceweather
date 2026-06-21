@@ -261,7 +261,9 @@ html[data-awx] body {
   .awx-mobile-top {
     position: sticky; top: 0; z-index: 20;
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    min-height: 64px; padding: 10px 12px; border-bottom: 1px solid var(--awx-line);
+    min-height: calc(64px + env(safe-area-inset-top));
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    border-bottom: 1px solid var(--awx-line);
     background: color-mix(in srgb, var(--awx-bg) 82%, transparent); backdrop-filter: blur(18px);
   }
   .awx-mobile-top .awx-brand-mark { width: 48px; height: 40px; border-radius: 10px; }

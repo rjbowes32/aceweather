@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { buildModel } from "@/lib/aceweather/derive";
@@ -19,6 +19,9 @@ const NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "R
 const MOBILE_NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["more", "More"]];
 const MORE_NAV = [["outlook", "Outlook"], ["seasonal", "Seasonal"], ["about", "Sources"]];
 const MORE_VIEWS = new Set(MORE_NAV.map(([k]) => k));
+const GPS_FOLLOW_KEY = "awx-gps-follow";
+const GPS_UPDATE_MIN_KM = 0.75;
+const GPS_OPTIONS = { enableHighAccuracy: true, maximumAge: 60 * 1000, timeout: 15 * 1000 };
 const DOC_ENDPOINTS = [
   {
     label: "Crop Dynamics JSON",
@@ -51,6 +54,29 @@ const SEED_SAVED = [
   { name: "Pocklington", region: "East Yorkshire", country: "United Kingdom", lat: 53.93, lon: -0.78, elev: 25, tz: "Europe/London" },
   { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
 ];
+
+function gpsLocationFromPosition(pos) {
+  return {
+    name: "Current location",
+    region: "GPS active",
+    country: "",
+    lat: Number(pos.coords.latitude.toFixed(5)),
+    lon: Number(pos.coords.longitude.toFixed(5)),
+    elev: Number.isFinite(pos.coords.altitude) ? Math.round(pos.coords.altitude) : null,
+    tz: "auto",
+  };
+}
+
+function distanceKm(a, b) {
+  if (!a || !b) return Infinity;
+  const toRad = (value) => (value * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
 
 function EndpointDocs({ rail = false }: { rail?: boolean }) {
   const content = (
@@ -114,8 +140,11 @@ export function AceWeatherApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [geoFollow, setGeoFollow] = useState(false);
+  const [geoStatus, setGeoStatus] = useState("idle");
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
+  const gpsLastLoadedRef = useRef(null);
 
   // prefs on mount
   useEffect(() => {
@@ -132,6 +161,41 @@ export function AceWeatherApp() {
   useEffect(() => { try { localStorage.setItem("awx-unit", unit); } catch { /* */ } }, [unit]);
   useEffect(() => { try { localStorage.setItem("awx-windunit", windUnit); } catch { /* */ } }, [windUnit]);
   useEffect(() => { try { localStorage.setItem("awx-rainalerts", rainAlerts ? "1" : "0"); } catch { /* */ } }, [rainAlerts]);
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      if (localStorage.getItem(GPS_FOLLOW_KEY) !== "1") return undefined;
+    } catch {
+      return undefined;
+    }
+    if (!navigator.geolocation) {
+      setGeoStatus("unsupported");
+      return undefined;
+    }
+    const resumeFollow = () => {
+      if (cancelled) return;
+      setGeoStatus("locating");
+      setGeoFollow(true);
+    };
+    if (navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "geolocation" })
+        .then((permission) => {
+          if (permission.state === "granted") resumeFollow();
+          else localStorage.removeItem(GPS_FOLLOW_KEY);
+        })
+        .catch(resumeFollow);
+    } else {
+      resumeFollow();
+    }
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    try {
+      if (geoFollow) localStorage.setItem(GPS_FOLLOW_KEY, "1");
+      else localStorage.removeItem(GPS_FOLLOW_KEY);
+    } catch { /* */ }
+  }, [geoFollow]);
   useEffect(() => { saveLocationForSync(location); }, [location]);
   useEffect(() => {
     const focus = new URLSearchParams(window.location.search).get("focus");
@@ -176,15 +240,58 @@ export function AceWeatherApp() {
   const freshness = model ? `${model.now.obsTime} ${location.tz?.includes("London") ? "BST" : ""}`.trim() : "—";
 
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
+  useEffect(() => {
+    if (!geoFollow) return undefined;
+    if (!navigator.geolocation) {
+      setGeoStatus("unsupported");
+      setGeoFollow(false);
+      return undefined;
+    }
+    setGeoStatus("locating");
+    const applyGpsPosition = (pos) => {
+      const next = gpsLocationFromPosition(pos);
+      if (distanceKm(gpsLastLoadedRef.current, next) < GPS_UPDATE_MIN_KM) {
+        setGeoStatus("following");
+        return;
+      }
+      gpsLastLoadedRef.current = { lat: next.lat, lon: next.lon };
+      setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
+      setLocation(next);
+      setQuery("");
+      setSuggestions([]);
+      setLocationOpen(false);
+      setGeoStatus("following");
+    };
+    const onGpsError = (error) => {
+      if (error?.code === 1) {
+        gpsLastLoadedRef.current = null;
+        setGeoFollow(false);
+        setGeoStatus("blocked");
+      } else {
+        setGeoStatus("error");
+      }
+    };
+    const watchId = navigator.geolocation.watchPosition(applyGpsPosition, onGpsError, GPS_OPTIONS);
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [geoFollow]);
 
-  function loadLocation(loc) {
+  function loadLocation(loc, opts = {}) {
+    if (!opts.keepGeoFollow) {
+      gpsLastLoadedRef.current = null;
+      setGeoFollow(false);
+      setGeoStatus("idle");
+    }
     setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
-    setLocation(loc); setQuery(""); setSuggestions([]); setView("all"); setLocationOpen(false);
-    setSaved((prev) => {
-      const next = [loc, ...prev.filter((p) => p.name !== loc.name)].slice(0, 8);
-      try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
-      return next;
-    });
+    setLocation(loc); setQuery(""); setSuggestions([]);
+    if (opts.resetView !== false) setView("all");
+    if (opts.closeLocationSheet !== false) setLocationOpen(false);
+    if (opts.save !== false) {
+      setSaved((prev) => {
+        const next = [loc, ...prev.filter((p) => p.name !== loc.name)].slice(0, 8);
+        try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
+        return next;
+      });
+    }
   }
   function onSubmit(e) { e.preventDefault(); if (suggestions[0]) loadLocation(suggestions[0]); }
   function openLocationSheet() {
@@ -199,10 +306,21 @@ export function AceWeatherApp() {
     setMoreOpen(false);
   }
   function locateMe() {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setGeoStatus("unsupported");
+      return;
+    }
+    setGeoStatus("locating");
     navigator.geolocation.getCurrentPosition((pos) => {
-      loadLocation({ name: "Current location", region: "", country: "", lat: pos.coords.latitude, lon: pos.coords.longitude, elev: null, tz: "auto" });
-    });
+      const next = gpsLocationFromPosition(pos);
+      gpsLastLoadedRef.current = { lat: next.lat, lon: next.lon };
+      loadLocation(next, { keepGeoFollow: true, save: false });
+      setGeoFollow(true);
+      setGeoStatus("following");
+    }, (error) => {
+      setGeoFollow(false);
+      setGeoStatus(error?.code === 1 ? "blocked" : "error");
+    }, GPS_OPTIONS);
   }
   function share() {
     if (!model) return;
@@ -227,6 +345,7 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked" : "Use my location";
 
   const settingsControls = (
     <>
@@ -286,7 +405,7 @@ export function AceWeatherApp() {
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
             <strong>{location.name}</strong>
-            <small>{location.region || "Change location"}</small>
+            <small>{location.region || (geoFollow ? "GPS active" : "Change location")}</small>
           </button>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
@@ -353,7 +472,7 @@ export function AceWeatherApp() {
           <div className="awx-side-body">
             <label className="awx-side-search"><SearchIcon />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Town, postcode, field" /></label>
-            <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>Use my location</span></button>
+            <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>{gpsButtonLabel}</span></button>
           </div>
         </div>
         <div className="awx-side-card">
@@ -444,7 +563,7 @@ export function AceWeatherApp() {
                   ))}
                 </div>
               </section>
-              <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>Use my location</span></button>
+              <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>{gpsButtonLabel}</span></button>
             </div>
           </div>
         </div>
@@ -460,7 +579,7 @@ export function AceWeatherApp() {
             <div className="awx-sheet-body">
               {settingsControls}
               <div className="awx-sheet-actions">
-                <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>Use my location</span></button>
+                <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>{gpsButtonLabel}</span></button>
                 <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
               </div>
             </div>
