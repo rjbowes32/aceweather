@@ -12,6 +12,8 @@ const NAV: Record<string, ReactNode> = {
   field: <>{P("M3 17c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6")}{P("M3 13c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6")}</>,
   outlook: <><rect x="4" y="5" width="16" height="15" rx="2" />{P("M8 3v4M16 3v4M4 10h16")}</>,
   seasonal: <>{P("M12 21V9")}{P("M12 9c0-3 2-5 5-5 0 3-2 5-5 5z")}{P("M12 13c0-2.4-1.6-4-4-4 0 2.4 1.6 4 4 4z")}</>,
+  about: <>{P("M5 5h14v14H5z")}{P("M8 9h8M8 13h8M8 17h5")}</>,
+  more: <><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="19" cy="12" r="1.4" /></>,
 };
 
 export function NavIcon({ name }: { name: string }) {

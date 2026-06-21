@@ -1,6 +1,6 @@
 /* ======================================================================
    AceWeather — X-design shell (tokens, base, rail, feed head, sidebar, nav)
-   See DESIGN.md for the spec. Cards/charts live in aceweather-x-cards.css.
+   See design.md for the spec. Cards/charts live in aceweather-x-cards.css.
    ====================================================================== */
 :root {
   --awx-bg: #0a0b0d;
@@ -148,7 +148,7 @@ html[data-awx] body {
 .awx-settings-body { display: grid; gap: 10px; }
 .awx-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 42px; padding: 0 16px; border-radius: 11px;
+  min-height: 44px; padding: 0 16px; border-radius: 11px;
   font-size: 14px; font-weight: 600;
   transition: background 140ms ease, border-color 140ms ease, transform 120ms ease;
 }
@@ -161,7 +161,7 @@ html[data-awx] body {
 
 .awx-segmented { display: flex; gap: 2px; padding: 3px; border-radius: var(--awx-pill); background: var(--awx-surface-2); }
 .awx-segmented button {
-  flex: 1; min-height: 30px; border-radius: var(--awx-pill);
+  flex: 1; min-height: 34px; border-radius: var(--awx-pill);
   color: var(--awx-muted); font-size: 12.5px; font-weight: 600;
   transition: background 140ms ease, color 140ms ease;
 }
@@ -202,7 +202,10 @@ html[data-awx] body {
 .awx-search svg { width: 18px; height: 18px; stroke: var(--awx-faint); fill: none; stroke-width: 1.8; stroke-linecap: round; }
 .awx-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--awx-text); font-size: 15px; }
 .awx-search input::placeholder { color: var(--awx-faint); }
-.awx-search .awx-go { color: var(--awx-accent); font-weight: 600; font-size: 13.5px; padding: 6px 4px; }
+.awx-search .awx-go {
+  min-width: 44px; min-height: 44px; color: var(--awx-accent);
+  font-weight: 600; font-size: 13.5px; padding: 0 6px; border-radius: 10px;
+}
 
 .awx-suggest {
   margin-top: 8px; display: grid; gap: 1px; background: var(--awx-line);
@@ -256,24 +259,40 @@ html[data-awx] body {
 }
 
 @media (max-width: 900px) {
-  .awx { display: block; padding-bottom: 72px; }
+  .awx { display: block; padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
   .awx-rail, .awx-side { display: none; }
   .awx-feed { border-right: 0; }
   .awx-mobile-top {
     position: sticky; top: 0; z-index: 20;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    min-height: 56px; padding: 10px 16px; border-bottom: 1px solid var(--awx-line);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    min-height: 64px; padding: 10px 12px; border-bottom: 1px solid var(--awx-line);
     background: color-mix(in srgb, var(--awx-bg) 82%, transparent); backdrop-filter: blur(18px);
   }
-  .awx-mobile-top strong { font-size: 15px; font-weight: 600; }
+  .awx-mobile-top .awx-brand-mark { width: 48px; height: 40px; border-radius: 10px; }
+  .awx-location-trigger {
+    display: grid; align-content: center; justify-items: center; min-width: 0; min-height: 44px; flex: 1 1 auto;
+    padding: 0 6px; border-radius: 12px; color: var(--awx-text); text-align: center;
+  }
+  .awx-location-trigger:hover { background: var(--awx-surface-2); }
+  .awx-location-trigger strong {
+    display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 15px; font-weight: 650; line-height: 1.15;
+  }
+  .awx-location-trigger small {
+    display: block; max-width: 100%; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--awx-faint); font-size: 10.5px; line-height: 1.1;
+  }
   .awx-feed-head { display: none; }
+  .awx-composer { display: none; }
   .awx-mobile-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(6, 1fr); min-height: 64px;
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    min-height: calc(66px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--awx-line);
     background: color-mix(in srgb, var(--awx-bg) 86%, transparent); backdrop-filter: blur(20px);
   }
-  .awx-mobile-nav button { display: grid; place-items: center; gap: 3px; color: var(--awx-faint); font-size: 10px; font-weight: 600; }
+  .awx-mobile-nav button { display: grid; place-items: center; gap: 3px; min-height: 64px; color: var(--awx-faint); font-size: 10px; font-weight: 600; }
   .awx-mobile-nav button[aria-pressed="true"] { color: var(--awx-accent); }
   .awx-mobile-nav svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 }
@@ -283,7 +302,7 @@ html[data-awx] body {
 }
 
 /* ===================== ICON BUTTON · SETTINGS SHEET · TOAST ===================== */
-.awx-icon-btn { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--awx-text); background: transparent; flex: 0 0 auto; }
+.awx-icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px; color: var(--awx-text); background: transparent; flex: 0 0 auto; }
 .awx-icon-btn:hover { background: var(--awx-surface-2); }
 .awx-icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .awx-mtop-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
@@ -299,8 +318,31 @@ html[data-awx] body {
 .awx-sheet-body { display: grid; gap: 10px; }
 .awx-sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
 .awx-sheet .awx-segmented { flex-direction: row; }
+.awx-sheet .awx-segmented button { min-height: 44px; }
 .awx-sheet .awx-btn { width: auto; padding: 0 16px; }
 .awx-sheet .awx-btn span { display: inline; }
+.awx-location-form { padding-bottom: 12px; }
+.awx-sheet-section { display: grid; gap: 7px; }
+.awx-sheet-section-title {
+  color: var(--awx-faint); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.awx-sheet-list { display: grid; gap: 4px; }
+.awx-sheet .awx-place {
+  min-height: 50px; border: 1px solid var(--awx-line); background: var(--awx-surface-2);
+}
+.awx-sheet .awx-place[aria-pressed="true"] { border-color: var(--awx-accent-line); color: var(--awx-text); }
+.awx-sheet .awx-p-temp { min-width: 52px; text-align: right; font-size: 12px; }
+.awx-more-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.awx-more-grid button {
+  min-height: 74px; display: grid; place-items: center; gap: 6px;
+  border: 1px solid var(--awx-line); border-radius: 12px; background: var(--awx-surface-2);
+  color: var(--awx-muted); font-size: 12px; font-weight: 650;
+}
+.awx-more-grid button[aria-pressed="true"] {
+  border-color: var(--awx-accent-line); background: var(--awx-accent-weak); color: var(--awx-accent);
+}
+.awx-more-grid svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .awx-docs { display: grid; gap: 11px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--awx-line); }
 .awx-docs-head { display: flex; align-items: flex-start; gap: 10px; }
 .awx-docs-head svg { width: 19px; height: 19px; margin-top: 1px; stroke: var(--awx-accent); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }

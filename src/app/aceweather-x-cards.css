@@ -1,5 +1,5 @@
 /* ======================================================================
-   AceWeather — X-design cards & charts. See DESIGN.md.
+   AceWeather — X-design cards & charts. See design.md.
    ====================================================================== */
 .awx-card { border-bottom: 1px solid var(--awx-line); padding: 22px; display: grid; gap: 16px; }
 .awx-card.is-hidden { display: none; }
@@ -60,7 +60,7 @@
 
 /* ---- DISCLOSURE ---- */
 .awx-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.awx-disclosure { display: inline-flex; align-items: center; gap: 6px; color: var(--awx-muted); font-size: 13px; font-weight: 500; padding: 4px 0; }
+.awx-disclosure { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--awx-muted); font-size: 13px; font-weight: 500; padding: 0 6px; border-radius: 10px; }
 .awx-disclosure:hover { color: var(--awx-text); }
 .awx-disclosure svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 180ms ease; }
 .awx-card.is-open .awx-disclosure svg { transform: rotate(180deg); }
@@ -74,7 +74,7 @@
 .awx-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--awx-line); }
 .awx-chart-head .awx-cap { font-size: 12.5px; color: var(--awx-muted); }
 .awx-range { display: flex; gap: 2px; padding: 3px; border-radius: var(--awx-pill); background: var(--awx-surface-2); }
-.awx-range button { min-height: 26px; padding: 0 11px; border-radius: var(--awx-pill); color: var(--awx-faint); font-size: 11.5px; font-weight: 600; }
+.awx-range button { min-width: 44px; min-height: 34px; padding: 0 11px; border-radius: var(--awx-pill); color: var(--awx-faint); font-size: 11.5px; font-weight: 600; }
 .awx-range button[aria-pressed="true"] { background: var(--awx-surface); color: var(--awx-text); box-shadow: var(--awx-shadow); }
 
 .awx-bars { height: 148px; display: grid; align-items: end; gap: 6px; padding: 18px 14px 26px; }
@@ -255,9 +255,9 @@
 .awx-radar-step:hover { background: var(--awx-surface-3); }
 .awx-radar-play:active,
 .awx-radar-step:active { transform: translateY(1px); }
-.awx-radar-play { width: 42px; height: 38px; border-radius: 11px; }
+.awx-radar-play { width: 44px; height: 44px; border-radius: 12px; }
 .awx-radar-play[aria-pressed="true"] { border-color: var(--awx-accent-line); background: var(--awx-accent-weak); color: var(--awx-accent); }
-.awx-radar-step { width: 36px; height: 36px; border-radius: 10px; color: var(--awx-muted); }
+.awx-radar-step { width: 44px; height: 44px; border-radius: 12px; color: var(--awx-muted); }
 .awx-radar-play-icon { position: relative; display: block; width: 15px; height: 16px; color: currentColor; }
 .awx-radar-play-icon.is-play::before {
   content: ""; position: absolute; left: 4px; top: 2px; width: 0; height: 0;
@@ -274,7 +274,7 @@
 }
 .awx-radar-step-icon.is-prev { transform: rotate(-135deg); }
 .awx-radar-step-icon.is-next { transform: rotate(45deg); }
-.awx-radar-controls input[type="range"] { width: 100%; min-height: 30px; accent-color: var(--awx-accent); cursor: pointer; }
+.awx-radar-controls input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--awx-accent); cursor: pointer; }
 .awx-radar-time { margin-left: auto; display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--awx-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .awx-radar-time-main { color: var(--awx-text); font-size: 14px; font-weight: 650; }
 .awx-radar-time .awx-tag-sm {
@@ -307,6 +307,7 @@
 /* maplibre overrides to match the dark, quiet theme */
 .awx-radar-map .maplibregl-ctrl-attrib { font-size: 9px; background: color-mix(in srgb, var(--awx-bg) 70%, transparent); }
 .awx-radar-map .maplibregl-ctrl-group { background: var(--awx-surface); border: 1px solid var(--awx-line-2); }
+.awx-radar-map .maplibregl-ctrl-group button { width: 44px; height: 44px; }
 .awx-radar-map .maplibregl-ctrl-group button + button { border-top: 1px solid var(--awx-line); }
 
 /* ---- HOURLY DETAIL (selected calendar day) ---- */
@@ -387,21 +388,31 @@
 .awx-sunarc-t { fill: var(--awx-faint); font-size: 11px; }
 
 @media (max-width: 540px) {
-  .awx-card { padding-inline: 16px; }
+  .awx-card { gap: 14px; padding: 20px 16px; }
   .awx-htable-head, .awx-htable-row { grid-template-columns: 42px repeat(6, 1fr); gap: 3px; padding-inline: 10px; font-size: 11.5px; }
-  .awx-now { grid-template-columns: 1fr; }
-  .awx-sky { min-height: 132px; }
+  .awx-range button { min-height: 44px; padding-inline: 14px; }
+  .awx-now { grid-template-columns: 1fr; gap: 14px; }
+  .awx-sky { min-height: 112px; }
   .awx-metrics { grid-template-columns: repeat(2, 1fr); }
-  .awx-now-read .awx-val { font-size: 78px; }
+  .awx-now-read .awx-val { font-size: 72px; }
+  .awx-now-summary { margin-top: 10px; }
   .awx-decision { grid-template-columns: 1fr; }
   .awx-meter-wrap { justify-items: start; }
   .awx-meter { width: 100%; }
-  .awx-outlook-lead { grid-template-columns: 1fr; }
-  .awx-outlook-lead-main { padding: 12px; }
-  .awx-outlook-stat { padding: 10px 12px; }
-  .awx-outlook-stat b { font-size: 15px; white-space: normal; }
-  .awx-cal { grid-template-columns: repeat(7, minmax(78px, 1fr)); overflow-x: auto; overscroll-behavior-x: contain; }
-  .awx-cal-day { min-height: 150px; }
+  .awx-outlook-lead { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .awx-outlook-lead-main { grid-column: 1 / -1; padding: 12px; }
+  .awx-outlook-stat { padding: 10px 8px; }
+  .awx-outlook-stat span { font-size: 9.5px; }
+  .awx-outlook-stat b { font-size: 14px; white-space: normal; }
+  .awx-outlook-stat small { font-size: 10px; }
+  .awx-cal {
+    display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden;
+    overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 4px;
+  }
+  .awx-cal-dow,
+  .awx-cal-day.is-empty { display: none; }
+  .awx-cal-day { flex: 0 0 104px; min-height: 128px; scroll-snap-align: center; }
+  .awx-cal-mini { min-height: 21px; padding-inline: 5px; font-size: 10px; }
   .awx-radar-stage { min-height: 260px; }
   .awx-radar-map { height: 260px !important; }
   .awx-radar-controls { padding-inline: 12px; }
