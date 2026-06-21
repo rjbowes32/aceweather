@@ -18,6 +18,27 @@ export function PwaBootstrap() {
     migrateFromLocalStorage().catch(() => {});
 
     if (!("serviceWorker" in navigator)) return;
+
+    if (process.env.NODE_ENV !== "production") {
+      void navigator.serviceWorker.getRegistrations()
+        .then((registrations) => {
+          registrations.forEach((registration) => {
+            void registration.unregister();
+          });
+        })
+        .catch(() => {});
+      if ("caches" in window) {
+        void window.caches.keys()
+          .then((keys) => Promise.all(
+            keys
+              .filter((key) => key.startsWith("aw-static-"))
+              .map((key) => window.caches.delete(key)),
+          ))
+          .catch(() => {});
+      }
+      return;
+    }
+
     let hasController = Boolean(navigator.serviceWorker.controller);
     let refreshing = false;
     let updateTimer: number | undefined;

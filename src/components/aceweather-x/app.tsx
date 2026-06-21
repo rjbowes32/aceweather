@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, react-hooks/set-state-in-effect */
 // @ts-nocheck
 "use client";
 
@@ -17,7 +16,9 @@ const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard),
 });
 
 const NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["outlook", "Outlook"], ["seasonal", "Seasonal"]];
-const MOBILE_NAV = NAV.slice(0, 6);
+const MOBILE_NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["more", "More"]];
+const MORE_NAV = [["outlook", "Outlook"], ["seasonal", "Seasonal"], ["about", "Sources"]];
+const MORE_VIEWS = new Set(MORE_NAV.map(([k]) => k));
 const DOC_ENDPOINTS = [
   {
     label: "Crop Dynamics JSON",
@@ -111,6 +112,8 @@ export function AceWeatherApp() {
   const [saved, setSaved] = useState(SEED_SAVED);
   const [shareLabel, setShareLabel] = useState("Share report");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
 
@@ -130,6 +133,12 @@ export function AceWeatherApp() {
   useEffect(() => { try { localStorage.setItem("awx-windunit", windUnit); } catch { /* */ } }, [windUnit]);
   useEffect(() => { try { localStorage.setItem("awx-rainalerts", rainAlerts ? "1" : "0"); } catch { /* */ } }, [rainAlerts]);
   useEffect(() => { saveLocationForSync(location); }, [location]);
+  useEffect(() => {
+    const focus = new URLSearchParams(window.location.search).get("focus");
+    if (!focus) return;
+    const allowedViews = new Set([...NAV.map(([key]) => key), "about"]);
+    if (allowedViews.has(focus)) setView(focus);
+  }, []);
   useEffect(() => {
     const onUpd = () => setUpdateReady(true);
     window.addEventListener("aceweather:pwa-update-ready", onUpd);
@@ -170,7 +179,7 @@ export function AceWeatherApp() {
 
   function loadLocation(loc) {
     setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
-    setLocation(loc); setQuery(""); setSuggestions([]); setView("all");
+    setLocation(loc); setQuery(""); setSuggestions([]); setView("all"); setLocationOpen(false);
     setSaved((prev) => {
       const next = [loc, ...prev.filter((p) => p.name !== loc.name)].slice(0, 8);
       try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
@@ -178,6 +187,17 @@ export function AceWeatherApp() {
     });
   }
   function onSubmit(e) { e.preventDefault(); if (suggestions[0]) loadLocation(suggestions[0]); }
+  function openLocationSheet() {
+    setQuery("");
+    setSuggestions([]);
+    setLocationOpen(true);
+    setSettingsOpen(false);
+    setMoreOpen(false);
+  }
+  function selectMobileView(nextView) {
+    setView(nextView);
+    setMoreOpen(false);
+  }
   function locateMe() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -264,11 +284,14 @@ export function AceWeatherApp() {
       <main className="awx-feed" id="top">
         <header className="awx-mobile-top">
           <span className="awx-brand-mark" aria-hidden="true" />
-          <strong>{location.name}</strong>
+          <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
+            <strong>{location.name}</strong>
+            <small>{location.region || "Change location"}</small>
+          </button>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
             <button className={"awx-icon-btn awx-refresh-icon" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} aria-label="Reload weather data" title={reloadLabel}><RefreshIcon /></button>
-            <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(true)} aria-label="Settings"><SettingsIcon /></button>
+            <button className="awx-icon-btn" type="button" onClick={() => { setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} aria-label="Settings"><SettingsIcon /></button>
           </div>
         </header>
         <div className="awx-feed-head">
@@ -362,21 +385,104 @@ export function AceWeatherApp() {
       {/* MOBILE NAV */}
       <nav className="awx-mobile-nav" aria-label="Mobile">
         {MOBILE_NAV.map(([k, label]) => (
-          <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}>
+          <button
+            key={k}
+            type="button"
+            aria-pressed={k === "more" ? moreOpen || MORE_VIEWS.has(view) : view === k}
+            onClick={() => {
+              if (k === "more") {
+                setMoreOpen(true);
+                setSettingsOpen(false);
+                setLocationOpen(false);
+              } else {
+                setView(k);
+                setMoreOpen(false);
+              }
+            }}
+          >
             <NavIcon name={k === "all" ? "overview" : k} />{label}
           </button>
         ))}
       </nav>
 
+      {locationOpen ? (
+        <div className="awx-sheet-overlay" onClick={() => setLocationOpen(false)}>
+          <div className="awx-sheet awx-location-sheet" role="dialog" aria-label="Change location" onClick={(e) => e.stopPropagation()}>
+            <div className="awx-sheet-head">
+              <strong>Location</strong>
+              <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close">x</button>
+            </div>
+            <form className="awx-location-form" onSubmit={onSubmit}>
+              <label className="awx-search">
+                <SearchIcon />
+                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search town, postcode or field" autoComplete="off" autoFocus />
+                <button className="awx-go" type="submit">Load</button>
+              </label>
+            </form>
+            <div className="awx-sheet-body">
+              {suggestions.length ? (
+                <section className="awx-sheet-section" aria-label="Search results">
+                  <div className="awx-sheet-section-title">Results</div>
+                  <div className="awx-sheet-list">
+                    {suggestions.map((s) => (
+                      <button key={`${s.lat},${s.lon}`} className="awx-place" type="button" onClick={() => loadLocation(s)}>
+                        <span><span className="awx-p-name">{s.name}</span><span className="awx-p-region">{[s.region, s.country].filter(Boolean).join(", ")}</span></span>
+                        <span className="awx-p-temp">Load</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+              <section className="awx-sheet-section" aria-label="Saved places">
+                <div className="awx-sheet-section-title">Saved places</div>
+                <div className="awx-sheet-list">
+                  {saved.map((p) => (
+                    <button key={`${p.lat},${p.lon}`} className="awx-place" type="button" aria-pressed={p.name === location.name} onClick={() => loadLocation(p)}>
+                      <span><span className="awx-p-name">{p.name}</span><span className="awx-p-region">{p.region || p.country || "Saved location"}</span></span>
+                      <span className="awx-p-temp">{p.name === location.name ? "Current" : "Load"}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>Use my location</span></button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {settingsOpen ? (
         <div className="awx-sheet-overlay" onClick={() => setSettingsOpen(false)}>
           <div className="awx-sheet" role="dialog" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
-            <div className="awx-sheet-head"><strong>Settings</strong><button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button></div>
+            <div className="awx-sheet-head">
+              <strong>Settings</strong>
+              <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close">x</button>
+            </div>
             <div className="awx-sheet-body">
               {settingsControls}
               <div className="awx-sheet-actions">
                 <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>Use my location</span></button>
                 <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {moreOpen ? (
+        <div className="awx-sheet-overlay" onClick={() => setMoreOpen(false)}>
+          <div className="awx-sheet awx-more-sheet" role="dialog" aria-label="More" onClick={(e) => e.stopPropagation()}>
+            <div className="awx-sheet-head">
+              <strong>More</strong>
+              <button className="awx-icon-btn" type="button" onClick={() => setMoreOpen(false)} aria-label="Close">x</button>
+            </div>
+            <div className="awx-sheet-body">
+              <div className="awx-more-grid" role="group" aria-label="More sections">
+                {MORE_NAV.map(([k, label]) => (
+                  <button key={k} type="button" aria-pressed={view === k} onClick={() => selectMobileView(k)}>
+                    <NavIcon name={k} />
+                    <span>{label}</span>
+                  </button>
+                ))}
               </div>
               <EndpointDocs />
             </div>
