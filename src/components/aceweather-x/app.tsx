@@ -55,6 +55,48 @@ const SEED_SAVED = [
   { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
 ];
 
+function tempForUnit(value, unit) {
+  if (value == null) return "--";
+  return Math.round(unit === "f" ? value * 9 / 5 + 32 : value);
+}
+
+function windForUnit(value, unit) {
+  if (value == null) return "--";
+  return Math.round(unit === "mph" ? value * 0.621371 : value);
+}
+
+function MobileGlance({ model, unit, windUnit, statusText, freshness, onShare, shareLabel }) {
+  const sprayTone = model.agronomy.spray.label === "Go" ? "go" : model.agronomy.spray.label === "Hold" ? "risk" : "warn";
+  const windLabel = windUnit === "mph" ? "mph" : "km/h";
+  return (
+    <section className="awx-mobile-glance" aria-label="Today at a glance">
+      <div className="awx-glance-hero">
+        <div>
+          <span className="awx-glance-eyebrow">{statusText} forecast</span>
+          <div className="awx-glance-temp">
+            <span className="awx-tnum">{tempForUnit(model.now.temp, unit)}</span>
+            <small>{unit === "f" ? "F" : "C"}</small>
+          </div>
+          <p>{model.now.condition.label} now. Feels {tempForUnit(model.now.feels, unit)} {unit === "f" ? "F" : "C"}.</p>
+        </div>
+        <div className="awx-glance-verdict">
+          <span className={"awx-glance-pill awx-glance-pill-" + sprayTone}>{model.agronomy.spray.label}</span>
+          <small>{model.agronomy.spray.sub}</small>
+        </div>
+      </div>
+      <div className="awx-glance-grid">
+        <div><span>High / low</span><b className="awx-tnum">{tempForUnit(model.now.hi, unit)} / {tempForUnit(model.now.lo, unit)}</b></div>
+        <div><span>Rain 24h</span><b className="awx-tnum awx-rain-value">{model.rain.sum24} mm</b></div>
+        <div><span>Wind</span><b className="awx-tnum">{windForUnit(model.now.wind, windUnit)} <small>{windLabel}</small></b></div>
+        <div><span>Updated</span><b>{freshness}</b></div>
+      </div>
+      <button className="awx-glance-share" type="button" onClick={onShare}>
+        <ShareIcon /><span>{shareLabel}</span>
+      </button>
+    </section>
+  );
+}
+
 function gpsLocationFromPosition(pos) {
   return {
     name: "Current location",
@@ -145,6 +187,7 @@ export function AceWeatherApp() {
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
   const gpsLastLoadedRef = useRef(null);
+  const lastSheetFocusRef = useRef(null);
 
   // prefs on mount
   useEffect(() => {
@@ -240,6 +283,64 @@ export function AceWeatherApp() {
   const freshness = model ? `${model.now.obsTime} ${location.tz?.includes("London") ? "BST" : ""}`.trim() : "—";
 
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
+  useEffect(() => {
+    const sheetOpen = locationOpen || settingsOpen || moreOpen;
+    if (!sheetOpen) return undefined;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !active.closest(".awx-sheet")) {
+      lastSheetFocusRef.current = active;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const sheet = document.querySelector(".awx-sheet");
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+    const focusables = () => Array.from(sheet?.querySelectorAll(focusableSelector) || []).filter((el) => el instanceof HTMLElement && el.getClientRects().length > 0);
+    window.setTimeout(() => {
+      const preferred = sheet?.matches(".awx-location-sheet") ? sheet.querySelector("input") : null;
+      const first = preferred || focusables()[0];
+      if (first instanceof HTMLElement) first.focus();
+    }, 0);
+    function closeSheets() {
+      setLocationOpen(false);
+      setSettingsOpen(false);
+      setMoreOpen(false);
+    }
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSheets();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      window.setTimeout(() => {
+        const target = lastSheetFocusRef.current;
+        if (target instanceof HTMLElement && document.contains(target)) target.focus();
+      }, 0);
+    };
+  }, [locationOpen, settingsOpen, moreOpen]);
   useEffect(() => {
     if (!geoFollow) return undefined;
     if (!navigator.geolocation) {
@@ -400,7 +501,7 @@ export function AceWeatherApp() {
       </aside>
 
       {/* FEED */}
-      <main className="awx-feed" id="top">
+      <main className="awx-feed" id="top" data-view={view}>
         <header className="awx-mobile-top">
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
@@ -442,6 +543,18 @@ export function AceWeatherApp() {
             </div>
           ) : null}
         </form>
+
+        {model && view === "all" ? (
+          <MobileGlance
+            model={model}
+            unit={unit}
+            windUnit={windUnit}
+            statusText={statusText}
+            freshness={freshness}
+            onShare={share}
+            shareLabel={shareLabel}
+          />
+        ) : null}
 
         <section className="awx-feed-list" aria-label="Weather">
           {model ? (
@@ -526,7 +639,7 @@ export function AceWeatherApp() {
 
       {locationOpen ? (
         <div className="awx-sheet-overlay" onClick={() => setLocationOpen(false)}>
-          <div className="awx-sheet awx-location-sheet" role="dialog" aria-label="Change location" onClick={(e) => e.stopPropagation()}>
+          <div className="awx-sheet awx-location-sheet" role="dialog" aria-modal="true" aria-label="Change location" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>Location</strong>
               <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close">x</button>
@@ -571,7 +684,7 @@ export function AceWeatherApp() {
 
       {settingsOpen ? (
         <div className="awx-sheet-overlay" onClick={() => setSettingsOpen(false)}>
-          <div className="awx-sheet" role="dialog" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
+          <div className="awx-sheet" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>Settings</strong>
               <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close">x</button>
@@ -589,7 +702,7 @@ export function AceWeatherApp() {
 
       {moreOpen ? (
         <div className="awx-sheet-overlay" onClick={() => setMoreOpen(false)}>
-          <div className="awx-sheet awx-more-sheet" role="dialog" aria-label="More" onClick={(e) => e.stopPropagation()}>
+          <div className="awx-sheet awx-more-sheet" role="dialog" aria-modal="true" aria-label="More" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>More</strong>
               <button className="awx-icon-btn" type="button" onClick={() => setMoreOpen(false)} aria-label="Close">x</button>

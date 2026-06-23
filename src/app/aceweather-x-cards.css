@@ -387,15 +387,138 @@
 .awx-sunarc-dot { fill: var(--awx-sun); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--awx-sun) 60%, transparent)); }
 .awx-sunarc-t { fill: var(--awx-faint); font-size: 11px; }
 
+@media (max-width: 900px) {
+  .awx-card {
+    gap: 15px;
+    padding: 18px;
+    border: 1px solid var(--awx-glass-line);
+    border-radius: 24px;
+    background: var(--awx-glass);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+  }
+  .awx-card-head {
+    align-items: center;
+  }
+  .awx-card-head .awx-title {
+    gap: 3px;
+  }
+  .awx-card-head .awx-meta {
+    line-height: 1.35;
+  }
+  .awx-tick {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-top: 0;
+  }
+  .awx-now {
+    grid-template-columns: minmax(0, 1fr) 136px;
+    gap: 15px;
+  }
+  .awx-now-read .awx-val {
+    font-size: 76px;
+  }
+  .awx-now-read .awx-deg {
+    font-size: 22px;
+  }
+  .awx-now-cond {
+    margin-top: 10px;
+  }
+  .awx-now-summary {
+    margin-top: 10px;
+    font-size: 13.5px;
+  }
+  .awx-sky {
+    min-height: 132px;
+    border-radius: 20px;
+  }
+  .awx-sky .awx-orb {
+    right: 18%;
+    top: 20%;
+    width: 72px;
+    height: 72px;
+  }
+  .awx-metrics,
+  .awx-season-stats,
+  .awx-rows,
+  .awx-chart-card,
+  .awx-decisions,
+  .awx-htable,
+  .awx-hourly,
+  .awx-outlook-lead,
+  .awx-ops {
+    border-radius: 18px;
+  }
+  .awx-range button {
+    min-height: 44px;
+  }
+  .awx-card-foot {
+    align-items: center;
+  }
+  .awx-card-foot .awx-note {
+    text-align: right;
+    line-height: 1.35;
+  }
+  .awx-detail {
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--awx-surface-2) 88%, transparent);
+  }
+  .awx-htable-scroll {
+    max-height: 300px;
+  }
+  .awx-cal-day {
+    border-radius: 16px;
+  }
+  .awx-cal-dow {
+    border-radius: 12px;
+  }
+  .awx-radar {
+    border-radius: 18px;
+  }
+  .awx-radar-stage {
+    min-height: 280px;
+  }
+  .awx-radar-map {
+    height: 280px !important;
+  }
+}
+
 @media (max-width: 540px) {
-  .awx-card { gap: 14px; padding: 20px 16px; }
+  .awx-card { gap: 14px; padding: 16px 14px; border-radius: 22px; }
+  .awx-card-head {
+    gap: 10px;
+  }
+  .awx-card-foot {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .awx-card-foot .awx-note {
+    font-size: 12px;
+  }
   .awx-htable-head, .awx-htable-row { grid-template-columns: 42px repeat(6, 1fr); gap: 3px; padding-inline: 10px; font-size: 11.5px; }
   .awx-range button { min-height: 44px; padding-inline: 14px; }
   .awx-now { grid-template-columns: 1fr; gap: 14px; }
-  .awx-sky { min-height: 112px; }
+  .awx-sky { min-height: 104px; }
   .awx-metrics { grid-template-columns: repeat(2, 1fr); }
-  .awx-now-read .awx-val { font-size: 72px; }
+  .awx-now-read .awx-val { font-size: 66px; }
+  .awx-now-read .awx-deg { font-size: 20px; margin-top: 6px; }
+  .awx-now-cond { font-size: 14px; }
+  .awx-now-sub { font-size: 13px; }
   .awx-now-summary { margin-top: 10px; }
+  .awx-metric { padding: 12px; }
+  .awx-metric .awx-v { font-size: 17px; }
+  .awx-chart-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .awx-range {
+    width: 100%;
+  }
+  .awx-range button {
+    flex: 1;
+  }
   .awx-decision { grid-template-columns: 1fr; }
   .awx-meter-wrap { justify-items: start; }
   .awx-meter { width: 100%; }
@@ -411,7 +534,7 @@
   }
   .awx-cal-dow,
   .awx-cal-day.is-empty { display: none; }
-  .awx-cal-day { flex: 0 0 104px; min-height: 128px; scroll-snap-align: center; }
+  .awx-cal-day { flex: 0 0 112px; min-height: 132px; scroll-snap-align: center; border-radius: 18px; }
   .awx-cal-mini { min-height: 21px; padding-inline: 5px; font-size: 10px; }
   .awx-radar-stage { min-height: 260px; }
   .awx-radar-map { height: 260px !important; }

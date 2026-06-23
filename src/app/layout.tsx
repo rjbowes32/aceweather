@@ -1,16 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
 
 import "./aceweather-x.css";
 import "./aceweather-x-cards.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600", "700"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -53,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-awx="1" data-theme="dark" className={inter.variable}>
+    <html lang="en" data-awx="1" data-theme="dark">
       <head>
         <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
       </head>

@@ -28,6 +28,12 @@
   --awx-radius-sm: 11px;
   --awx-pill: 999px;
   --awx-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 30px rgba(0, 0, 0, 0.18);
+  --awx-glass: rgba(16, 18, 22, 0.78);
+  --awx-glass-strong: rgba(18, 20, 25, 0.97);
+  --awx-glass-line: rgba(255, 255, 255, 0.12);
+  --awx-mobile-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
+  --awx-font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --awx-font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 [data-theme="light"] {
@@ -53,17 +59,22 @@
   --awx-sky-2: #eef3fa;
   --awx-glow: rgba(224, 177, 94, 0.65);
   --awx-shadow: 0 1px 2px rgba(12, 16, 22, 0.06), 0 10px 30px rgba(12, 16, 22, 0.06);
+  --awx-glass: rgba(255, 255, 255, 0.78);
+  --awx-glass-strong: rgba(255, 255, 255, 0.98);
+  --awx-glass-line: rgba(12, 16, 22, 0.10);
+  --awx-mobile-shadow: 0 18px 48px rgba(12, 16, 22, 0.12);
 }
 
 html[data-awx], html[data-awx] body { margin: 0; min-height: 100%; }
 html[data-awx] body {
   background: var(--awx-bg);
   color: var(--awx-text);
-  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--awx-font-ui);
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "tnum" 0;
 }
 .awx *, .awx *::before, .awx *::after { box-sizing: border-box; }
 .awx button, .awx input { font: inherit; color: inherit; }
@@ -151,6 +162,7 @@ html[data-awx] body {
 /* ===================== FEED ===================== */
 .awx-feed { min-width: 0; border-right: 1px solid var(--awx-line); }
 .awx-mobile-top { display: none; }
+.awx-mobile-glance { display: none; }
 
 .awx-feed-head {
   position: sticky; top: 0; z-index: 12;
@@ -196,7 +208,20 @@ html[data-awx] body {
 }
 .awx-search:focus-within { border-color: var(--awx-accent-line); background: var(--awx-surface); }
 .awx-search svg { width: 18px; height: 18px; stroke: var(--awx-faint); fill: none; stroke-width: 1.8; stroke-linecap: round; }
-.awx-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--awx-text); font-size: 15px; }
+.awx-search input {
+  flex: 1;
+  display: block;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--awx-text);
+  font-size: 15px;
+  line-height: 44px;
+  appearance: none;
+  -webkit-appearance: none;
+}
 .awx-search input::placeholder { color: var(--awx-faint); }
 .awx-search .awx-go {
   min-width: 44px; min-height: 44px; color: var(--awx-accent);
@@ -255,23 +280,42 @@ html[data-awx] body {
 }
 
 @media (max-width: 900px) {
-  .awx { display: block; padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  html[data-awx] body {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--awx-bg) 92%, var(--awx-surface-2)), var(--awx-bg) 34vh);
+  }
+  .awx {
+    display: block;
+    min-height: 100dvh;
+    padding-bottom: calc(98px + env(safe-area-inset-bottom));
+    background: transparent;
+  }
   .awx-rail, .awx-side { display: none; }
-  .awx-feed { border-right: 0; }
+  .awx-feed {
+    border-right: 0;
+    min-height: 100dvh;
+  }
   .awx-mobile-top {
     position: sticky; top: 0; z-index: 20;
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    min-height: calc(64px + env(safe-area-inset-top));
-    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
-    border-bottom: 1px solid var(--awx-line);
-    background: color-mix(in srgb, var(--awx-bg) 82%, transparent); backdrop-filter: blur(18px);
+    min-height: calc(62px + env(safe-area-inset-top));
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+    border-bottom: 1px solid var(--awx-glass-line);
+    background: var(--awx-glass);
+    backdrop-filter: blur(22px) saturate(1.55);
+    -webkit-backdrop-filter: blur(22px) saturate(1.55);
   }
-  .awx-mobile-top .awx-brand-mark { width: 48px; height: 40px; border-radius: 10px; }
+  .awx-mobile-top .awx-brand-mark {
+    width: 40px; height: 40px; border-radius: 12px;
+    box-shadow: inset 0 0 0 1px var(--awx-glass-line), 0 8px 22px rgba(0, 0, 0, 0.18);
+  }
   .awx-location-trigger {
     display: grid; align-content: center; justify-items: center; min-width: 0; min-height: 44px; flex: 1 1 auto;
-    padding: 0 6px; border-radius: 12px; color: var(--awx-text); text-align: center;
+    padding: 0 10px; border-radius: 14px; color: var(--awx-text); text-align: center;
+    transition: background 140ms ease, transform 120ms ease;
   }
-  .awx-location-trigger:hover { background: var(--awx-surface-2); }
+  .awx-location-trigger:hover { background: color-mix(in srgb, var(--awx-surface-2) 72%, transparent); }
+  .awx-location-trigger:active { transform: scale(0.98); }
   .awx-location-trigger strong {
     display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     font-size: 15px; font-weight: 650; line-height: 1.15;
@@ -282,25 +326,193 @@ html[data-awx] body {
   }
   .awx-feed-head { display: none; }
   .awx-composer { display: none; }
-  .awx-mobile-nav {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(6, 1fr);
-    min-height: calc(66px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid var(--awx-line);
-    background: color-mix(in srgb, var(--awx-bg) 86%, transparent); backdrop-filter: blur(20px);
+  .awx-feed-list {
+    display: grid;
+    gap: 12px;
+    padding: 10px 12px 20px;
   }
-  .awx-mobile-nav button { display: grid; place-items: center; gap: 3px; min-height: 64px; color: var(--awx-faint); font-size: 10px; font-weight: 600; }
-  .awx-mobile-nav button[aria-pressed="true"] { color: var(--awx-accent); }
+  .awx-feed[data-view="all"] .awx-feed-list > .awx-card[data-section="now"]:first-child {
+    display: none;
+  }
+  .awx-mobile-glance {
+    display: grid;
+    gap: 12px;
+    margin: 12px 12px 2px;
+    padding: 16px;
+    border: 1px solid var(--awx-glass-line);
+    border-radius: 26px;
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--awx-accent) 13%, transparent), transparent 42%),
+      var(--awx-glass-strong);
+    box-shadow: var(--awx-mobile-shadow);
+  }
+  .awx-glance-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(92px, auto);
+    gap: 12px;
+    align-items: start;
+  }
+  .awx-glance-eyebrow {
+    display: block;
+    color: var(--awx-faint);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+  .awx-glance-temp {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin-top: 4px;
+  }
+  .awx-glance-temp > span {
+    font-size: 70px;
+    font-weight: 200;
+    letter-spacing: 0;
+    line-height: 0.88;
+  }
+  .awx-glance-temp small {
+    margin-top: 8px;
+    color: var(--awx-muted);
+    font-size: 19px;
+    font-weight: 500;
+  }
+  .awx-glance-hero p {
+    margin: 9px 0 0;
+    color: var(--awx-muted);
+    font-size: 13.5px;
+    line-height: 1.38;
+  }
+  .awx-glance-verdict {
+    display: grid;
+    justify-items: end;
+    gap: 7px;
+    min-width: 0;
+    text-align: right;
+  }
+  .awx-glance-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 13px;
+    border-radius: var(--awx-pill);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .awx-glance-pill-go { background: var(--awx-go); }
+  .awx-glance-pill-warn { background: var(--awx-warn); color: #211707; }
+  .awx-glance-pill-risk { background: var(--awx-risk); }
+  .awx-glance-verdict small {
+    max-width: 128px;
+    color: var(--awx-muted);
+    font-size: 12px;
+    line-height: 1.25;
+  }
+  .awx-glance-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--awx-line);
+    border-radius: 18px;
+    background: var(--awx-line);
+  }
+  .awx-glance-grid > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding: 11px 10px;
+    background: color-mix(in srgb, var(--awx-surface) 88%, transparent);
+  }
+  .awx-glance-grid span {
+    color: var(--awx-faint);
+    font-size: 10.5px;
+    font-weight: 650;
+  }
+  .awx-glance-grid b {
+    min-width: 0;
+    color: var(--awx-text);
+    font-size: 14px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+  .awx-glance-grid small {
+    color: var(--awx-muted);
+    font-size: 10.5px;
+    font-weight: 500;
+  }
+  .awx-glance-grid .awx-rain-value { color: var(--awx-accent); }
+  .awx-glance-share {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    border-radius: 16px;
+    background: var(--awx-accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .awx-glance-share svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .awx-mobile-nav {
+    position: fixed; left: 10px; right: 10px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 30;
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    min-height: 68px;
+    padding: 5px;
+    border: 1px solid var(--awx-glass-line);
+    border-radius: 24px;
+    background: color-mix(in srgb, var(--awx-bg) 96%, var(--awx-surface-2));
+    box-shadow: var(--awx-mobile-shadow);
+    backdrop-filter: blur(24px) saturate(1.45);
+    -webkit-backdrop-filter: blur(24px) saturate(1.45);
+  }
+  .awx-mobile-nav button {
+    display: grid; place-items: center; gap: 2px; min-height: 56px;
+    border-radius: 18px;
+    color: var(--awx-faint); font-size: 10px; font-weight: 650;
+    transition: background 140ms ease, color 140ms ease, transform 120ms ease;
+  }
+  .awx-mobile-nav button[aria-pressed="true"] {
+    color: var(--awx-accent);
+    background: var(--awx-accent-weak);
+  }
+  .awx-mobile-nav button:active { transform: scale(0.97); }
   .awx-mobile-nav svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 }
 
 @media (max-width: 540px) {
   .awx-feed-head, .awx-composer { padding-inline: 16px; }
+  .awx-mobile-top { gap: 7px; padding-inline: 10px; }
+  .awx-mtop-right { gap: 4px; }
+  .awx-mtop-right .awx-status {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+  .awx-mtop-right .awx-status::before { margin: 0; }
+  .awx-location-trigger { padding-inline: 5px; }
+  .awx-mobile-glance { margin-inline: 10px; padding: 14px; border-radius: 24px; }
+  .awx-glance-temp > span { font-size: 64px; }
+  .awx-glance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .awx-glance-share { display: inline-flex; }
+  .awx-feed-list { padding-inline: 10px; }
 }
 
 /* ===================== ICON BUTTON · SETTINGS SHEET · TOAST ===================== */
-.awx-icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 11px; color: var(--awx-text); background: transparent; flex: 0 0 auto; }
+.awx-icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: var(--awx-text); background: transparent; flex: 0 0 auto; }
 .awx-icon-btn:hover { background: var(--awx-surface-2); }
 .awx-icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .awx-mtop-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
@@ -308,18 +520,52 @@ html[data-awx] body {
 .awx-bell.is-on { border-color: var(--awx-accent-line); color: var(--awx-accent); }
 .awx-bell.is-on svg { stroke: var(--awx-accent); }
 
-.awx-sheet-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: flex-end; }
-.awx-sheet { width: 100%; background: var(--awx-surface); border-radius: 18px 18px 0 0; border-top: 1px solid var(--awx-line-2); padding: 8px 16px calc(22px + env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; animation: awx-sheet-up 200ms ease; }
+.awx-sheet-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0, 0, 0, 0.38);
+  display: flex; align-items: flex-end;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.awx-sheet {
+  position: relative;
+  width: 100%;
+  background: var(--awx-glass-strong);
+  border-radius: 28px 28px 0 0;
+  border-top: 1px solid var(--awx-glass-line);
+  padding: 22px 16px calc(22px + env(safe-area-inset-bottom));
+  max-height: min(86dvh, 720px);
+  overflow-y: auto;
+  animation: awx-sheet-up 240ms cubic-bezier(.2,.8,.2,1);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.34);
+}
+.awx-sheet::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 42px;
+  height: 5px;
+  border-radius: var(--awx-pill);
+  background: var(--awx-line-2);
+  transform: translateX(-50%);
+}
 @keyframes awx-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.awx-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 2px 14px; }
+.awx-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 14px; }
 .awx-sheet-head strong { font-size: 16px; font-weight: 600; }
-.awx-sheet-body { display: grid; gap: 10px; }
+.awx-sheet-body { display: grid; gap: 12px; }
 .awx-sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
 .awx-sheet .awx-segmented { flex-direction: row; }
 .awx-sheet .awx-segmented button { min-height: 44px; }
 .awx-sheet .awx-btn { width: auto; padding: 0 16px; }
 .awx-sheet .awx-btn span { display: inline; }
 .awx-location-form { padding-bottom: 12px; }
+.awx-sheet .awx-search {
+  min-height: 52px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--awx-surface-2) 82%, transparent);
+}
+.awx-sheet .awx-search .awx-go { min-height: 44px; }
 .awx-sheet-section { display: grid; gap: 7px; }
 .awx-sheet-section-title {
   color: var(--awx-faint); font-size: 10.5px; font-weight: 700;
@@ -327,7 +573,7 @@ html[data-awx] body {
 }
 .awx-sheet-list { display: grid; gap: 4px; }
 .awx-sheet .awx-place {
-  min-height: 50px; border: 1px solid var(--awx-line); background: var(--awx-surface-2);
+  min-height: 54px; border: 1px solid var(--awx-line); background: color-mix(in srgb, var(--awx-surface-2) 88%, transparent);
 }
 .awx-sheet .awx-place[aria-pressed="true"] { border-color: var(--awx-accent-line); color: var(--awx-text); }
 .awx-sheet .awx-p-temp { min-width: 52px; text-align: right; font-size: 12px; }
@@ -370,7 +616,7 @@ html[data-awx] body {
 .awx-doc-link b { display: block; font-size: 13.5px; font-weight: 650; }
 .awx-doc-link small { display: block; margin-top: 2px; color: var(--awx-muted); font-size: 12px; line-height: 1.4; }
 .awx-doc-link code {
-  color: var(--awx-accent); font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: var(--awx-accent); font-family: var(--awx-font-mono);
   font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere;
 }
 

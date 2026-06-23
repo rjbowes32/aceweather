@@ -1,7 +1,7 @@
 ---
 version: 2
 name: AceWeather
-last_updated: 2026-06-21
+last_updated: 2026-06-23
 status: living design and implementation reference
 primary_surface: mobile PWA
 description: Calm, premium field-weather console for growers, farmers, agronomists, and field operators.
@@ -252,7 +252,7 @@ Do not use saturated filled badges or semantic card backgrounds.
 
 Typography:
 
-- Current font: Inter via `next/font/google`.
+- Current font: Apple-first system stack via CSS (`-apple-system`, `BlinkMacSystemFont`, `SF Pro Text`, `SF Pro Display`, `Helvetica Neue`). Do not load Inter or another webfont for the active app unless there is a deliberate product decision to move away from the Apple-native feel.
 - Display numerals should be light, elegant, and tabular.
 - All changing figures should use tabular numerals.
 - Kicker labels are tiny uppercase, tracked, and faint.
@@ -374,6 +374,24 @@ Verification after the update:
 - `npm run build`: passed.
 - Playwright viewports: `360x740`, `390x844`, `430x932`.
 - Follow-up 390px tap-target scan: no visible interactive target below 44px, no root horizontal overflow, no console errors.
+
+Implemented Apple-style mobile optimisation - 2026-06-23:
+
+- Mobile Overview now starts with a dedicated `Today at a glance` command card: live status, large current temperature, spray verdict, high/low, rain, wind, freshness, and share.
+- Mobile Overview hides the duplicate full `Conditions now` card after the glance card; the full Now card remains available in the `Now` tab.
+- Mobile shell now uses a more iOS-like frosted top bar, rounded opaque bottom tab bar, glass card surfaces, softer grouped controls, and tighter card spacing.
+- Mobile cards are rounded grouped surfaces instead of full-width desktop dividers.
+- Mobile sheets now have a native-feeling grab handle, stronger backdrop, scroll lock, Escape close, `aria-modal`, focus trap, focus return, and search-input focus on the Location sheet.
+- Search inputs and sheet controls have explicit 44px+ interactive dimensions.
+- Bottom nav opacity was tightened so content does not visually show through the fixed tab bar.
+
+Verification after the Apple-style pass:
+
+- `npm run lint`: passed with the same 8 existing warnings.
+- `npm run build`: passed.
+- Production browser verification from `next start` at `http://localhost:3005`.
+- Playwright viewports: `320x740`, `360x740`, `390x844`, `430x932`.
+- Checks passed: no visible interactive target below 44px, no root horizontal overflow, no console errors, Location sheet focuses search input, bottom tab bar clears the end of the Overview feed, Radar and More sheets open cleanly.
 
 ## Current Mobile Baseline
 
