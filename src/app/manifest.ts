@@ -20,6 +20,9 @@ type ExtendedManifest = MetadataRoute.Manifest & {
   }[];
 };
 
+// Static content — required for the Capacitor `output: "export"` build; no effect on web.
+export const dynamic = "force-static";
+
 export default function manifest(): ExtendedManifest {
   return {
     id: "/",

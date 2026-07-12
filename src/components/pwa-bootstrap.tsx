@@ -17,6 +17,10 @@ export function PwaBootstrap() {
   useEffect(() => {
     migrateFromLocalStorage().catch(() => {});
 
+    // Inside the Capacitor native shell there is no origin server to register
+    // a service worker against — native caching/updates are handled by the app.
+    if ((window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()) return;
+
     if (!("serviceWorker" in navigator)) return;
 
     if (process.env.NODE_ENV !== "production") {

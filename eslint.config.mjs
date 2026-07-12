@@ -8,6 +8,8 @@ const config = [
       ".claude/**",
       "node_modules/**",
       "static/**",
+      "out/**",
+      "ios/**",
     ],
   },
   ...nextCoreWebVitals,

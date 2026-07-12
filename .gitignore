@@ -34,6 +34,15 @@ Thumbs.db
 # Build artifacts
 *.tsbuildinfo
 .next-dev.log
+out/
+.capacitor-stash/
+
+# iOS (Capacitor) — generated/user-specific
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/output/
+ios/App/DerivedData/
+**/*.xcuserdatad/
 
 # Claude Code (local worktrees, plans, settings)
 .claude/

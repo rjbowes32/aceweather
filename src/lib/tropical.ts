@@ -26,8 +26,12 @@ export type TropicalPayload = {
   storms: Storm[];
 };
 
+// Same-origin in the web app; the Capacitor build sets NEXT_PUBLIC_ACEWEATHER_API_BASE
+// so the native shell reaches the hosted API instead.
+const API_BASE = (process.env.NEXT_PUBLIC_ACEWEATHER_API_BASE || "").replace(/\/$/, "");
+
 export async function fetchTropical(signal?: AbortSignal): Promise<TropicalPayload> {
-  const response = await fetch("/api/tropical", { signal, cache: "no-store" });
+  const response = await fetch(`${API_BASE}/api/tropical`, { signal, cache: "no-store" });
   if (!response.ok) throw new Error(`tropical ${response.status}`);
   return response.json();
 }
