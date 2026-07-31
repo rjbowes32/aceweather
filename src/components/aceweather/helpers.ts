@@ -1,6 +1,8 @@
 // @ts-nocheck
 /* Stateless helpers used across panels and views. */
 
+import { getDevicePosition } from "@/lib/aceweather/geolocation";
+
 export const dirToCompass = (deg) => {
   const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
   return dirs[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
@@ -52,21 +54,6 @@ async function reverseGeocode(lat, lon, timeoutMs = 2500) {
   }
 }
 
-function locationFromPosition(position, place = null) {
-  const lat = position.coords.latitude;
-  const lon = position.coords.longitude;
-  const tz = (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "auto";
-  return {
-    name: place?.name || "Current location",
-    region: place?.region || "GPS fix",
-    country: place?.country || "",
-    lat,
-    lon,
-    elev: position.coords.altitude ?? null,
-    tz,
-  };
-}
-
 export async function reverseGeocodeLocation(location, timeoutMs = 2500) {
   const place = await reverseGeocode(location.lat, location.lon, timeoutMs);
   return {
@@ -77,30 +64,37 @@ export async function reverseGeocodeLocation(location, timeoutMs = 2500) {
   };
 }
 
-export function requestBrowserLocation(timeoutMs = 10000, options = {}) {
-  return new Promise((resolve, reject) => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      reject(new Error("Geolocation unavailable"));
-      return;
-    }
-    const shouldReverseGeocode = options.reverseGeocode !== false;
-    const maximumAge = options.maximumAge ?? 5 * 60 * 1000;
-    const enableHighAccuracy = options.enableHighAccuracy ?? false;
-    const reverseTimeoutMs = options.reverseTimeoutMs ?? 2500;
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const rawLocation = locationFromPosition(position);
-        if (!shouldReverseGeocode) {
-          resolve(rawLocation);
-          return;
-        }
-        const place = await reverseGeocode(rawLocation.lat, rawLocation.lon, reverseTimeoutMs);
-        resolve(locationFromPosition(position, place));
-      },
-      (err) => reject(err),
-      { enableHighAccuracy, timeout: timeoutMs, maximumAge }
-    );
-  });
+export async function requestBrowserLocation(timeoutMs = 10000, options = {}) {
+  const shouldReverseGeocode = options.reverseGeocode !== false;
+  const maximumAge = options.maximumAge ?? 5 * 60 * 1000;
+  const enableHighAccuracy = options.enableHighAccuracy ?? false;
+  const reverseTimeoutMs = options.reverseTimeoutMs ?? 2500;
+  try {
+    const coords = await getDevicePosition({
+      enableHighAccuracy,
+      timeoutMs,
+      maximumAge,
+    });
+    const rawLocation = {
+      name: "Current location",
+      region: "GPS fix",
+      country: "",
+      lat: coords.latitude,
+      lon: coords.longitude,
+      elev: coords.altitude,
+      tz: (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "auto",
+    };
+    if (!shouldReverseGeocode) return rawLocation;
+    const place = await reverseGeocode(rawLocation.lat, rawLocation.lon, reverseTimeoutMs);
+    return {
+      ...rawLocation,
+      name: place.name || rawLocation.name,
+      region: place.region || rawLocation.region,
+      country: place.country || rawLocation.country,
+    };
+  } catch (err) {
+    throw err;
+  }
 }
 
 export function weatherConditionFor(code) {
