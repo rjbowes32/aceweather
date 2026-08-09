@@ -26,6 +26,15 @@ SOURCES = {
     "aceweather": "https://www.aceweather.app/",
 }
 
+SOURCE_LABELS = {
+    "ahdb_harvest": "AHDB GB Harvest Progress",
+    "environment_agency_drought": "Environment Agency dry weather and drought reports",
+    "met_office_climate": "Met Office UK climate time series",
+    "ahdb_wheat_rl": "AHDB Winter Wheat Recommended List",
+    "ahdb_forage": "AHDB Forage for Knowledge",
+    "aceweather": "AceWeather",
+}
+
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
     host = handler.headers.get("x-forwarded-host") or handler.headers.get("host") or ""
@@ -97,14 +106,22 @@ def build_payload(base_url: str = "") -> dict:
 
 def text_payload(payload: dict) -> str:
     h = payload["headline"]
+    drought = payload["drought"]
     lines = [
         "UK Crop Weather Atlas — 2026",
         f"Updated: {payload['updated']} | Status: {payload['status']}",
         "",
+        "Weather headlines:",
         f"England July rain: {h['england_july_rain_mm']} mm — {h['england_july_rain_context']}",
         f"East Anglia Mar–May rain: {h['east_anglia_mar_may_rain_mm']} mm",
         f"Reservoir storage: {h['reservoir_storage_pct']}% — {h['reservoir_context']}",
         f"Wheat: {h['wheat_yield_t_ha']} t/ha ({h['wheat_vs_10y_pct']}% vs 10-y avg)",
+        "",
+        "Drought assessment:",
+        f"- Meteorological drought: {drought['meteorological']['status']}",
+        f"- Agricultural drought: {drought['agricultural']['status']}",
+        f"- Hydrological drought: {drought['hydrological']['status']}",
+        f"- Measured yield impact: {drought['measured_yield_impact']['status']}",
         "",
         "Crops:",
     ]
@@ -112,15 +129,21 @@ def text_payload(payload: dict) -> str:
         lines.append(
             f"- {crop['crop']}: {crop['yield_t_ha']} t/ha; {crop['anomaly_pct']:+.1f}% vs 10-y avg; {crop['harvested_pct']}% harvested"
         )
+
     wg = payload["wheat_genetics"]
+    forage_by_location = {
+        row["location"]: row["grass_growth_kg_dm_ha_day"]
+        for row in payload["forage"]
+    }
     lines += [
         "",
         f"Wheat RL treated controls: {wg['2026_t_ha']} vs {wg['five_year_mean_t_ha']} t/ha ({wg['anomaly_pct']:+.1f}%)",
-        "Forage: Somerset 5 vs Ayrshire 50 kg DM/ha/day",
+        f"Forage: Somerset {forage_by_location.get('Somerset')} vs Ayrshire {forage_by_location.get('Ayrshire')} kg DM/ha/day",
         "OSR caveat: recent benchmark is CSFB-affected; do not attribute uplift to drought alone.",
         "",
         f"Atlas: {payload['atlas_url']}",
     ]
+
     rain = payload.get("recent_rain", {})
     locations = rain.get("locations") if isinstance(rain, dict) else None
     if locations:
@@ -128,6 +151,24 @@ def text_payload(payload: dict) -> str:
         for row in locations:
             if row.get("rain_mm") is not None:
                 lines.append(f"- {row.get('location')}: {row.get('rain_mm')} mm")
+
+    caveats = payload["caveats"]
+    lines += [
+        "",
+        "Caveats:",
+        f"- {caveats['2026_yields']}",
+        f"- {caveats['oilseed_rape']}",
+        "",
+        "Sources:",
+    ]
+    for key, url in payload["sources"].items():
+        lines.append(f"- {SOURCE_LABELS.get(key, key)}: {url}")
+
+    lines += [
+        "",
+        "Interpretation:",
+        "Keep meteorological drought, hydrological drought and measured agricultural impact separate. Do not assume that dry weather produces the same yield response across every crop or UK region.",
+    ]
     return "\n".join(lines) + "\n"
 
 
