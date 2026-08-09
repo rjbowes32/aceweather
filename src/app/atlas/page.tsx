@@ -1,3 +1,4 @@
+import { RainMap } from "./rain-map";
 import styles from "./atlas.module.css";
 
 const crops = [
@@ -8,20 +9,13 @@ const crops = [
   { crop: "Oats", yield: 4.9, average: 5.4, anomaly: -9.3, harvest: 32 },
 ];
 
-const transect = [
-  ["Sleaford", 4.8],
-  ["Pocklington", 9.2],
-  ["Scotch Corner", 9.2],
-  ["Longhirst", 35.5],
-  ["Berwick", 55.4],
-] as const;
-
 const sources = [
   ["AHDB harvest", "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress"],
   ["Environment Agency drought", "https://www.gov.uk/government/collections/dry-weather-and-drought-in-england"],
   ["Met Office climate", "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series"],
   ["AHDB wheat RL", "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists"],
   ["AHDB forage", "https://ahdb.org.uk/knowledge-library/forage-for-knowledge"],
+  ["OpenStreetMap", "https://www.openstreetmap.org/"],
 ];
 
 function anomalyClass(value: number) {
@@ -99,18 +93,7 @@ export default function AtlasPage() {
             <p className={styles.note}>OSR: recent average is CSFB-affected; do not attribute the uplift to drought.</p>
           </article>
 
-          <article className={styles.panel}>
-            <div className={styles.sectionHead}><h2>Recent rain</h2><span>AceWeather · 29 days</span></div>
-            <div className={styles.barList}>
-              {transect.map(([place, rain]) => (
-                <div className={styles.barRow} key={place}>
-                  <span>{place}</span>
-                  <div className={styles.track}><div className={styles.fill} style={{ width: `${Math.min(100, rain / 60 * 100)}%` }} /></div>
-                  <strong>{rain.toFixed(1)} mm</strong>
-                </div>
-              ))}
-            </div>
-          </article>
+          <RainMap />
         </section>
 
         <section className={styles.grid3}>
