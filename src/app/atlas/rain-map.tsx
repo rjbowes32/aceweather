@@ -12,6 +12,19 @@ type Point = {
   rain: number;
 };
 
+type CropDynamicsRow = {
+  query?: string;
+  rain_mm?: number;
+};
+
+type CropDynamicsResponse = {
+  locations?: CropDynamicsRow[];
+  date_range?: {
+    end?: string;
+    days?: number;
+  };
+};
+
 const FALLBACK: Point[] = [
   { key: "Sleaford", label: "Sleaford", lat: 52.99944, lon: -0.41038, rain: 4.8 },
   { key: "Alford, Lincolnshire", label: "Alford", lat: 53.25221, lon: 0.17193, rain: 10.6 },
@@ -49,23 +62,32 @@ export function RainMap() {
 
   useEffect(() => {
     let active = true;
+
     fetch("/api/cropdynamics")
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("rain fetch failed")))
-      .then((data) => {
-        if (!active || !Array.isArray(data?.locations)) return;
-        const byQuery = new Map(data.locations.map((row: any) => [String(row.query || ""), Number(row.rain_mm)]));
+      .then((raw: CropDynamicsResponse) => {
+        if (!active || !Array.isArray(raw.locations)) return;
+
+        const entries: Array<[string, number]> = raw.locations.map((row) => [
+          String(row.query || ""),
+          Number(row.rain_mm),
+        ]);
+        const byQuery = new Map<string, number>(entries);
+
         const next = FALLBACK.map((point) => {
           const rain = byQuery.get(point.key);
-          return Number.isFinite(rain) ? { ...point, rain } : point;
+          return rain !== undefined && Number.isFinite(rain) ? { ...point, rain } : point;
         });
         setPoints(next);
-        if (data?.date_range?.end) {
-          const end = new Date(`${data.date_range.end}T12:00:00Z`);
+
+        if (raw.date_range?.end) {
+          const end = new Date(`${raw.date_range.end}T12:00:00Z`);
           const label = end.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-          setRange(`${data.date_range.days || 29} days to ${label}`);
+          setRange(`${raw.date_range.days || 29} days to ${label}`);
         }
       })
       .catch(() => {});
+
     return () => { active = false; };
   }, []);
 
