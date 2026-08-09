@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
+import { SiteModeTabs } from "@/components/site-mode-tabs";
 
 import "./aceweather-x.css";
 import "./aceweather-x-cards.css";
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body>
         <PwaBootstrap />
         {children}
+        <SiteModeTabs />
       </body>
     </html>
   );
