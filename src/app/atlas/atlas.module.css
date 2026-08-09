@@ -138,25 +138,70 @@
 .table th:first-child,
 .table td:first-child { text-align: left; }
 
-.barList { display: grid; gap: 10px; }
-.barRow {
-  display: grid;
-  grid-template-columns: 128px minmax(100px, 1fr) 72px;
-  gap: 9px;
-  align-items: center;
-  font-size: 12px;
-}
-.track {
-  height: 8px;
-  border-radius: 99px;
-  background: var(--awx-border, #272b31);
+.mapFrame {
+  position: relative;
+  height: 320px;
   overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--awx-border, #272b31);
+  background: #d8dfdc;
 }
-.fill {
+
+.mapBase {
+  width: 100%;
   height: 100%;
-  border-radius: inherit;
-  background: var(--awx-accent, #74d3ae);
+  border: 0;
+  pointer-events: none;
+  filter: saturate(.7) contrast(.94) brightness(.9);
 }
+
+.mapOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mapMarker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255,255,255,.9);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.34);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.mapMarker strong { font-size: 10px; }
+
+.mapMarker span {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: rgba(10,11,13,.84);
+  color: #fff;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.mapDotDry { background: #b85858; }
+.mapDotMid { background: #b88b45; }
+.mapDotWet { background: #378763; }
+
+.mapSummary {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+  color: var(--awx-muted, #a8b0ad);
+  font-size: 10px;
+}
+.mapSummary strong { color: var(--awx-text, #f2f4f3); }
 
 .stat {
   padding: 15px;
@@ -210,5 +255,7 @@
   .header h1 { font-size: 34px; }
   .grid4, .grid3, .statusGrid { grid-template-columns: 1fr 1fr; }
   .metric strong { font-size: 23px; }
-  .barRow { grid-template-columns: 108px 1fr 66px; }
+  .mapFrame { height: 300px; }
+  .mapMarker span { display: none; }
+  .mapSummary { flex-direction: column; gap: 3px; }
 }
