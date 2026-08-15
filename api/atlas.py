@@ -7,14 +7,14 @@ import lib
 from helpers import send_json, send_text
 
 
-UPDATED = "2026-08-09"
+UPDATED = "2026-08-14"
 
 CROPS = [
-    {"crop": "wheat", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -13.9, "harvested_pct": 54},
-    {"crop": "winter_barley", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 6.9, "anomaly_pct": -1.4, "harvested_pct": 95},
-    {"crop": "spring_barley", "yield_t_ha": 5.3, "ten_year_avg_t_ha": 5.7, "anomaly_pct": -7.0, "harvested_pct": 8},
-    {"crop": "winter_osr", "yield_t_ha": 3.9, "ten_year_avg_t_ha": 3.3, "anomaly_pct": 18.2, "harvested_pct": 73},
-    {"crop": "oats", "yield_t_ha": 4.9, "ten_year_avg_t_ha": 5.4, "anomaly_pct": -9.3, "harvested_pct": 32},
+    {"crop": "wheat", "yield_t_ha": 6.7, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -15.2, "harvested_pct": 85},
+    {"crop": "winter_barley", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 6.9, "anomaly_pct": -1.4, "harvested_pct": 98},
+    {"crop": "spring_barley", "yield_t_ha": 4.1, "ten_year_avg_t_ha": 5.7, "anomaly_pct": -28.1, "harvested_pct": 54},
+    {"crop": "winter_osr", "yield_t_ha": 3.9, "ten_year_avg_t_ha": 3.3, "anomaly_pct": 18.2, "harvested_pct": 95},
+    {"crop": "oats", "yield_t_ha": 4.2, "ten_year_avg_t_ha": 5.4, "anomaly_pct": -22.2, "harvested_pct": 80},
 ]
 
 SOURCES = {
@@ -72,23 +72,33 @@ def build_payload(base_url: str = "") -> dict:
             "england_july_rain_mm": 6.5,
             "england_july_rain_context": "driest July on record",
             "east_anglia_mar_may_rain_mm": 44.8,
-            "reservoir_storage_pct": 69,
-            "reservoir_context": "below normal, but better than the same point in 2022 and 2025",
-            "wheat_yield_t_ha": 6.8,
-            "wheat_vs_10y_pct": -13.9,
+            "reservoir_storage_pct": 66,
+            "reservoir_context": "about 14 percentage points below the seasonal norm; five key reservoirs exceptionally low",
+            "wheat_yield_t_ha": 6.7,
+            "wheat_vs_10y_pct": -15.2,
         },
         "drought": {
             "meteorological": {"status": "exceptional"},
             "agricultural": {"status": "regional"},
             "hydrological": {"status": "serious"},
             "measured_yield_impact": {"status": "mixed"},
+            "england_area_pct": 71.3,
+            "river_flows_below_normal_or_lower_pct": 85,
+            "river_flow_breakdown_pct": {
+                "below_normal": 37,
+                "notably_low": 33,
+                "exceptionally_low": 15,
+            },
+            "groundwater_context": "Seasonal recession; Cotswolds Oolite and parts of Wessex chalk notably low.",
+            "abstraction_restrictions": 1395,
+            "agriculture_context": "Dry areas are under significant pressure, with winter forage reserves being used earlier than usual.",
         },
         "crops": CROPS,
         "wheat_genetics": {
             "benchmark": "AHDB Recommended List treated controls",
-            "2026_t_ha": 9.89,
-            "five_year_mean_t_ha": 11.08,
-            "anomaly_pct": -10.7,
+            "2026_t_ha": 10.01,
+            "five_year_mean_t_ha": 11.09,
+            "anomaly_pct": -9.7,
         },
         "forage": [
             {"location": "Somerset", "grass_growth_kg_dm_ha_day": 5},
@@ -122,6 +132,11 @@ def text_payload(payload: dict) -> str:
         f"- Agricultural drought: {drought['agricultural']['status']}",
         f"- Hydrological drought: {drought['hydrological']['status']}",
         f"- Measured yield impact: {drought['measured_yield_impact']['status']}",
+        f"- England in drought: {drought['england_area_pct']}%",
+        f"- River flows below normal or lower: {drought['river_flows_below_normal_or_lower_pct']}%",
+        f"- Groundwater: {drought['groundwater_context']}",
+        f"- Hands-off-flow abstraction restrictions: {drought['abstraction_restrictions']:,}",
+        f"- Agriculture: {drought['agriculture_context']}",
         "",
         "Crops:",
     ]
