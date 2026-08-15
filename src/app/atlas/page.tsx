@@ -2,11 +2,11 @@ import { RainMap } from "./rain-map";
 import styles from "./atlas.module.css";
 
 const crops = [
-  { crop: "Wheat", yield: 6.8, average: 7.9, anomaly: -13.9, harvest: 54 },
-  { crop: "Winter barley", yield: 6.8, average: 6.9, anomaly: -1.4, harvest: 95 },
-  { crop: "Spring barley", yield: 5.3, average: 5.7, anomaly: -7.0, harvest: 8 },
-  { crop: "Winter OSR", yield: 3.9, average: 3.3, anomaly: 18.2, harvest: 73 },
-  { crop: "Oats", yield: 4.9, average: 5.4, anomaly: -9.3, harvest: 32 },
+  { crop: "Wheat", yield: 6.7, average: 7.9, anomaly: -15.2, harvest: 85 },
+  { crop: "Winter barley", yield: 6.8, average: 6.9, anomaly: -1.4, harvest: 98 },
+  { crop: "Spring barley", yield: 4.1, average: 5.7, anomaly: -28.1, harvest: 54 },
+  { crop: "Winter OSR", yield: 3.9, average: 3.3, anomaly: 18.2, harvest: 95 },
+  { crop: "Oats", yield: 4.2, average: 5.4, anomaly: -22.2, harvest: 80 },
 ];
 
 const sources = [
@@ -38,7 +38,7 @@ export default function AtlasPage() {
             <p className={styles.eyebrow}>UK Crop Weather Atlas</p>
             <h1>2026</h1>
           </div>
-          <span>Updated 9 Aug · harvest data provisional</span>
+          <span>Updated 14 Aug · harvest data provisional</span>
         </header>
 
         <section className={styles.grid4} aria-label="Headline signals">
@@ -49,13 +49,13 @@ export default function AtlasPage() {
           </article>
           <article className={styles.metric}>
             <span>Wheat</span>
-            <strong className={styles.negative}>6.8 t/ha</strong>
-            <small>−13.9% vs 10-y avg</small>
+            <strong className={styles.negative}>6.7 t/ha</strong>
+            <small>−15.2% vs 10-y avg</small>
           </article>
           <article className={styles.metric}>
             <span>Reservoir storage</span>
-            <strong>69%</strong>
-            <small>Better than 2022 & 2025</small>
+            <strong>66%</strong>
+            <small>≈14 pts below seasonal norm</small>
           </article>
           <article className={styles.metric}>
             <span>East Anglia spring rain</span>
@@ -71,9 +71,16 @@ export default function AtlasPage() {
           <div><span>Yield impact</span><strong>Mixed</strong></div>
         </section>
 
+        <section className={styles.statusGrid} aria-label="Water resource indicators">
+          <div><span>England in drought</span><strong>71.3%</strong></div>
+          <div><span>Low river flows</span><strong>85%</strong></div>
+          <div><span>Groundwater</span><strong>Local lows</strong></div>
+          <div><span>Abstraction restrictions</span><strong>1,395</strong></div>
+        </section>
+
         <section className={styles.grid2}>
           <article className={styles.panel}>
-            <div className={styles.sectionHead}><h2>Arable yields</h2><span>AHDB 2026</span></div>
+            <div className={styles.sectionHead}><h2>Arable yields</h2><span>AHDB · to 10 Aug</span></div>
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead><tr><th>Crop</th><th>2026</th><th>10-y</th><th>Δ</th><th>Cut</th></tr></thead>
@@ -99,8 +106,8 @@ export default function AtlasPage() {
         <section className={styles.grid3}>
           <article className={styles.stat}>
             <span>Wheat RL controls</span>
-            <strong className={styles.negative}>−10.7%</strong>
-            <small>9.89 vs 11.08 t/ha</small>
+            <strong className={styles.negative}>−9.7%</strong>
+            <small>10.01 vs 11.09 t/ha</small>
           </article>
           <article className={styles.stat}>
             <span>Grass · Somerset</span>
