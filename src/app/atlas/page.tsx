@@ -54,8 +54,8 @@ export default function AtlasPage() {
           </article>
           <article className={styles.metric}>
             <span>Reservoir storage</span>
-            <strong>66%</strong>
-            <small>≈14 pts below seasonal norm</small>
+            <strong>65.9%</strong>
+            <small>13.8 pts below seasonal norm</small>
           </article>
           <article className={styles.metric}>
             <span>East Anglia spring rain</span>
@@ -73,9 +73,9 @@ export default function AtlasPage() {
 
         <section className={styles.statusGrid} aria-label="Water resource indicators">
           <div><span>England in drought</span><strong>71.3%</strong></div>
-          <div><span>Low river flows</span><strong>85%</strong></div>
-          <div><span>Groundwater</span><strong>Local lows</strong></div>
-          <div><span>Abstraction restrictions</span><strong>1,395</strong></div>
+          <div><span>Low river flows</span><strong>91%</strong></div>
+          <div><span>Groundwater</span><strong>⅓ below normal+</strong></div>
+          <div><span>Abstraction restrictions</span><strong>1,544</strong></div>
         </section>
 
         <section className={styles.grid2}>
