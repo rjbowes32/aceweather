@@ -38,7 +38,7 @@ export default function AtlasPage() {
             <p className={styles.eyebrow}>UK Crop Weather Atlas</p>
             <h1>2026</h1>
           </div>
-          <span>Updated 14 Aug · harvest data provisional</span>
+          <span>Updated 21 Aug · harvest data provisional</span>
         </header>
 
         <section className={styles.grid4} aria-label="Headline signals">
@@ -54,8 +54,8 @@ export default function AtlasPage() {
           </article>
           <article className={styles.metric}>
             <span>Reservoir storage</span>
-            <strong>65.9%</strong>
-            <small>13.8 pts below seasonal norm</small>
+            <strong>62.6%</strong>
+            <small>16.3 pts below seasonal norm</small>
           </article>
           <article className={styles.metric}>
             <span>East Anglia spring rain</span>
@@ -72,10 +72,10 @@ export default function AtlasPage() {
         </section>
 
         <section className={styles.statusGrid} aria-label="Water resource indicators">
-          <div><span>England in drought</span><strong>71.3%</strong></div>
-          <div><span>Low river flows</span><strong>91%</strong></div>
-          <div><span>Groundwater</span><strong>⅓ below normal+</strong></div>
-          <div><span>Abstraction restrictions</span><strong>1,544</strong></div>
+          <div><span>England in drought</span><strong>71%</strong></div>
+          <div><span>River sites below normal+</span><strong>85%</strong></div>
+          <div><span>Groundwater</span><strong>Oolite exceptionally low</strong></div>
+          <div><span>Abstraction restrictions</span><strong>1,562</strong></div>
         </section>
 
         <section className={styles.grid2}>
@@ -107,17 +107,17 @@ export default function AtlasPage() {
           <article className={styles.stat}>
             <span>Wheat RL controls</span>
             <strong className={styles.negative}>−9.7%</strong>
-            <small>10.01 vs 11.09 t/ha</small>
+            <small>10.01 vs 11.09 t/ha · 10 Aug</small>
           </article>
           <article className={styles.stat}>
             <span>Grass · Somerset</span>
             <strong className={styles.negative}>5</strong>
-            <small>kg DM/ha/day</small>
+            <small>kg DM/ha/day · 6 Aug</small>
           </article>
           <article className={styles.stat}>
             <span>Grass · Ayrshire</span>
             <strong className={styles.positive}>50</strong>
-            <small>kg DM/ha/day</small>
+            <small>kg DM/ha/day · 6 Aug</small>
           </article>
         </section>
 
