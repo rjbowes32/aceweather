@@ -7,7 +7,7 @@ import lib
 from helpers import send_json, send_text
 
 
-UPDATED = "2026-08-14"
+UPDATED = "2026-08-21"
 
 CROPS = [
     {"crop": "wheat", "yield_t_ha": 6.7, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -15.2, "harvested_pct": 85},
@@ -72,8 +72,8 @@ def build_payload(base_url: str = "") -> dict:
             "england_july_rain_mm": 6.5,
             "england_july_rain_context": "driest July on record",
             "east_anglia_mar_may_rain_mm": 44.8,
-            "reservoir_storage_pct": 65.9,
-            "reservoir_context": "13.8 percentage points below the seasonal norm; five key reservoirs exceptionally low",
+            "reservoir_storage_pct": 62.6,
+            "reservoir_context": "16.3 percentage points below the seasonal norm; seven major reservoirs exceptionally low",
             "wheat_yield_t_ha": 6.7,
             "wheat_vs_10y_pct": -15.2,
         },
@@ -82,16 +82,16 @@ def build_payload(base_url: str = "") -> dict:
             "agricultural": {"status": "regional"},
             "hydrological": {"status": "serious"},
             "measured_yield_impact": {"status": "mixed"},
-            "england_area_pct": 71.3,
-            "river_flows_below_normal_or_lower_pct": 91,
+            "england_area_pct": 71,
+            "river_flows_below_normal_or_lower_pct": 85,
             "river_flow_breakdown_pct": {
-                "below_normal": 31,
-                "notably_low": 31,
-                "exceptionally_low": 28,
+                "below_normal": 35,
+                "notably_low": 26,
+                "exceptionally_low": 24,
             },
-            "groundwater_context": "One third of reported sites are below normal or lower; seasonal recession continues.",
-            "abstraction_restrictions": 1544,
-            "agriculture_context": "Reduced crop quality and yields, poor grass growth and pressure on winter forage stocks are being reported.",
+            "groundwater_context": "Seasonal recession continues; many chalk sites remain normal, while Oolite Limestone groundwater is exceptionally low in places.",
+            "abstraction_restrictions": 1562,
+            "agriculture_context": "Poor crop yields and reduced grass growth continue; agricultural boreholes are drying up, farm reservoirs are critically low and root-crop lifting is challenged by hard ground.",
         },
         "crops": CROPS,
         "wheat_genetics": {
@@ -135,7 +135,7 @@ def text_payload(payload: dict) -> str:
         f"- England in drought: {drought['england_area_pct']}%",
         f"- River flows below normal or lower: {drought['river_flows_below_normal_or_lower_pct']}%",
         f"- Groundwater: {drought['groundwater_context']}",
-        f"- Hands-off-flow abstraction restrictions: {drought['abstraction_restrictions']:,}",
+        f"- Abstraction licence restrictions: {drought['abstraction_restrictions']:,}",
         f"- Agriculture: {drought['agriculture_context']}",
         "",
         "Crops:",
