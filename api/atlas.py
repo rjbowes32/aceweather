@@ -7,19 +7,19 @@ import lib
 from helpers import send_json, send_text
 
 
-UPDATED = "2026-08-21"
+UPDATED = "2026-08-28"
 
 CROPS = [
-    {"crop": "wheat", "yield_t_ha": 6.7, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -15.2, "harvested_pct": 85},
-    {"crop": "winter_barley", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 6.9, "anomaly_pct": -1.4, "harvested_pct": 98},
-    {"crop": "spring_barley", "yield_t_ha": 4.1, "ten_year_avg_t_ha": 5.7, "anomaly_pct": -28.1, "harvested_pct": 54},
-    {"crop": "winter_osr", "yield_t_ha": 3.9, "ten_year_avg_t_ha": 3.3, "anomaly_pct": 18.2, "harvested_pct": 95},
-    {"crop": "oats", "yield_t_ha": 4.2, "ten_year_avg_t_ha": 5.4, "anomaly_pct": -22.2, "harvested_pct": 80},
+    {"crop": "wheat", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -13.9, "harvested_pct": 94},
+    {"crop": "winter_barley", "yield_t_ha": 6.9, "ten_year_avg_t_ha": 6.9, "anomaly_pct": 0.0, "harvested_pct": 99.5},
+    {"crop": "spring_barley", "yield_t_ha": 4.6, "ten_year_avg_t_ha": 5.7, "anomaly_pct": -19.3, "harvested_pct": 80},
+    {"crop": "winter_osr", "yield_t_ha": 4.0, "ten_year_avg_t_ha": 3.3, "anomaly_pct": 21.2, "harvested_pct": 100},
+    {"crop": "oats", "yield_t_ha": 4.4, "ten_year_avg_t_ha": 5.4, "anomaly_pct": -18.5, "harvested_pct": 89},
 ]
 
 SOURCES = {
     "ahdb_harvest": "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress",
-    "environment_agency_drought": "https://www.gov.uk/government/collections/dry-weather-and-drought-in-england",
+    "environment_agency_drought": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-21-to-27-august-2026",
     "met_office_climate": "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series",
     "ahdb_wheat_rl": "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists",
     "ahdb_forage": "https://ahdb.org.uk/knowledge-library/forage-for-knowledge",
@@ -72,10 +72,12 @@ def build_payload(base_url: str = "") -> dict:
             "england_july_rain_mm": 6.5,
             "england_july_rain_context": "driest July on record",
             "east_anglia_mar_may_rain_mm": 44.8,
-            "reservoir_storage_pct": 62.6,
-            "reservoir_context": "16.3 percentage points below the seasonal norm; seven major reservoirs exceptionally low",
-            "wheat_yield_t_ha": 6.7,
-            "wheat_vs_10y_pct": -15.2,
+            "england_august_rain_pct_lta": 34,
+            "england_august_rain_to_date": "25 August 2026",
+            "reservoir_storage_pct": 59.8,
+            "reservoir_context": "18.2% below average for the time of year; nine major reservoirs exceptionally low",
+            "wheat_yield_t_ha": 6.8,
+            "wheat_vs_10y_pct": -13.9,
         },
         "drought": {
             "meteorological": {"status": "exceptional"},
@@ -83,22 +85,22 @@ def build_payload(base_url: str = "") -> dict:
             "hydrological": {"status": "serious"},
             "measured_yield_impact": {"status": "mixed"},
             "england_area_pct": 71,
-            "river_flows_below_normal_or_lower_pct": 85,
+            "river_flows_below_normal_or_lower_pct": 93,
             "river_flow_breakdown_pct": {
                 "below_normal": 35,
-                "notably_low": 26,
-                "exceptionally_low": 24,
+                "notably_low": 39,
+                "exceptionally_low": 19,
             },
-            "groundwater_context": "Seasonal recession continues; many chalk sites remain normal, while Oolite Limestone groundwater is exceptionally low in places.",
-            "abstraction_restrictions": 1562,
-            "agriculture_context": "Poor crop yields and reduced grass growth continue; agricultural boreholes are drying up, farm reservoirs are critically low and root-crop lifting is challenged by hard ground.",
+            "groundwater_context": "Seasonal recession continues; Tilshead in the Upper Hampshire Avon Chalk and Jackaments Bottom in the Cotswolds Oolite are exceptionally low, with several other chalk sites below normal or notably low.",
+            "abstraction_restrictions": 1412,
+            "agriculture_context": "Root-crop lifting is difficult on hard soils while irrigation restrictions limit water for softening ground; some restrictions have eased locally after higher river levels in Yorkshire and Lincolnshire.",
         },
         "crops": CROPS,
         "wheat_genetics": {
             "benchmark": "AHDB Recommended List treated controls",
-            "2026_t_ha": 10.01,
-            "five_year_mean_t_ha": 11.09,
-            "anomaly_pct": -9.7,
+            "2026_t_ha": 9.83,
+            "five_year_mean_t_ha": 11.05,
+            "anomaly_pct": -11.0,
         },
         "forage": [
             {"location": "Somerset", "grass_growth_kg_dm_ha_day": 5},
@@ -124,6 +126,7 @@ def text_payload(payload: dict) -> str:
         "Weather headlines:",
         f"England July rain: {h['england_july_rain_mm']} mm — {h['england_july_rain_context']}",
         f"East Anglia Mar–May rain: {h['east_anglia_mar_may_rain_mm']} mm",
+        f"England August rain: {h['england_august_rain_pct_lta']}% of LTA — to {h['england_august_rain_to_date']}",
         f"Reservoir storage: {h['reservoir_storage_pct']}% — {h['reservoir_context']}",
         f"Wheat: {h['wheat_yield_t_ha']} t/ha ({h['wheat_vs_10y_pct']}% vs 10-y avg)",
         "",
