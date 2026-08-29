@@ -2,16 +2,16 @@ import { RainMap } from "./rain-map";
 import styles from "./atlas.module.css";
 
 const crops = [
-  { crop: "Wheat", yield: 6.7, average: 7.9, anomaly: -15.2, harvest: 85 },
-  { crop: "Winter barley", yield: 6.8, average: 6.9, anomaly: -1.4, harvest: 98 },
-  { crop: "Spring barley", yield: 4.1, average: 5.7, anomaly: -28.1, harvest: 54 },
-  { crop: "Winter OSR", yield: 3.9, average: 3.3, anomaly: 18.2, harvest: 95 },
-  { crop: "Oats", yield: 4.2, average: 5.4, anomaly: -22.2, harvest: 80 },
+  { crop: "Wheat", yield: 6.8, average: 7.9, anomaly: -13.9, harvest: 94 },
+  { crop: "Winter barley", yield: 6.9, average: 6.9, anomaly: 0.0, harvest: 99.5 },
+  { crop: "Spring barley", yield: 4.6, average: 5.7, anomaly: -19.3, harvest: 80 },
+  { crop: "Winter OSR", yield: 4.0, average: 3.3, anomaly: 21.2, harvest: 100 },
+  { crop: "Oats", yield: 4.4, average: 5.4, anomaly: -18.5, harvest: 89 },
 ];
 
 const sources = [
   ["AHDB harvest", "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress"],
-  ["Environment Agency drought", "https://www.gov.uk/government/collections/dry-weather-and-drought-in-england"],
+  ["Environment Agency drought", "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-21-to-27-august-2026"],
   ["Met Office climate", "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series"],
   ["AHDB wheat RL", "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists"],
   ["AHDB forage", "https://ahdb.org.uk/knowledge-library/forage-for-knowledge"],
@@ -38,7 +38,7 @@ export default function AtlasPage() {
             <p className={styles.eyebrow}>UK Crop Weather Atlas</p>
             <h1>2026</h1>
           </div>
-          <span>Updated 21 Aug · harvest data provisional</span>
+          <span>Updated 28 Aug · harvest data provisional</span>
         </header>
 
         <section className={styles.grid4} aria-label="Headline signals">
@@ -49,18 +49,18 @@ export default function AtlasPage() {
           </article>
           <article className={styles.metric}>
             <span>Wheat</span>
-            <strong className={styles.negative}>6.7 t/ha</strong>
-            <small>−15.2% vs 10-y avg</small>
+            <strong className={styles.negative}>6.8 t/ha</strong>
+            <small>−13.9% vs 10-y avg</small>
           </article>
           <article className={styles.metric}>
             <span>Reservoir storage</span>
-            <strong>62.6%</strong>
-            <small>16.3 pts below seasonal norm</small>
+            <strong>59.8%</strong>
+            <small>18.2% below seasonal average</small>
           </article>
           <article className={styles.metric}>
-            <span>East Anglia spring rain</span>
-            <strong className={styles.negative}>44.8 mm</strong>
-            <small>Mar–May</small>
+            <span>August rainfall</span>
+            <strong className={styles.negative}>34% LTA</strong>
+            <small>England · to 25 Aug</small>
           </article>
         </section>
 
@@ -73,14 +73,14 @@ export default function AtlasPage() {
 
         <section className={styles.statusGrid} aria-label="Water resource indicators">
           <div><span>England in drought</span><strong>71%</strong></div>
-          <div><span>River sites below normal+</span><strong>85%</strong></div>
-          <div><span>Groundwater</span><strong>Oolite exceptionally low</strong></div>
-          <div><span>Abstraction restrictions</span><strong>1,562</strong></div>
+          <div><span>River sites below normal+</span><strong>93%</strong></div>
+          <div><span>Groundwater</span><strong>2 sites exceptionally low</strong></div>
+          <div><span>Abstraction restrictions</span><strong>1,412</strong></div>
         </section>
 
         <section className={styles.grid2}>
           <article className={styles.panel}>
-            <div className={styles.sectionHead}><h2>Arable yields</h2><span>AHDB · to 10 Aug</span></div>
+            <div className={styles.sectionHead}><h2>Arable yields</h2><span>AHDB · to 24 Aug</span></div>
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead><tr><th>Crop</th><th>2026</th><th>10-y</th><th>Δ</th><th>Cut</th></tr></thead>
@@ -106,8 +106,8 @@ export default function AtlasPage() {
         <section className={styles.grid3}>
           <article className={styles.stat}>
             <span>Wheat RL controls</span>
-            <strong className={styles.negative}>−9.7%</strong>
-            <small>10.01 vs 11.09 t/ha · 10 Aug</small>
+            <strong className={styles.negative}>−11.0%</strong>
+            <small>9.83 vs 11.05 t/ha · 26 Aug</small>
           </article>
           <article className={styles.stat}>
             <span>Grass · Somerset</span>
