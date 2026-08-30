@@ -102,10 +102,10 @@ export function buildModel(raw) {
   }
   const bMax = Math.max(1, ...buckets12);
   const mkBars = (vals, labels, maxV) => vals.map((v, i) => ({
-    h: clamp((v / (maxV || 1)) * 100, 1, 100), label: labels[i], dry: (v || 0) < 0.1, now: i === 0,
+    h: clamp((v / (maxV || 1)) * 100, 1, 100), value: +(v || 0).toFixed(1), label: labels[i], dry: (v || 0) < 0.1, now: i === 0,
   }));
   const rainHourLabels = Array.from({ length: 12 }, (_, i) => timeLabel(h.time[ni + i * 2] || ""));
-  const dLabels = (start, n) => Array.from({ length: n }, (_, i) => weekdayShort(d.time[start + i] || "").slice(0, 1));
+  const dLabels = (start, n) => Array.from({ length: n }, (_, i) => weekdayShort(d.time[start + i] || ""));
   const dNums = (start, n) => Array.from({ length: n }, (_, i) => String(dayOfMonth(d.time[start + i] || "1")));
   const rain = {
     sum24: +sum24.toFixed(1), peakProb, past7: +past7.toFixed(1), next7: +next7.toFixed(1),
@@ -154,21 +154,7 @@ export function buildModel(raw) {
   const calendarOffset = calendar.length ? weekdayIndexMonFirst(calendar[0].dateKey) : 0;
 
   // ---------- AGRONOMY (heuristic) ----------
-  const wind = h.wind_speed_10m, gust = h.wind_gusts_10m, rhh = h.relative_humidity_2m, prc = h.precipitation;
-  let open = 0, longest = 0, run = 0, gustFails = 0, rainFails = 0;
-  for (let i = ni; i < ni + 24 && i < h.time.length; i++) {
-    const dry = (prc[i] || 0) < 0.1, calm = wind[i] >= 3 && wind[i] <= 16 && gust[i] < 22;
-    if (dry && calm) { open++; run++; longest = Math.max(longest, run); }
-    else { run = 0; if (!dry) rainFails++; else gustFails++; }
-  }
-  const sprayScore = Math.round(clamp((open / 24) * 100));
-  const spray = {
-    score: sprayScore, open, longest,
-    label: sprayScore >= 60 ? "Go" : sprayScore >= 35 ? "Watch" : "Limited",
-    tone: sprayScore >= 60 ? "go" : sprayScore >= 35 ? "warn" : "risk",
-    sub: rainFails > gustFails ? `~${longest}h block — rain is the limiter` : `~${longest}h block — wind is the limiter`,
-  };
-
+  const rhh = h.relative_humidity_2m, prc = h.precipitation;
   const surfM = h.soil_moisture_0_to_1cm?.[ni] ?? 0.3;
   const accessScore = Math.round(clamp(100 - ((surfM - 0.18) / (0.45 - 0.18)) * 80 - clamp(past7 * 1.5, 0, 20)));
   const access = {
@@ -257,7 +243,7 @@ export function buildModel(raw) {
   }
 
   const agro = buildAgronomy(h, d, ni, di, cur);
-  return { obs, todayKey, now, trend, rain, calendar, calendarOffset, todayHours, sun, nextRain, agronomy: { spray, access, fungal, frost, ...agro }, soil, alerts };
+  return { obs, todayKey, now, trend, rain, calendar, calendarOffset, todayHours, sun, nextRain, agronomy: { access, fungal, frost, ...agro }, soil, alerts };
 }
 
 export type AwModel = ReturnType<typeof buildModel>;

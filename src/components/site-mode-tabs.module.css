@@ -29,8 +29,12 @@
   background: var(--awx-accent, #74d3ae);
 }
 
-@media (max-width: 760px) {
-  .tabs {
+@media (max-width: 900px) {
+  .weather {
+    display: none;
+  }
+
+  .atlas {
     right: 12px;
     bottom: calc(78px + env(safe-area-inset-bottom));
   }

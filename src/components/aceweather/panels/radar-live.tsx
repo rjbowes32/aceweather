@@ -3,8 +3,8 @@
 
 import dynamic from "next/dynamic";
 
-const RadarLiveMap = dynamic(
-  () => import("./radar-live-map").then((mod) => mod.RadarLiveMap),
+const RadarMap = dynamic(
+  () => import("@/components/aceweather-x/radar-card").then((mod) => mod.RadarMap),
   {
     ssr: false,
     loading: () => (
@@ -23,5 +23,9 @@ export function RadarLive({ location, height = 360 }) {
       </div>
     );
   }
-  return <RadarLiveMap lat={location.lat} lon={location.lon} location={location} height={height} />;
+  return (
+    <div style={{ height }}>
+      <RadarMap lat={location.lat} lon={location.lon} theme="dark" active tz={location.tz} />
+    </div>
+  );
 }

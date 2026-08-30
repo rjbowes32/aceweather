@@ -70,13 +70,12 @@ function isDataRequest(url) {
   if (url.hostname === "archive-api.open-meteo.com") return true;
   if (url.hostname === "air-quality-api.open-meteo.com") return true;
   if (url.hostname === "geocoding-api.open-meteo.com") return true;
-  if (url.hostname === "api.rainviewer.com") return true;
+  if (url.hostname === "met-office-radar-obs-data.s3.eu-west-2.amazonaws.com") return true;
   return false;
 }
 
 function isMapTileRequest(url) {
-  if (url.hostname === "tilecache.rainviewer.com") return true;
-  if (url.hostname.endsWith(".basemaps.cartocdn.com")) return true;
+  if (url.hostname === "tiles.openfreemap.org") return true;
   return false;
 }
 

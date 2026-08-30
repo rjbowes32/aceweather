@@ -98,7 +98,7 @@ export function buildAgronomy(h, d, ni, di, cur) {
     const minT = temps.length ? Math.min(...temps) : null;
     const rh90 = idx.reduce((c, i) => c + ((RH[i] ?? 0) >= 90 ? 1 : 0), 0);
     const isHutton = minT != null && minT >= 10 && rh90 >= 6;
-    return { k, dayNum: dayOfMonth(k), weekday: weekdayShort(k), minT: minT == null ? null : +minT.toFixed(1), rh90, label: rh90 + "h", isHutton, period: false };
+    return { k, dayNum: dayOfMonth(k), weekday: weekdayShort(k), minT: minT == null ? null : +minT.toFixed(1), rh90, label: rh90 + "h", isHutton, period: false, tone: "go" };
   });
   for (let i = 1; i < blightDays.length; i++) {
     if (blightDays[i].isHutton && blightDays[i - 1].isHutton) { blightDays[i].period = true; blightDays[i - 1].period = true; }

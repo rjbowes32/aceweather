@@ -1,16 +1,27 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import type { Condition, ConditionKey } from "@/lib/aceweather/format";
 import { ChevronIcon } from "./icons";
 
+type CssVars = CSSProperties & Record<`--awx-${string}`, string | number>;
+type Tone = string;
+
+type CardProps = {
+  section: string;
+  kicker: ReactNode;
+  meta?: ReactNode;
+  tick?: Tone;
+  note?: ReactNode;
+  detail?: ReactNode;
+  children: ReactNode;
+};
+
 /** The mandatory card pattern: kicker + meta header, body, footer disclosure, detail. */
-export function Card({ section, kicker, meta, tick = "rain", note, detail, children, currentView }) {
+export function Card({ section, kicker, meta, tick = "rain", note, detail, children }: CardProps) {
   const [open, setOpen] = useState(false);
-  const hidden = currentView && currentView !== "all" && currentView !== section;
   return (
-    <article className={"awx-card" + (open ? " is-open" : "") + (hidden ? " is-hidden" : "")} data-section={section}>
+    <article className={"awx-card" + (open ? " is-open" : "")} data-section={section}>
       <div className="awx-card-head">
         <div className="awx-title">
           <div className="awx-kicker">{kicker}</div>
@@ -34,7 +45,7 @@ export function Card({ section, kicker, meta, tick = "rain", note, detail, child
   );
 }
 
-export function Tags({ items }) {
+export function Tags({ items }: { items: Array<{ tone: Tone; label: ReactNode }> }) {
   if (!items?.length) return null;
   return (
     <div className="awx-tags">
@@ -43,27 +54,40 @@ export function Tags({ items }) {
   );
 }
 
-export function Meter({ value, tone = "go", label }) {
+export function Meter({ value, tone = "go", label }: { value: number; tone?: Tone; label?: string }) {
+  const boundedValue = Math.max(0, Math.min(100, value));
   return (
-    <div className="awx-meter-wrap">
-      <div className={"awx-meter awx-m-" + tone}><i style={{ "--awx-v": Math.max(0, Math.min(100, value)) + "%" }} /></div>
+    <div className="awx-meter-wrap" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={boundedValue} aria-label={label}>
+      <div className={"awx-meter awx-m-" + tone} aria-hidden="true"><i style={{ "--awx-v": boundedValue + "%" } as CssVars} /></div>
       {label ? <span className="awx-meter-val">{label}</span> : null}
     </div>
   );
 }
 
-export function Bars({ bars }) {
+type BarDatum = { h: number; label: string; value?: number | string; unit?: string; dry?: boolean; now?: boolean };
+
+export function Bars({ bars, label = "Chart values" }: { bars: BarDatum[]; label?: string }) {
   return (
-    <div className="awx-bars" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
+    <div className="awx-bars" role="list" aria-label={label} style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
       {bars.map((b, i) => (
-        <i key={i} className={"awx-bar" + (b.dry ? " is-dry" : "") + (b.now ? " is-now" : "")}
+        <i key={i} role="listitem" aria-label={b.value == null ? b.label : `${b.label}: ${b.value}${b.unit ? ` ${b.unit}` : ""}`} className={"awx-bar" + (b.dry ? " is-dry" : "") + (b.now ? " is-now" : "")}
           style={{ height: b.h + "%" }} data-label={b.label} />
       ))}
     </div>
   );
 }
 
-export function LineTrend({ trend }) {
+type LineTrendData = {
+  viewW: number;
+  viewH: number;
+  nowX: number;
+  tempPath: string;
+  areaPath: string;
+  rainPath: string;
+  pressPath: string;
+};
+
+export function LineTrend({ trend }: { trend: LineTrendData }) {
   const { viewW, viewH, nowX, tempPath, areaPath, rainPath, pressPath } = trend;
   return (
     <svg className="awx-line" viewBox={`0 0 ${viewW} ${viewH}`} role="img" aria-label="24-hour trend of temperature, rain and pressure">
@@ -78,15 +102,15 @@ export function LineTrend({ trend }) {
   );
 }
 
-export function HourlyChart({ temp, rain, wind, labels }) {
+export function HourlyChart({ temp, rain, wind, labels }: { temp: number[]; rain: number[]; wind: number[]; labels: string[] }) {
   const n = temp.length;
   if (!n) return null;
   const W = 600, H = 132, x0 = 10, x1 = 590, yTop = 14, yBase = 96;
-  const xs = (i) => x0 + ((x1 - x0) * i) / Math.max(1, n - 1);
+  const xs = (i: number) => x0 + ((x1 - x0) * i) / Math.max(1, n - 1);
   const tmin = Math.min(...temp), tmax = Math.max(...temp);
-  const ts = (v) => yBase - (yBase - yTop) * ((v - tmin) / ((tmax - tmin) || 1));
+  const ts = (v: number) => yBase - (yBase - yTop) * ((v - tmin) / ((tmax - tmin) || 1));
   const wmax = Math.max(1, ...wind);
-  const ws = (v) => yBase - (yBase - yTop) * 0.66 * (v / wmax);
+  const ws = (v: number) => yBase - (yBase - yTop) * 0.66 * (v / wmax);
   const rmax = Math.max(0.4, ...rain);
   const colW = ((x1 - x0) / n) * 0.58;
   const tPath = temp.map((v, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)} ${ts(v).toFixed(1)}`).join("");
@@ -106,7 +130,7 @@ export function HourlyChart({ temp, rain, wind, labels }) {
   );
 }
 
-export function Sky({ condition, isDay, label }) {
+export function Sky({ condition, isDay, label }: { condition: Condition; isDay: number | boolean; label?: ReactNode }) {
   const cls = "awx-sky" + (condition.key === "cloud" || condition.key === "fog" ? " is-cloud" : "") + (isDay ? "" : " is-night");
   return (
     <div className={cls} aria-hidden="true">
@@ -117,13 +141,15 @@ export function Sky({ condition, isDay, label }) {
   );
 }
 
-export function SoilRows({ soil }) {
+type SoilDatum = { depth: string; sub: string; temp?: number | null; moistPct: number };
+
+export function SoilRows({ soil }: { soil: SoilDatum[] }) {
   return (
     <div className="awx-rows">
       {soil.map((s, i) => (
         <div key={i} className="awx-soil-row">
           <div className="awx-depth">{s.depth}<small>{s.sub}</small></div>
-          <div className="awx-soil-meter"><i style={{ "--awx-v": Math.min(100, s.moistPct) + "%" }} /></div>
+          <div className="awx-soil-meter" role="meter" aria-label={`${s.depth} soil moisture`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, s.moistPct)}><i aria-hidden="true" style={{ "--awx-v": Math.min(100, s.moistPct) + "%" } as CssVars} /></div>
           <div className="awx-soil-fig">{s.temp == null ? "—" : s.temp.toFixed(1)}°<small> {s.moistPct}%</small></div>
         </div>
       ))}
@@ -131,7 +157,7 @@ export function SoilRows({ soil }) {
   );
 }
 
-export function Verdict({ label, tone, reason }) {
+export function Verdict({ label, tone, reason }: { label: ReactNode; tone: Tone; reason: ReactNode }) {
   return (
     <div className={"awx-verdict awx-vd-" + tone}>
       <span className="awx-vd-badge">{label}</span>
@@ -140,26 +166,27 @@ export function Verdict({ label, tone, reason }) {
   );
 }
 
-export function DeltaTBand({ value, label, tone }) {
+export function DeltaTBand({ value, label, tone }: { value?: number | null; label: string; tone: Tone }) {
   const v = value == null ? null : Math.max(0, Math.min(12, value));
-  const pct = (x) => (x / 12) * 100;
+  const pct = (x: number) => (x / 12) * 100;
   return (
     <div className="awx-deltat">
       <div className="awx-deltat-head"><span>Delta-T</span><b className={"awx-v-" + tone}>{value ?? "—"}<small> °C · {label}</small></b></div>
-      <div className="awx-deltat-track">
+      <div className="awx-deltat-track" role="meter" aria-label={`Delta-T ${value ?? "unknown"} degrees Celsius, ${label}`} aria-valuemin={0} aria-valuemax={12} aria-valuenow={v ?? undefined}>
         <div className="awx-deltat-band" style={{ left: pct(2) + "%", width: pct(6) + "%" }} />
         {v != null ? <div className="awx-deltat-marker" style={{ left: pct(v) + "%" }} /> : null}
       </div>
-      <div className="awx-deltat-cap">Ideal spraying band 2–8 °C</div>
     </div>
   );
 }
 
-export function RiskStrip({ days }) {
+type RiskDay = { tone: Tone; dayNum: string | number; label: string };
+
+export function RiskStrip({ days }: { days: RiskDay[] }) {
   return (
-    <div className="awx-riskstrip">
+    <div className="awx-riskstrip" role="list">
       {days.map((d, i) => (
-        <div key={i} className={"awx-risk-cell awx-rc-" + d.tone}>
+        <div key={i} className={"awx-risk-cell awx-rc-" + d.tone} role="listitem" aria-label={`${d.dayNum}: ${d.label}`}>
           <span className="awx-rc-d">{d.dayNum}</span>
           <span className="awx-rc-dot" />
           <span className="awx-rc-h">{d.label}</span>
@@ -169,17 +196,32 @@ export function RiskStrip({ days }) {
   );
 }
 
-export function OpsMatrix({ days, rows }) {
-  const cells = [<div key="corner" className="awx-ops-h" />];
-  days.forEach((d, i) => cells.push(<div key={"h" + i} className="awx-ops-h">{d.weekday}</div>));
-  rows.forEach((r, ri) => {
-    cells.push(<div key={"l" + ri} className="awx-ops-label">{r.label}</div>);
-    r.cells.forEach((t, ci) => cells.push(<div key={ri + "-" + ci} className="awx-ops-cell"><span className={"awx-ops-dot awx-od-" + t} /></div>));
-  });
-  return <div className="awx-ops" style={{ gridTemplateColumns: `74px repeat(${days.length}, 1fr)` }}>{cells}</div>;
+type OpsDay = { weekday: string };
+type OpsRow = { label: string; cells: string[] };
+
+export function OpsMatrix({ days, rows }: { days: OpsDay[]; rows: OpsRow[] }) {
+  const toneLabel = (tone: string) => tone === "go" ? "Go" : tone === "warn" ? "Caution" : tone === "risk" ? "Avoid" : tone;
+  return (
+    <div className="awx-ops" role="grid" aria-label="Field operation suitability" style={{ gridTemplateColumns: `74px repeat(${days.length}, 1fr)` }}>
+      <div className="awx-ops-row" role="row">
+        <div className="awx-ops-h" role="columnheader" />
+        {days.map((day) => <div key={day.weekday} className="awx-ops-h" role="columnheader">{day.weekday}</div>)}
+      </div>
+      {rows.map((row) => (
+        <div className="awx-ops-row" role="row" key={row.label}>
+          <div className="awx-ops-label" role="rowheader">{row.label}</div>
+          {row.cells.map((tone, columnIndex) => (
+            <div key={`${row.label}-${days[columnIndex]?.weekday}`} className="awx-ops-cell" role="gridcell" aria-label={`${row.label}, ${days[columnIndex]?.weekday}: ${toneLabel(tone)}`}>
+              <span aria-hidden="true" className={"awx-ops-dot awx-od-" + tone} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-export function SunArc({ elapsed, sunrise, sunset, isDay }) {
+export function SunArc({ elapsed, sunrise, sunset, isDay }: { elapsed: number; sunrise: string; sunset: string; isDay: number | boolean }) {
   const W = 280, H = 112, cx = W / 2, cy = H - 16, r = W / 2 - 26;
   const e = Math.max(0, Math.min(1, elapsed));
   const a = Math.PI * (1 - e);
@@ -199,3 +241,4 @@ export function SunArc({ elapsed, sunrise, sunset, isDay }) {
 }
 
 export { ConditionIcon } from "./icons";
+export type { ConditionKey };

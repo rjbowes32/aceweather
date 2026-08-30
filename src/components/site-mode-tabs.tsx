@@ -10,7 +10,7 @@ export function SiteModeTabs() {
   const atlas = pathname.startsWith("/atlas");
 
   return (
-    <nav className={styles.tabs} aria-label="AceWeather modes">
+    <nav className={`${styles.tabs} ${atlas ? styles.atlas : styles.weather}`} aria-label="AceWeather modes">
       <Link className={`${styles.tab} ${!atlas ? styles.active : ""}`} href="/">Weather</Link>
       <Link className={`${styles.tab} ${atlas ? styles.active : ""}`} href="/atlas">Atlas</Link>
     </nav>

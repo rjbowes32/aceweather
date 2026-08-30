@@ -640,7 +640,7 @@ export const Mobile = () => {
       </section>
 
       <section className="aw2-m-section">
-        <div className="h"><b>Live radar</b><span>RainViewer | -2h to +30m</span></div>
+        <div className="h"><b>Observed radar</b><span>Met Office · previous 2h</span></div>
         <div className="aw2-m-radar"><RadarLive location={mobileLocation} height={280}/></div>
       </section>
 

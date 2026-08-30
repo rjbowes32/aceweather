@@ -34,7 +34,7 @@ The app should prioritize fast field decisions over decorative weather presentat
 - Runtime: React client-heavy app inside `src/components/aceweather-x`.
 - Styling: plain CSS split between `src/app/aceweather-x.css` and `src/app/aceweather-x-cards.css`.
 - PWA: manifest route, service-worker route, local install behavior, update bootstrap.
-- Maps/radar: MapLibre GL plus RainViewer tiles.
+- Maps/radar: MapLibre GL plus Met Office UK Radar Observations rendered from open HDF5 data.
 - Forecast data: Open-Meteo client calls, no backend needed for the main forecast.
 - Package scripts:
   - `npm run dev`
@@ -49,14 +49,17 @@ Important files:
 - `src/app/service-worker.js/route.ts`: generated service worker script.
 - `src/components/pwa-bootstrap.tsx`: service worker registration, update checks, reload on controller change.
 - `src/components/aceweather-x/app.tsx`: main AceWeather X shell, nav, state, search, settings sheet.
-- `src/components/aceweather-x/cards.tsx`: Now, Rain, Outlook, Field, Seasonal, Sources cards.
-- `src/components/aceweather-x/radar-card.tsx`: live RainViewer radar map and playback UI.
+- `src/components/aceweather-x/overview-experience.tsx`: shared responsive Overview command centre.
+- `src/components/aceweather-x/now-experience.tsx`: shared responsive current, hourly, daylight, and expanded detail view.
+- `src/components/aceweather-x/location-picker-content.tsx`: shared search, results, saved places, and GPS picker used by desktop and mobile shells.
+- `src/components/aceweather-x/cards.tsx`: Outlook, Field, Seasonal, and Sources cards.
+- `src/components/aceweather-x/radar-card.tsx`: observed Met Office radar map and playback UI.
 - `src/components/aceweather-x/ui.tsx`: shared UI primitives.
 - `src/components/aceweather-x/icons.tsx`: inline icon set.
 - `src/lib/aceweather/open-meteo.ts`: forecast, geocoding, seasonal archive access.
 - `src/lib/aceweather/derive.ts`: transforms Open-Meteo payload into the view model.
 - `src/lib/aceweather/agronomy.ts`: field/agronomy heuristic models.
-- `src/lib/aceweather/radar.ts` and `src/lib/radar-frames.ts`: RainViewer frame helpers.
+- `src/lib/aceweather/met-office-radar.ts`: public-bucket frame discovery and time helpers.
 - `src/lib/aceweather/notify.ts`: rain alert and service-worker-backed notification helpers.
 - `src/lib/store.ts`: local storage / IndexedDB migration support.
 
@@ -73,7 +76,7 @@ AceWeather currently provides:
 - Rest-of-day / next-hours trend.
 - Sun and daylight.
 - Rainfall totals and rain range chart.
-- Live rainfall radar from RainViewer.
+- Observed UK rainfall radar from the Met Office open-data archive.
 - 14-day forecast and selected-day hourly detail.
 - Field guidance:
   - Spraying / Delta-T / inversion / rain-fast.
@@ -112,10 +115,10 @@ Seasonal context:
 
 Radar:
 
-- Source: RainViewer public weather maps API and tile server.
+- Source: Met Office UK Radar Observations public AWS bucket, licensed CC BY-SA.
 - Open-Meteo does not provide radar.
-- Map base: CARTO raster tiles through MapLibre.
-- Current radar UI cross-fades RainViewer frames, supports play/pause, previous/next, range input, and frame chips.
+- Map base: keyless OpenFreeMap vector tiles through MapLibre.
+- Current radar UI renders open HDF5 observations in-browser, cross-fades frames, and supports play/pause, previous/next, range input, and frame chips.
 
 Notifications:
 
@@ -174,26 +177,22 @@ Mobile `More` contains:
 - `Outlook`
 - `Seasonal`
 - `Sources`
+- `Atlas`
 - API/docs links
 
 Do not add more permanent bottom-nav items without re-testing 360px width. Six bottom items is already the upper comfort limit.
 
 ## Current Card Sections
 
-Overview view displays the full stack:
+Overview is one responsive, decision-first command centre on mobile and desktop:
 
-- Conditions now.
-- Today / hour by hour.
-- Sun and daylight.
-- Rainfall.
-- Rainfall radar.
-- 14-day outlook.
-- Spraying.
-- Disease pressure.
-- Soil and water.
-- Season and operations.
-- Seasonal context.
-- Data sources.
+- Current conditions with high/low, 24-hour rain, wind, freshness, and share.
+- A prominent next-rain summary.
+- Four field decisions: spraying, workability, disease, and wind/gust.
+- The next six hours and next three days.
+- Summary actions open the relevant detailed tab and return the user to the top.
+- The full detailed cards remain available in their filtered tabs.
+- Desktop rearranges the same content into a wider grid; it does not render a separate full-stack Overview.
 
 Filtered views show subsets:
 
@@ -432,40 +431,51 @@ Bottom nav:
   - Field
   - More
 - `More` contains Outlook, Seasonal, Sources, and Docs/API.
+- The floating Weather/Atlas mode switch is hidden on the mobile Weather surface; Atlas is opened from `More` so content has one navigation layer.
 - Keep this model unless a future mobile audit proves there is a better six-item structure.
 
 Overview:
 
 - Should be a quick command center, not a full document.
-- Consider shorter summary cards or a "Today at a glance" block before the full cards.
-- If full stack remains, each card must have a tight mobile default state.
+- Mobile and desktop use the same `OverviewExperience` component and data. Breakpoint CSS may change arrangement and density, not content or logic.
+- Do not append the full card stack beneath it.
+- Keep the whole Overview within roughly one to two phone-height scrolls at 390px wide.
 
 Now:
 
-- Current Now visual language is good.
-- Reduce vertical footprint on small phones.
-- Keep the sky panel, but do not let it push core metrics below the fold unnecessarily.
+- Mobile and desktop use the same `NowExperience` component and data.
+- It uses a compact current-conditions card with temperature, feels/high/low, wind/gust, current rain, humidity, pressure, dew point, cloud, UV, and visibility.
+- A prominent change-ahead callout leads into a horizontally scrolling ten-hour strip for temperature, rain chance, and wind.
+- Daylight is a compact four-value grid rather than a large sun-path illustration.
+- Full trend and tabular hourly data remain available through one collapsed disclosure on both breakpoints.
 
 Rain:
 
-- Rain chart is generally clean.
-- Range segmented controls need 44px height.
-- When rain is 0, avoid wasting too much chart height on empty space.
+- Mobile leads with next-rain timing and spell amount, followed by 24-hour total, peak probability, next-seven-day total, and past-seven-day context.
+- Range selection uses 44px segmented controls, but each range has a purpose-built presentation:
+  - 24 hours: an intensity timeline answering when rain starts and stops.
+  - 7 days: chronological day rows with a rainfall track, exact millimetres, and probability.
+  - 14 days: a two-row heat strip showing the broader rainfall pattern and exact totals.
+- A small month-to-date comparison tile shows the current total and millimetre difference versus the exact same calendar period last year. Never compare a partial current month against a complete historical month.
+- A clear continuation action opens live Radar.
+- Mobile and desktop render this as one shared Rain component. Responsive rules may rearrange its regions, but must not fork its data, controls, formats, wording, or comparison logic.
+- Rain styling has one shared structural foundation; breakpoint rules contain density and arrangement overrides only.
+- When rain is 0, avoid wasting chart height on empty space.
 
 Radar:
 
 - Map should remain visually inspectable.
-- Map controls should be mobile-sized or replaced with custom controls.
-- Playback controls should be 44px minimum.
-- Frame chips should scroll cleanly and not look truncated.
+- Map controls are 44px minimum on mobile.
+- The selected frame time/status appears before playback controls; Play/Pause is explicitly labelled and previous/next remain adjacent.
+- Frame chips scroll horizontally and expose observed frame times.
 - Attribution must remain readable but not dominate the map.
 
 Field:
 
-- Current mobile Field direction is good.
-- Keep decisive verdicts (`Go`, `Hold`, `Caution`) prominent.
-- Rows are readable and useful.
-- Details controls need larger tap height.
+- Mobile and desktop use one `FieldExperience` with four always-visible decision switches: Spraying, Disease, Workability, and Operations.
+- Only the selected operational card mounts, avoiding the original four-card continuous scroll.
+- Keep decisive verdicts (`Go`, `Hold`, `Caution`) prominent and retain 44px minimum controls.
+- Methodology remains inside the selected card's deliberate Details disclosure.
 
 Outlook:
 
@@ -492,7 +502,7 @@ PWA behavior is part of UX. If the app updates badly, users experience it as a b
 Current pieces:
 
 - `manifest.ts`: standalone display, icons, shortcuts, share target, protocol handlers.
-- `service-worker.js/route.ts`: app shell, static cache, data cache, RainViewer/CARTO tile caching, notifications.
+- `service-worker.js/route.ts`: app shell, static cache, data cache, Met Office radar/OpenFreeMap caching, notifications.
 - `pwa-bootstrap.tsx`: registers service worker, checks for updates, posts skip-waiting message, reloads on controller change.
 
 Rules:
@@ -528,7 +538,7 @@ Good examples:
 - `Next spray window 06:00-11:00`
 - `0 mm next 24h`
 - `Observed 06:45 - Open-Meteo`
-- `RainViewer - observed frames`
+- `Met Office open data - observed frames`
 
 Avoid:
 
@@ -538,6 +548,8 @@ Avoid:
 - Long explanations in default card views.
 - Unlabeled heuristics.
 
+Default screens should contain labels, measurements, statuses and actions only. Explanatory or methodology copy belongs behind a deliberate `Details` disclosure; do not place helper paragraphs or redundant subtitles beside primary data.
+
 Use Details for methodology and caveats.
 
 ## Current Known Design Debt
@@ -545,7 +557,7 @@ Use Details for methodology and caveats.
 Keep this list current.
 
 - Mobile sheets use `role="dialog"` but do not yet trap focus or restore focus to the opener.
-- Overview can still become long on small phones; consider a compact "Today at a glance" block before the full card stack.
+- Overview is now the compact shared command centre; continue watching its length as more operational signals are added.
 - PWA update behavior is hardened in dev, but production update flow still needs a deliberate deploy/update test with a real build id.
 - GPS follow uses foreground `watchPosition`; true closed-app/background location updates are not available without platform-native app capabilities.
 - Docs/API links are now reachable through `More`; future passes may want a tighter developer-docs presentation.
@@ -582,7 +594,7 @@ When changing AceWeather:
 The next major mobile pass should be:
 
 1. Add focus trap and focus-return behavior to mobile sheets.
-2. Build a compact `Today at a glance` overview block if user testing still shows too much scrolling.
+2. Refine the shared Overview hierarchy if user testing still shows too much scrolling.
 3. Run a real PWA production update drill and confirm no stale client/server mismatch.
 4. Tighten the `More` docs/API presentation if it feels too heavy on smaller screens.
 5. Clean up legacy README/API documentation so it matches the active Next/PWA product.

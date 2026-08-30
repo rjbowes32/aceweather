@@ -160,7 +160,7 @@ export const Desktop = () => {
           <div className="aw2-panel-head">
             <span className="num">08</span>
             <span className="title">Live radar</span>
-            <span className="right">RAINVIEWER · −2h → +30m</span>
+            <span className="right">MET OFFICE · PREVIOUS 2H</span>
           </div>
           <RadarLive location={desktopLocation} height={260}/>
         </div>

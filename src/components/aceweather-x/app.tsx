@@ -1,52 +1,61 @@
-// @ts-nocheck
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import dynamic from "next/dynamic";
 
-import { buildModel } from "@/lib/aceweather/derive";
-import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations } from "@/lib/aceweather/open-meteo";
-import { NavIcon, SearchIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
-import { NowCard, TrendCard, SunCard, RainCard, CalendarCard, SprayCard, DiseaseCard, SoilWaterCard, SeasonCard, SeasonalCard, SourcesCard } from "./cards";
+import { buildModel, type AwModel } from "@/lib/aceweather/derive";
+import { formatNextRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
+import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
+import { NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
+import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
+import { NowExperience } from "./now-experience";
+import { OverviewExperience } from "./overview-experience";
+import { LocationPickerContent } from "./location-picker-content";
+import { FieldExperience } from "./field-experience";
 
 const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard), {
   ssr: false,
   loading: () => <article className="awx-card"><div className="awx-radar-status">Loading radar…</div></article>,
 });
 
-const NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["outlook", "Outlook"], ["seasonal", "Seasonal"]];
-const MOBILE_NAV = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["more", "More"]];
-const MORE_NAV = [["outlook", "Outlook"], ["seasonal", "Seasonal"], ["about", "Sources"]];
-const MORE_VIEWS = new Set(MORE_NAV.map(([k]) => k));
+type View = "all" | "now" | "rain" | "radar" | "field" | "outlook" | "seasonal" | "about";
+type MobileNavKey = View | "more";
+type Theme = "dark" | "light";
+type RainRange = keyof AwModel["rain"]["ranges"];
+type GeoStatus = "idle" | "locating" | "following" | "blocked" | "unsupported" | "error";
+type LoadLocationOptions = { keepGeoFollow?: boolean; resetView?: boolean; closeLocationSheet?: boolean; save?: boolean };
+type LatLon = Pick<AwLocation, "lat" | "lon">;
+type RainBar = { h: number; value: number; label: string; dry: boolean; now: boolean };
+
+const NAV: ReadonlyArray<readonly [View, string]> = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["outlook", "Outlook"], ["seasonal", "Seasonal"], ["about", "Sources"]];
+const MOBILE_NAV: ReadonlyArray<readonly [MobileNavKey, string]> = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["outlook", "Outlook"], ["field", "Field"], ["more", "More"]];
+const MORE_NAV: ReadonlyArray<readonly [View, string]> = [["radar", "Radar"], ["seasonal", "Seasonal"], ["about", "Sources"]];
+const MORE_VIEWS = new Set<View>(MORE_NAV.map(([k]) => k));
+const isView = (value: string): value is View => NAV.some(([key]) => key === value);
 const GPS_FOLLOW_KEY = "awx-gps-follow";
 const GPS_UPDATE_MIN_KM = 0.75;
-const GPS_OPTIONS = { enableHighAccuracy: true, maximumAge: 60 * 1000, timeout: 15 * 1000 };
+const GPS_OPTIONS: PositionOptions = { enableHighAccuracy: true, maximumAge: 60 * 1000, timeout: 15 * 1000 };
 const DOC_ENDPOINTS = [
   {
     label: "Crop Dynamics JSON",
     href: "https://aceweather.app/api/cropdynamics",
-    detail: "Fast summary for agents: rain_mm, high_c, low_c across the seven Crop Dynamics locations.",
   },
   {
     label: "Regional text digest",
     href: "https://aceweather.app/api/digest?set=cropdynamics&history_days=29&format=short",
-    detail: "Plain-text comparison table for browser tools that prefer text over JSON.",
   },
   {
     label: "Single-place report",
     href: "https://aceweather.app/api/report?query=Pocklington&history_days=29",
-    detail: "Markdown report with observed daily rows, period summary, forecast, and agronomy context.",
   },
   {
     label: "Discovery index",
     href: "https://aceweather.app/api",
-    detail: "Machine-readable endpoint catalogue with docs, examples, and supported parameters.",
   },
   {
     label: "OpenAPI",
     href: "https://aceweather.app/openapi.json",
-    detail: "Schema reference for integrations and structured endpoint discovery.",
   },
 ];
 const SEED_SAVED = [
@@ -55,63 +64,111 @@ const SEED_SAVED = [
   { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
 ];
 
-function tempForUnit(value, unit) {
-  if (value == null) return "--";
-  return Math.round(unit === "f" ? value * 9 / 5 + 32 : value);
-}
+function RainExperience({ model, seasonal, onSelectView }: { model: AwModel; seasonal: SeasonalContext | null; onSelectView: (view: View) => void }) {
+  const [range, setRange] = useState<RainRange>("24h");
+  const selected = model.rain.ranges[range];
+  const rainTiming = formatNextRain(model.nextRain, model.rain.sum24, model.rain.peakProb);
+  const lastYearRain = seasonal?.lastYearMtdRain;
+  const comparisonDelta = seasonal == null || lastYearRain == null ? null : +(seasonal.mtdRain - lastYearRain).toFixed(1);
+  const comparisonDirection = comparisonDelta == null || Math.abs(comparisonDelta) < 0.1
+    ? "similar"
+    : comparisonDelta > 0 ? "wetter" : "drier";
+  const comparisonArrow = comparisonDirection === "wetter" ? "↑" : comparisonDirection === "drier" ? "↓" : "→";
 
-function windForUnit(value, unit) {
-  if (value == null) return "--";
-  return Math.round(unit === "mph" ? value * 0.621371 : value);
-}
-
-function MobileGlance({ model, unit, windUnit, statusText, freshness, onShare, shareLabel }) {
-  const sprayTone = model.agronomy.spray.label === "Go" ? "go" : model.agronomy.spray.label === "Hold" ? "risk" : "warn";
-  const windLabel = windUnit === "mph" ? "mph" : "km/h";
   return (
-    <section className="awx-mobile-glance" aria-label="Today at a glance">
-      <div className="awx-glance-hero">
-        <div>
-          <span className="awx-glance-eyebrow">{statusText} forecast</span>
-          <div className="awx-glance-temp">
-            <span className="awx-tnum">{tempForUnit(model.now.temp, unit)}</span>
-            <small>{unit === "f" ? "F" : "C"}</small>
+    <section className="awx-rain-experience" aria-label="Rainfall forecast">
+      <section className="awx-rain-summary" aria-labelledby="awx-rain-summary-title">
+        <div className="awx-rain-summary-head">
+          <div className="awx-rain-summary-icon" aria-hidden="true"><NavIcon name="rain" /></div>
+          <div>
+            <span className="awx-overview-eyebrow" id="awx-rain-summary-title">Next rain</span>
+            <strong>{rainTiming.headline}</strong>
+            <small>{rainTiming.detail}</small>
           </div>
-          <p>{model.now.condition.label} now. Feels {tempForUnit(model.now.feels, unit)} {unit === "f" ? "F" : "C"}.</p>
         </div>
-        <div className="awx-glance-verdict">
-          <span className={"awx-glance-pill awx-glance-pill-" + sprayTone}>{model.agronomy.spray.label}</span>
-          <small>{model.agronomy.spray.sub}</small>
+        <div className="awx-rain-key-metrics">
+          <div><span>Next 24h</span><strong className="awx-tnum">{model.rain.sum24} <small>mm</small></strong></div>
+          <div><span>Peak chance</span><strong className="awx-tnum">{Math.round(model.rain.peakProb)}%</strong></div>
+          <div><span>Next 7 days</span><strong className="awx-tnum">{model.rain.next7} <small>mm</small></strong></div>
+          <div><span>Past 7 days</span><strong className="awx-tnum">{model.rain.past7} <small>mm</small></strong></div>
         </div>
-      </div>
-      <div className="awx-glance-grid">
-        <div><span>High / low</span><b className="awx-tnum">{tempForUnit(model.now.hi, unit)} / {tempForUnit(model.now.lo, unit)}</b></div>
-        <div><span>Rain 24h</span><b className="awx-tnum awx-rain-value">{model.rain.sum24} mm</b></div>
-        <div><span>Wind</span><b className="awx-tnum">{windForUnit(model.now.wind, windUnit)} <small>{windLabel}</small></b></div>
-        <div><span>Updated</span><b>{freshness}</b></div>
-      </div>
-      <button className="awx-glance-share" type="button" onClick={onShare}>
-        <ShareIcon /><span>{shareLabel}</span>
+        <div className="awx-rain-comparison">
+          <div className={`awx-rain-comparison-tile is-${comparisonDirection}`} aria-label={seasonal && lastYearRain != null && comparisonDelta != null ? `${seasonal.monthLabel} rainfall to day ${seasonal.comparisonDay}: ${seasonal.mtdRain} millimetres, ${Math.abs(comparisonDelta)} millimetres ${comparisonDirection} than ${seasonal.lastYear}` : "Loading rainfall comparison with last year"}>
+            <span>{seasonal ? `${seasonal.monthLabel} to date` : "Month to date"}</span>
+            <strong className="awx-tnum">{seasonal ? seasonal.mtdRain : "—"}<small> mm</small></strong>
+            <b>{comparisonDelta == null ? "Loading comparison" : `${comparisonArrow} ${Math.abs(comparisonDelta).toFixed(1)} mm ${comparisonDirection}`}</b>
+            <small>{seasonal && lastYearRain != null ? `vs ${lastYearRain} mm in ${seasonal.lastYear}` : "Archive data"}</small>
+          </div>
+        </div>
+      </section>
+
+      <section className="awx-rain-chart" aria-labelledby="awx-rain-chart-title">
+        <div className="awx-rain-chart-head">
+          <div><span id="awx-rain-chart-title">Rainfall outlook</span></div>
+          <strong className="awx-tnum">{selected.total} mm</strong>
+        </div>
+        <div className="awx-rain-range" role="group" aria-label="Rain range">
+          {(["24h", "7d", "14d"] as RainRange[]).map((key) => (
+            <button key={key} type="button" aria-pressed={range === key} onClick={() => setRange(key)}>{key}</button>
+          ))}
+        </div>
+        {range === "24h" ? (
+          <div className="awx-rain-timeline" role="list" aria-label={`${selected.cap}, total ${selected.total} millimetres`}>
+            {selected.bars.map((bar: RainBar, index: number) => (
+              <div key={`${bar.label}-${index}`} role="listitem" aria-label={`${bar.label}, ${Number(bar.value ?? 0).toFixed(1)} millimetres${bar.now ? ", current period" : ""}`} className={(bar.dry ? "is-dry" : "") + (bar.now ? " is-now" : "")}>
+                <span aria-hidden="true" style={{ opacity: bar.dry ? 0.12 : 0.28 + (bar.h / 100) * 0.72 }} />
+                <small>{String(bar.label).split(":")[0]}</small>
+              </div>
+            ))}
+          </div>
+        ) : range === "7d" ? (
+          <div className="awx-rain-day-list" role="list" aria-label="Seven-day rainfall totals">
+            {selected.bars.map((bar: RainBar, index: number) => (
+              <div key={`${bar.label}-${index}`} role="listitem">
+                <span>{bar.label}</span>
+                <i><b style={{ width: `${bar.h}%` }} /></i>
+                <strong className="awx-tnum">{bar.value.toFixed(1)} mm</strong>
+                <small>{Math.round(model.calendar[index]?.prob ?? 0)}%</small>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="awx-rain-heat-strip" role="list" aria-label="Fourteen-day rainfall pattern">
+            {selected.bars.map((bar: RainBar, index: number) => (
+              <div key={`${bar.label}-${index}`} role="listitem" aria-label={`${bar.label}: ${bar.value.toFixed(1)} millimetres`} className={bar.dry ? "is-dry" : ""} style={{ "--awx-rain-alpha": `${Math.round((bar.dry ? 0.04 : 0.12 + (bar.h / 100) * 0.34) * 100)}%` } as CSSProperties}>
+                <span>{bar.label}</span>
+                <strong className="awx-tnum">{bar.value.toFixed(1)}</strong>
+                <small>mm</small>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <button className="awx-rain-radar-link" type="button" onClick={() => onSelectView("radar")}>
+        <span className="awx-rain-radar-icon" aria-hidden="true"><NavIcon name="radar" /></span>
+        <span><strong>See where the rain is</strong></span>
+        <b aria-hidden="true">›</b>
       </button>
     </section>
   );
 }
 
-function gpsLocationFromPosition(pos) {
+function gpsLocationFromPosition(pos: GeolocationPosition): AwLocation {
   return {
     name: "Current location",
     region: "GPS active",
     country: "",
     lat: Number(pos.coords.latitude.toFixed(5)),
     lon: Number(pos.coords.longitude.toFixed(5)),
-    elev: Number.isFinite(pos.coords.altitude) ? Math.round(pos.coords.altitude) : null,
+    elev: pos.coords.altitude != null && Number.isFinite(pos.coords.altitude) ? Math.round(pos.coords.altitude) : null,
     tz: "auto",
   };
 }
 
-function distanceKm(a, b) {
+function distanceKm(a: LatLon | null, b: LatLon | null) {
   if (!a || !b) return Infinity;
-  const toRad = (value) => (value * Math.PI) / 180;
+  const toRad = (value: number) => (value * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
   const lat1 = toRad(a.lat);
@@ -127,7 +184,6 @@ function EndpointDocs({ rail = false }: { rail?: boolean }) {
         <a key={endpoint.href} className="awx-doc-link" href={endpoint.href} target="_blank" rel="noreferrer">
           <span>
             <b>{endpoint.label}</b>
-            <small>{endpoint.detail}</small>
           </span>
           <code>{endpoint.href.replace("https://aceweather.app", "")}</code>
         </a>
@@ -142,7 +198,6 @@ function EndpointDocs({ rail = false }: { rail?: boolean }) {
           <DocsIcon />
           <span>
             <strong>Docs</strong>
-            <small>Endpoint guide</small>
           </span>
         </summary>
         {content}
@@ -151,51 +206,50 @@ function EndpointDocs({ rail = false }: { rail?: boolean }) {
   }
 
   return (
-    <section className="awx-docs" aria-label="Endpoint documentation">
-      <div className="awx-docs-head">
+    <details className="awx-docs awx-docs-rail" aria-label="Endpoint documentation">
+      <summary className="awx-docs-head">
         <DocsIcon />
-        <div>
+        <span>
           <strong>Docs</strong>
-          <span>Endpoints for agents, dashboards and AppSheet workflows.</span>
-        </div>
-      </div>
+        </span>
+      </summary>
       {content}
-    </section>
+    </details>
   );
 }
 
 export function AceWeatherApp() {
-  const [location, setLocation] = useState(DEFAULT_LOCATION);
-  const [raw, setRaw] = useState(null);
-  const [rawCacheMode, setRawCacheMode] = useState(undefined);
-  const [seasonal, setSeasonal] = useState(null);
-  const [status, setStatus] = useState("loading");
-  const [loadRequest, setLoadRequest] = useState({ nonce: 0, cache: undefined });
-  const [theme, setTheme] = useState("dark");
-  const [unit, setUnit] = useState("c");
-  const [windUnit, setWindUnit] = useState("kmh");
-  const [view, setView] = useState("all");
+  const [location, setLocation] = useState<AwLocation>(DEFAULT_LOCATION);
+  const [raw, setRaw] = useState<ForecastResponse | null>(null);
+  const [rawCacheMode, setRawCacheMode] = useState<RequestCache | undefined>(undefined);
+  const [seasonal, setSeasonal] = useState<SeasonalContext | null>(null);
+  const [status, setStatus] = useState<"loading" | "refreshing" | "live" | "error">("loading");
+  const [loadRequest, setLoadRequest] = useState<{ nonce: number; cache?: RequestCache }>({ nonce: 0, cache: undefined });
+  const [theme, setTheme] = useState<Theme>("dark");
+  const [unit, setUnit] = useState<TemperatureUnit>("c");
+  const [windUnit, setWindUnit] = useState<WindUnit>("kmh");
+  const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [saved, setSaved] = useState(SEED_SAVED);
+  const [suggestions, setSuggestions] = useState<AwLocation[]>([]);
+  const [saved, setSaved] = useState<AwLocation[]>(SEED_SAVED);
   const [shareLabel, setShareLabel] = useState("Share report");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [geoFollow, setGeoFollow] = useState(false);
-  const [geoStatus, setGeoStatus] = useState("idle");
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
-  const gpsLastLoadedRef = useRef(null);
-  const lastSheetFocusRef = useRef(null);
+  const gpsLastLoadedRef = useRef<LatLon | null>(null);
+  const lastSheetFocusRef = useRef<HTMLElement | null>(null);
 
   // prefs on mount
   useEffect(() => {
     try {
-      const t = localStorage.getItem("awx-theme"); if (t) setTheme(t);
-      const u = localStorage.getItem("awx-unit"); if (u) setUnit(u);
-      const wu = localStorage.getItem("awx-windunit"); if (wu) setWindUnit(wu);
-      const s = localStorage.getItem("awx-saved"); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length) setSaved(p); }
+      const t = localStorage.getItem("awx-theme"); if (t === "dark" || t === "light") setTheme(t);
+      const u = localStorage.getItem("awx-unit"); if (u === "c" || u === "f") setUnit(u);
+      const wu = localStorage.getItem("awx-windunit"); if (wu === "kmh" || wu === "mph") setWindUnit(wu);
+      const s = localStorage.getItem("awx-saved"); if (s) { const p: unknown = JSON.parse(s); if (Array.isArray(p) && p.length) setSaved(p as AwLocation[]); }
       if (localStorage.getItem("awx-rainalerts") === "1" && notifyPermission() === "granted") setRainAlerts(true);
     } catch { /* ignore */ }
   }, []);
@@ -242,9 +296,7 @@ export function AceWeatherApp() {
   useEffect(() => { saveLocationForSync(location); }, [location]);
   useEffect(() => {
     const focus = new URLSearchParams(window.location.search).get("focus");
-    if (!focus) return;
-    const allowedViews = new Set([...NAV.map(([key]) => key), "about"]);
-    if (allowedViews.has(focus)) setView(focus);
+    if (focus && isView(focus)) setView(focus);
   }, []);
   useEffect(() => {
     const onUpd = () => setUpdateReady(true);
@@ -259,7 +311,7 @@ export function AceWeatherApp() {
     setStatus(cacheMode === "reload" ? "refreshing" : "loading");
     fetchForecast(location, ctrl.signal, cacheMode)
       .then((data) => { setRaw(data); setRawCacheMode(cacheMode); setStatus("live"); })
-      .catch((e) => { if (e.name !== "AbortError") setStatus("error"); });
+      .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("error"); });
     return () => ctrl.abort();
   }, [location, loadRequest]);
 
@@ -292,7 +344,7 @@ export function AceWeatherApp() {
     }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const sheet = document.querySelector(".awx-sheet");
+    const sheet = document.querySelector<HTMLElement>(".awx-sheet");
     const focusableSelector = [
       "a[href]",
       "button:not([disabled])",
@@ -301,7 +353,7 @@ export function AceWeatherApp() {
       "textarea:not([disabled])",
       "[tabindex]:not([tabindex='-1'])",
     ].join(",");
-    const focusables = () => Array.from(sheet?.querySelectorAll(focusableSelector) || []).filter((el) => el instanceof HTMLElement && el.getClientRects().length > 0);
+    const focusables = () => Array.from(sheet?.querySelectorAll<HTMLElement>(focusableSelector) || []).filter((el) => el.getClientRects().length > 0);
     window.setTimeout(() => {
       const preferred = sheet?.matches(".awx-location-sheet") ? sheet.querySelector("input") : null;
       const first = preferred || focusables()[0];
@@ -312,7 +364,7 @@ export function AceWeatherApp() {
       setSettingsOpen(false);
       setMoreOpen(false);
     }
-    function onKeyDown(event) {
+    function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
         closeSheets();
@@ -349,7 +401,7 @@ export function AceWeatherApp() {
       return undefined;
     }
     setGeoStatus("locating");
-    const applyGpsPosition = (pos) => {
+    const applyGpsPosition = (pos: GeolocationPosition) => {
       const next = gpsLocationFromPosition(pos);
       if (distanceKm(gpsLastLoadedRef.current, next) < GPS_UPDATE_MIN_KM) {
         setGeoStatus("following");
@@ -363,7 +415,7 @@ export function AceWeatherApp() {
       setLocationOpen(false);
       setGeoStatus("following");
     };
-    const onGpsError = (error) => {
+    const onGpsError = (error: GeolocationPositionError) => {
       if (error?.code === 1) {
         gpsLastLoadedRef.current = null;
         setGeoFollow(false);
@@ -376,7 +428,7 @@ export function AceWeatherApp() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [geoFollow]);
 
-  function loadLocation(loc, opts = {}) {
+  function loadLocation(loc: AwLocation, opts: LoadLocationOptions = {}) {
     if (!opts.keepGeoFollow) {
       gpsLastLoadedRef.current = null;
       setGeoFollow(false);
@@ -394,7 +446,7 @@ export function AceWeatherApp() {
       });
     }
   }
-  function onSubmit(e) { e.preventDefault(); if (suggestions[0]) loadLocation(suggestions[0]); }
+  function onSubmit(e: FormEvent<HTMLFormElement>) { e.preventDefault(); if (suggestions[0]) loadLocation(suggestions[0]); }
   function openLocationSheet() {
     setQuery("");
     setSuggestions([]);
@@ -402,9 +454,12 @@ export function AceWeatherApp() {
     setSettingsOpen(false);
     setMoreOpen(false);
   }
-  function selectMobileView(nextView) {
+  function selectViewAndReset(nextView: string) {
+    if (!isView(nextView)) return;
     setView(nextView);
     setMoreOpen(false);
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
   }
   function locateMe() {
     if (!navigator.geolocation) {
@@ -426,7 +481,7 @@ export function AceWeatherApp() {
   function share() {
     if (!model) return;
     const n = model.now;
-    const text = `${location.name}: ${Math.round(n.temp)}°C, ${n.condition.label}. Rain next 24h ${model.rain.sum24} mm. Spray window: ${model.agronomy.spray.label}.`;
+    const text = `${location.name}: ${Math.round(n.temp)}°C, ${n.condition.label}. Rain next 24h ${model.rain.sum24} mm. Spraying: ${model.agronomy.spraying.verdict}.`;
     try { navigator.clipboard?.writeText(text); } catch { /* */ }
     setShareLabel("Copied"); setTimeout(() => setShareLabel("Share report"), 1400);
   }
@@ -473,10 +528,10 @@ export function AceWeatherApp() {
       {/* RAIL */}
       <aside className="awx-rail" aria-label="Primary">
         <a className="awx-brand" href="#top"><span className="awx-brand-mark" aria-hidden="true" />
-          <span><span className="awx-brand-name">AceWeather</span><span className="awx-brand-sub">Field console</span></span></a>
+          <span><span className="awx-brand-name">AceWeather</span></span></a>
         <nav className="awx-nav" aria-label="Sections">
           {NAV.map(([k, label]) => (
-            <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}>
+            <button key={k} type="button" aria-pressed={view === k} onClick={() => selectViewAndReset(k)}>
               <NavIcon name={k === "all" ? "overview" : k} /><span>{label}</span>
             </button>
           ))}
@@ -489,7 +544,6 @@ export function AceWeatherApp() {
               <SettingsIcon />
               <span>
                 <strong>Settings</strong>
-                <small>Display, units and docs</small>
               </span>
             </div>
             <div className="awx-settings-body">
@@ -526,26 +580,8 @@ export function AceWeatherApp() {
             </button>
           </div>
         </div>
-        <form className="awx-composer" onSubmit={onSubmit}>
-          <label className="awx-search">
-            <SearchIcon />
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search a town, postcode or field" autoComplete="off" />
-            <button className="awx-go" type="submit">Load</button>
-          </label>
-          {suggestions.length ? (
-            <div className="awx-suggest">
-              {suggestions.map((s) => (
-                <button key={`${s.lat},${s.lon}`} type="button" onClick={() => loadLocation(s)}>
-                  <span className="awx-s-name">{s.name}</span>
-                  <span className="awx-s-region">{[s.region, s.country].filter(Boolean).join(", ")}</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </form>
-
         {model && view === "all" ? (
-          <MobileGlance
+          <OverviewExperience
             model={model}
             unit={unit}
             windUnit={windUnit}
@@ -553,24 +589,24 @@ export function AceWeatherApp() {
             freshness={freshness}
             onShare={share}
             shareLabel={shareLabel}
+            onSelectView={selectViewAndReset}
           />
         ) : null}
 
         <section className="awx-feed-list" aria-label="Weather">
           {model ? (
             <>
-              <NowCard model={model} unit={unit} windUnit={windUnit} view={view} />
-              <TrendCard model={model} unit={unit} windUnit={windUnit} view={view} />
-              <SunCard model={model} view={view} />
-              <RainCard model={model} view={view} />
-              <RadarCard location={location} theme={theme} view={view} />
-              <CalendarCard model={model} unit={unit} windUnit={windUnit} view={view} />
-              <SprayCard model={model} windUnit={windUnit} view={view} />
-              <DiseaseCard model={model} view={view} />
-              <SoilWaterCard model={model} view={view} />
-              <SeasonCard model={model} view={view} />
-              <SeasonalCard seasonal={seasonal} view={view} />
-              <SourcesCard source={status} freshness={freshness} view={view} />
+              {view === "now" ? (
+                <NowExperience model={model} unit={unit} windUnit={windUnit} freshness={freshness} onSelectView={selectViewAndReset} />
+              ) : null}
+              {view === "rain" ? (
+                <RainExperience model={model} seasonal={seasonal} onSelectView={selectViewAndReset} />
+              ) : null}
+              {view === "radar" ? <RadarCard location={location} theme={theme} /> : null}
+              {view === "outlook" ? <CalendarCard model={model} unit={unit} windUnit={windUnit} /> : null}
+              {view === "field" ? <FieldExperience model={model} windUnit={windUnit} /> : null}
+              {view === "seasonal" ? <SeasonalCard seasonal={seasonal} /> : null}
+              {view === "about" ? <SourcesCard source={status} freshness={freshness} /> : null}
             </>
           ) : (
             <article className="awx-card"><div className="awx-radar-status">{status === "error" ? "Could not reach Open-Meteo. Check your connection and retry." : "Loading live conditions…"}</div></article>
@@ -581,22 +617,20 @@ export function AceWeatherApp() {
       {/* SIDEBAR */}
       <aside className="awx-side" aria-label="Utilities">
         <div className="awx-side-card">
-          <h3>Find a location</h3>
+          <h3>Location</h3>
           <div className="awx-side-body">
-            <label className="awx-side-search"><SearchIcon />
-              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Town, postcode, field" /></label>
-            <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>{gpsButtonLabel}</span></button>
-          </div>
-        </div>
-        <div className="awx-side-card">
-          <h3>Saved places</h3>
-          <div className="awx-side-body">
-            {saved.map((p) => (
-              <button key={`${p.lat},${p.lon}`} className="awx-place" type="button" aria-pressed={p.name === location.name} onClick={() => loadLocation(p)}>
-                <span><span className="awx-p-name">{p.name}</span><span className="awx-p-region">{p.region || p.country}</span></span>
-                <span className="awx-p-temp">{p.name === location.name && model ? `${Math.round(unit === "f" ? model.now.temp * 9 / 5 + 32 : model.now.temp)}°` : "›"}</span>
-              </button>
-            ))}
+            <LocationPickerContent
+              query={query}
+              suggestions={suggestions}
+              saved={saved}
+              activeLocationName={location.name}
+              currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
+              gpsButtonLabel={gpsButtonLabel}
+              onQueryChange={setQuery}
+              onSubmit={onSubmit}
+              onSelectLocation={loadLocation}
+              onLocate={locateMe}
+            />
           </div>
         </div>
         {model ? (
@@ -607,7 +641,7 @@ export function AceWeatherApp() {
                 <div><span className="awx-k">High</span><span className="awx-v awx-tnum">{Math.round(unit === "f" ? model.now.hi * 9 / 5 + 32 : model.now.hi)}°</span></div>
                 <div><span className="awx-k">Low</span><span className="awx-v awx-tnum">{Math.round(unit === "f" ? model.now.lo * 9 / 5 + 32 : model.now.lo)}°</span></div>
                 <div><span className="awx-k">Rain · 24h</span><span className="awx-v awx-tnum" style={{ color: "var(--awx-accent)" }}>{model.rain.sum24} mm</span></div>
-                <div><span className="awx-k">Spray</span><span className="awx-v awx-tnum" style={{ color: "var(--awx-go)" }}>{model.agronomy.spray.longest}h</span></div>
+                <div><span className="awx-k">Spray</span><span className="awx-v awx-tnum" style={{ color: `var(--awx-${model.agronomy.spraying.verdictTone})` }}>{model.agronomy.spraying.nextWindow?.hours ?? 0}h</span></div>
               </div>
             </div>
           </div>
@@ -627,8 +661,7 @@ export function AceWeatherApp() {
                 setSettingsOpen(false);
                 setLocationOpen(false);
               } else {
-                setView(k);
-                setMoreOpen(false);
+                selectViewAndReset(k);
               }
             }}
           >
@@ -644,39 +677,20 @@ export function AceWeatherApp() {
               <strong>Location</strong>
               <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close">x</button>
             </div>
-            <form className="awx-location-form" onSubmit={onSubmit}>
-              <label className="awx-search">
-                <SearchIcon />
-                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search town, postcode or field" autoComplete="off" autoFocus />
-                <button className="awx-go" type="submit">Load</button>
-              </label>
-            </form>
             <div className="awx-sheet-body">
-              {suggestions.length ? (
-                <section className="awx-sheet-section" aria-label="Search results">
-                  <div className="awx-sheet-section-title">Results</div>
-                  <div className="awx-sheet-list">
-                    {suggestions.map((s) => (
-                      <button key={`${s.lat},${s.lon}`} className="awx-place" type="button" onClick={() => loadLocation(s)}>
-                        <span><span className="awx-p-name">{s.name}</span><span className="awx-p-region">{[s.region, s.country].filter(Boolean).join(", ")}</span></span>
-                        <span className="awx-p-temp">Load</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-              <section className="awx-sheet-section" aria-label="Saved places">
-                <div className="awx-sheet-section-title">Saved places</div>
-                <div className="awx-sheet-list">
-                  {saved.map((p) => (
-                    <button key={`${p.lat},${p.lon}`} className="awx-place" type="button" aria-pressed={p.name === location.name} onClick={() => loadLocation(p)}>
-                      <span><span className="awx-p-name">{p.name}</span><span className="awx-p-region">{p.region || p.country || "Saved location"}</span></span>
-                      <span className="awx-p-temp">{p.name === location.name ? "Current" : "Load"}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <button className="awx-btn awx-btn-ghost" type="button" onClick={locateMe}><GpsIcon /><span>{gpsButtonLabel}</span></button>
+              <LocationPickerContent
+                query={query}
+                suggestions={suggestions}
+                saved={saved}
+                activeLocationName={location.name}
+                currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
+                gpsButtonLabel={gpsButtonLabel}
+                autoFocus
+                onQueryChange={setQuery}
+                onSubmit={onSubmit}
+                onSelectLocation={loadLocation}
+                onLocate={locateMe}
+              />
             </div>
           </div>
         </div>
@@ -710,11 +724,15 @@ export function AceWeatherApp() {
             <div className="awx-sheet-body">
               <div className="awx-more-grid" role="group" aria-label="More sections">
                 {MORE_NAV.map(([k, label]) => (
-                  <button key={k} type="button" aria-pressed={view === k} onClick={() => selectMobileView(k)}>
+                  <button key={k} type="button" aria-pressed={view === k} onClick={() => selectViewAndReset(k)}>
                     <NavIcon name={k} />
                     <span>{label}</span>
                   </button>
                 ))}
+                <a href="/atlas" aria-label="Open Crop Weather Atlas">
+                  <NavIcon name="atlas" />
+                  <span>Atlas</span>
+                </a>
               </div>
               <EndpointDocs />
             </div>

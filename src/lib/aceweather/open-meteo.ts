@@ -92,6 +92,9 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
 export type SeasonalContext = {
   monthLabel: string;
   mtdRain: number;
+  comparisonDay: number;
+  lastYear: number;
+  lastYearMtdRain: number | null;
   normalMtdRain: number | null;
   pctOfNormal: number | null;
   fullMonthNormal: number | null;
@@ -174,6 +177,7 @@ export async function fetchSeasonal(loc: AwLocation, forecastDaily?: DailyLite, 
   const prior = [...byYear.entries()].filter(([y]) => y < year);
   const mean = (xs: number[]) => (xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null);
   const normalMtdRain = mean(prior.map(([, a]) => a.rainToDom));
+  const lastYearMtdRain = byYear.get(year - 1)?.rainToDom ?? null;
   const fullMonthNormal = mean(prior.map(([, a]) => a.rainAll));
   const priorTemp = mean(prior.filter(([, a]) => a.tempCnt).map(([, a]) => a.tempSum / a.tempCnt));
   const thisTemp = thisTempCnt ? thisTempSum / thisTempCnt : null;
@@ -185,6 +189,9 @@ export async function fetchSeasonal(loc: AwLocation, forecastDaily?: DailyLite, 
   return {
     monthLabel: MONTHS[month - 1],
     mtdRain: Math.round(mtdRain * 10) / 10,
+    comparisonDay: dom,
+    lastYear: year - 1,
+    lastYearMtdRain: lastYearMtdRain == null ? null : Math.round(lastYearMtdRain * 10) / 10,
     normalMtdRain: normalMtdRain == null ? null : Math.round(normalMtdRain * 10) / 10,
     pctOfNormal: normalMtdRain && normalMtdRain > 0 ? Math.round((mtdRain / normalMtdRain) * 100) : null,
     fullMonthNormal: fullMonthNormal == null ? null : Math.round(fullMonthNormal * 10) / 10,

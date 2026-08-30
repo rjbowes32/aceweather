@@ -39,12 +39,7 @@ const FALLBACK: Point[] = [
   { key: "Berwick-upon-Tweed", label: "Berwick", lat: 55.77016, lon: -2.00587, rain: 55.4 },
 ];
 
-const CARTO = [
-  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-  "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-];
+const OPEN_FREE_MAP = "https://tiles.openfreemap.org/styles/dark";
 
 function tone(rain: number) {
   if (rain < 15) return mapStyles.dry;
@@ -90,23 +85,16 @@ export function RainMap() {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          base: {
-            type: "raster",
-            tiles: CARTO,
-            tileSize: 256,
-            attribution: "OpenStreetMap contributors / CARTO",
-          },
-        },
-        layers: [{ id: "base", type: "raster", source: "base" }],
-      },
+      style: OPEN_FREE_MAP,
       center: [-1.0, 54.35],
       zoom: 5.2,
       minZoom: 4,
       maxZoom: 9,
       attributionControl: { compact: true },
+    });
+
+    map.on("styleimagemissing", ({ id }) => {
+      if (!map.hasImage(id)) map.addImage(id, { width: 1, height: 1, data: new Uint8Array([0, 0, 0, 0]) });
     });
 
     map.scrollZoom.disable();

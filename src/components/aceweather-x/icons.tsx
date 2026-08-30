@@ -13,6 +13,7 @@ const NAV: Record<string, ReactNode> = {
   outlook: <><rect x="4" y="5" width="16" height="15" rx="2" />{P("M8 3v4M16 3v4M4 10h16")}</>,
   seasonal: <>{P("M12 21V9")}{P("M12 9c0-3 2-5 5-5 0 3-2 5-5 5z")}{P("M12 13c0-2.4-1.6-4-4-4 0 2.4 1.6 4 4 4z")}</>,
   about: <>{P("M5 5h14v14H5z")}{P("M8 9h8M8 13h8M8 17h5")}</>,
+  atlas: <>{P("M4 19.5V6.5l5-2 6 2 5-2v13l-5 2-6-2z")}{P("M9 4.5v13M15 6.5v13")}</>,
   more: <><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="19" cy="12" r="1.4" /></>,
 };
 
