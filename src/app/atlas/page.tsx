@@ -11,7 +11,7 @@ const crops = [
 
 const sources = [
   ["AHDB harvest", "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress"],
-  ["Environment Agency drought", "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-21-to-27-august-2026"],
+  ["Environment Agency drought", "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-28-august-to-3-september-2026"],
   ["Met Office climate", "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series"],
   ["AHDB wheat RL", "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists"],
   ["AHDB forage", "https://ahdb.org.uk/knowledge-library/forage-for-knowledge"],
@@ -38,7 +38,7 @@ export default function AtlasPage() {
             <p className={styles.eyebrow}>UK Crop Weather Atlas</p>
             <h1>2026</h1>
           </div>
-          <span>Updated 28 Aug · harvest data provisional</span>
+          <span>Updated 4 Sep · harvest data provisional</span>
         </header>
 
         <section className={styles.grid4} aria-label="Headline signals">
@@ -54,13 +54,13 @@ export default function AtlasPage() {
           </article>
           <article className={styles.metric}>
             <span>Reservoir storage</span>
-            <strong>59.8%</strong>
-            <small>18.2% below seasonal average</small>
+            <strong>58.0%</strong>
+            <small>19.2% below seasonal average</small>
           </article>
           <article className={styles.metric}>
             <span>August rainfall</span>
-            <strong className={styles.negative}>34% LTA</strong>
-            <small>England · to 25 Aug</small>
+            <strong>78% LTA</strong>
+            <small>England · full month</small>
           </article>
         </section>
 
@@ -73,9 +73,9 @@ export default function AtlasPage() {
 
         <section className={styles.statusGrid} aria-label="Water resource indicators">
           <div><span>England in drought</span><strong>71%</strong></div>
-          <div><span>River sites below normal+</span><strong>93%</strong></div>
+          <div><span>River sites below normal+</span><strong>47%</strong></div>
           <div><span>Groundwater</span><strong>2 sites exceptionally low</strong></div>
-          <div><span>Abstraction restrictions</span><strong>1,412</strong></div>
+          <div><span>Abstraction restrictions</span><strong>608</strong></div>
         </section>
 
         <section className={styles.grid2}>
@@ -106,8 +106,8 @@ export default function AtlasPage() {
         <section className={styles.grid3}>
           <article className={styles.stat}>
             <span>Wheat RL controls</span>
-            <strong className={styles.negative}>−11.0%</strong>
-            <small>9.83 vs 11.05 t/ha · 26 Aug</small>
+            <strong className={styles.negative}>−13.0%</strong>
+            <small>9.56 vs 10.99 t/ha · 26 trials · 3 Sep</small>
           </article>
           <article className={styles.stat}>
             <span>Grass · Somerset</span>
