@@ -237,6 +237,7 @@ export function AceWeatherApp() {
   const [locationOpen, setLocationOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [geoFollow, setGeoFollow] = useState(false);
+  const [geoPreferenceReady, setGeoPreferenceReady] = useState(false);
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
@@ -249,7 +250,15 @@ export function AceWeatherApp() {
       const t = localStorage.getItem("awx-theme"); if (t === "dark" || t === "light") setTheme(t);
       const u = localStorage.getItem("awx-unit"); if (u === "c" || u === "f") setUnit(u);
       const wu = localStorage.getItem("awx-windunit"); if (wu === "kmh" || wu === "mph") setWindUnit(wu);
-      const s = localStorage.getItem("awx-saved"); if (s) { const p: unknown = JSON.parse(s); if (Array.isArray(p) && p.length) setSaved(p as AwLocation[]); }
+      const s = localStorage.getItem("awx-saved");
+      if (s) {
+        const p: unknown = JSON.parse(s);
+        if (Array.isArray(p) && p.length) {
+          setSaved(p as AwLocation[]);
+          const last = p[0] as AwLocation;
+          if (last && typeof last.name === "string" && Number.isFinite(last.lat) && Number.isFinite(last.lon)) setLocation(last);
+        }
+      }
       if (localStorage.getItem("awx-rainalerts") === "1" && notifyPermission() === "granted") setRainAlerts(true);
     } catch { /* ignore */ }
   }, []);
@@ -261,25 +270,32 @@ export function AceWeatherApp() {
   useEffect(() => {
     let cancelled = false;
     try {
-      if (localStorage.getItem(GPS_FOLLOW_KEY) !== "1") return undefined;
-    } catch {
-      return undefined;
-    }
+      if (localStorage.getItem(GPS_FOLLOW_KEY) === "0") {
+        setGeoPreferenceReady(true);
+        return undefined;
+      }
+    } catch { /* GPS can still work when storage is unavailable. */ }
     if (!navigator.geolocation) {
       setGeoStatus("unsupported");
+      setGeoPreferenceReady(true);
       return undefined;
     }
     const resumeFollow = () => {
       if (cancelled) return;
       setGeoStatus("locating");
       setGeoFollow(true);
+      setGeoPreferenceReady(true);
     };
     if (navigator.permissions?.query) {
       navigator.permissions
         .query({ name: "geolocation" })
         .then((permission) => {
-          if (permission.state === "granted") resumeFollow();
-          else localStorage.removeItem(GPS_FOLLOW_KEY);
+          if (cancelled) return;
+          if (permission.state !== "denied") resumeFollow();
+          else {
+            setGeoStatus("blocked");
+            setGeoPreferenceReady(true);
+          }
         })
         .catch(resumeFollow);
     } else {
@@ -288,11 +304,11 @@ export function AceWeatherApp() {
     return () => { cancelled = true; };
   }, []);
   useEffect(() => {
+    if (!geoPreferenceReady) return;
     try {
-      if (geoFollow) localStorage.setItem(GPS_FOLLOW_KEY, "1");
-      else localStorage.removeItem(GPS_FOLLOW_KEY);
+      localStorage.setItem(GPS_FOLLOW_KEY, geoFollow ? "1" : "0");
     } catch { /* */ }
-  }, [geoFollow]);
+  }, [geoFollow, geoPreferenceReady]);
   useEffect(() => { saveLocationForSync(location); }, [location]);
   useEffect(() => {
     const focus = new URLSearchParams(window.location.search).get("focus");

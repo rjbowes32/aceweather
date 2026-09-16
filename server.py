@@ -14,6 +14,7 @@ from typing import Any
 from api_index import build_api_index
 import lib
 import snapshot_api
+from api import atlas as atlas_api
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
@@ -62,6 +63,12 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
                 "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             }, head_only=head_only)
             return
+        if parsed.path == "/api/atlas":
+            self._send_json(atlas_api.build_payload(self._request_base_url()), head_only=head_only)
+            return
+        if parsed.path == "/api/cropdynamics":
+            self._handle_cropdynamics(parsed.query, head_only=head_only)
+            return
         self._send_error(HTTPStatus.NOT_FOUND, "Unknown route.", head_only=head_only)
 
     def _request_base_url(self) -> str:
@@ -80,6 +87,25 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError) as exc:
             lib._log.error("Geocoding request failed: %s", exc)
             self._send_error(HTTPStatus.BAD_GATEWAY, "Location search is temporarily unavailable.", head_only=head_only)
+
+    def _handle_cropdynamics(self, query_string: str, *, head_only: bool = False) -> None:
+        params = urllib.parse.parse_qs(query_string)
+        history_days_value = params.get("history_days", [None])[0] or params.get("days", [None])[0]
+        include_values = ",".join(params.get("include", []))
+        include_daily = "daily" in {value.strip().lower() for value in include_values.split(",") if value.strip()}
+        try:
+            history_days = int(history_days_value) if history_days_value else None
+            payload = lib.build_cropdynamics_json(
+                base_url=self._request_base_url(),
+                history_days=history_days,
+                include_daily=include_daily,
+            )
+            self._send_json(payload, head_only=head_only)
+        except ValueError as exc:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:
+            lib._log.error("Crop Dynamics summary failed: %s", exc)
+            self._send_error(HTTPStatus.BAD_GATEWAY, "Crop Dynamics summary is temporarily unavailable.", head_only=head_only)
 
     def _handle_report(self, query_string: str, *, head_only: bool = False) -> None:
         params = urllib.parse.parse_qs(query_string)

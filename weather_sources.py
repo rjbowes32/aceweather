@@ -78,16 +78,23 @@ class MeteomaticsCredentials:
     password: str
 
 
-def read_json(url: str, *, headers: dict[str, str] | None = None) -> Any:
+def read_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    timeout_seconds: float = TIMEOUT_SECONDS,
+    attempts: int = READ_JSON_ATTEMPTS,
+) -> Any:
     last_error: Exception | None = None
-    for attempt in range(READ_JSON_ATTEMPTS):
+    resolved_attempts = max(1, attempts)
+    for attempt in range(resolved_attempts):
         request = urllib.request.Request(url, headers=headers or {})
         try:
-            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
                 return json.loads(response.read().decode("utf-8"))
         except (urllib.error.URLError, TimeoutError, socket.timeout, json.JSONDecodeError, OSError) as exc:
             last_error = exc
-            if attempt == READ_JSON_ATTEMPTS - 1:
+            if attempt == resolved_attempts - 1:
                 raise
             time.sleep(READ_JSON_RETRY_DELAY_SECONDS)
     if last_error is not None:
@@ -160,6 +167,8 @@ def fetch_history(
     history_days: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    timeout_seconds: float = TIMEOUT_SECONDS,
+    attempts: int = READ_JSON_ATTEMPTS,
 ) -> dict[str, Any]:
     resolved_end = end_date or (date.today() - timedelta(days=1))
     if resolved_end >= date.today():
@@ -179,7 +188,7 @@ def fetch_history(
         start_date=resolved_start.isoformat(), end_date=resolved_end.isoformat(),
         daily=ARCHIVE_DAILY, hourly=ARCHIVE_HOURLY,
     )
-    payload = read_json(url)
+    payload = read_json(url, timeout_seconds=timeout_seconds, attempts=attempts)
     payload["range"] = {
         "startDate": resolved_start.isoformat(),
         "endDate": resolved_end.isoformat(),

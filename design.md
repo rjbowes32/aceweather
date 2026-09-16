@@ -1,14 +1,150 @@
 ---
-version: 2
+version: 3
 name: AceWeather
-last_updated: 2026-06-23
+last_updated: 2026-09-16
 status: living design and implementation reference
 primary_surface: mobile PWA
 description: Calm, premium field-weather console for growers, farmers, agronomists, and field operators.
-theme: dark-first with light parity
+theme: pale-blue and white daytime reference with shared dark parity
 ---
 
 # AceWeather Design Reference
+
+## Current contract — 15 September 2026
+
+This section supersedes the historical reference below. Changes must preserve
+existing work, remain small and independently testable, and be previewed locally
+before release. AceWeather is non-commercial and will remain open source. Do not
+introduce paid data dependencies. Free hosted API usage must respect rate limits,
+attribution and non-commercial terms; open data is not unlimited free compute.
+
+### Implemented baseline
+
+- One responsive Weather implementation: Overview, Now, Rain, Radar, Field,
+  Outlook, Seasonal and Sources. Atlas shares the site theme and font.
+- Mobile primary navigation: Overview, Now, Rain, Outlook, Field, More.
+  More exposes Radar, Seasonal and Sources. Outlook must remain directly visible.
+- Overview follows the supplied reference: pale-blue canvas, white rounded cards,
+  compact conditions, upcoming-hour chart and six metric tiles. Feels-like is
+  first; humidity is lower down. Upcoming hours include rainfall millimetres.
+- Now keeps detailed hourly data behind a disclosure; Rain uses an intensity
+  timeline, day rows and longer-range heat strips instead of one universal chart.
+- Rain has a compact like-for-like month-to-date prior-year comparison tile.
+- Field mounts one selected operational detail panel, avoiding the former long
+  stack. Outlook has a day selector and selected-day detail on both screen sizes.
+- Location search/saved places/GPS use shared content. Foreground GPS follow is
+  supported; selecting a manual location disables follow. No background GPS claim.
+- Met Office radar integration already exists: verify it before adding another.
+- Theme currently has manual Light/Dark controls. Sunrise/sunset automatic theme
+  remains pending, not an implemented feature.
+
+### Styling ownership — all tabs
+
+| Concern | Single source |
+| --- | --- |
+| Font family and compatibility aliases | `src/app/typography.css` → `--site-font` |
+| Palette, semantic colours, spacing, radii, type scales, control height | `src/app/design-tokens.css` |
+| Shared card, heading, metric, control and focus treatment | `src/app/shared-surfaces.css` |
+| Overview-specific composition and charts | `src/app/weather-dashboard.css` |
+| Atlas composition | `src/app/atlas/atlas.module.css`, consuming shared tokens |
+
+Use the same typography, surface, corner, heading, control and spacing tokens in
+every tab. Different data may need different layouts, not a different design
+system. Breakpoints rearrange shared components; never duplicate business logic
+or maintain a second mobile UI. Legacy CSS loads first; shared tokens/treatments
+load afterwards. Do not fix one tab with another hard-coded palette/font stack.
+
+Default screens contain labels, values, statuses and actions only. No explainer
+paragraphs or redundant subtitles. Keep methodology behind Details; retain units,
+source timestamps, missing/cached labels and essential safety qualifications.
+Colour must never be the only status indicator. All interactive controls have
+visible keyboard focus and a minimum 44px target. Charts have accessible values.
+
+### Data rules
+
+- Forecast, modelled history, station measurements and radar estimates are distinct.
+- Missing values are unavailable, never zero or a favourable condition.
+- Work windows are estimates under explicit limits, not permission to spray,
+  harvest or travel. Product labels, crop condition and local checks still govern.
+- Compare the same dates and units. Use the selected location's time, not the
+  browser's timezone. Never count an incomplete hour as a full future work hour.
+- Ensemble spread is not calibrated accuracy. Forecast changes require stored or
+  retrieved earlier runs, not fabricated comparisons.
+- Radar must show frame age and source; never promise minute-precise arrival.
+- No new paid services. Open-Meteo hosted use is non-commercial; Met Office radar
+  is CC BY-SA; EA feeds use OGL. Preserve relevant attribution and licence terms.
+
+### Surgical roadmap and checkpoint status
+
+1. **Foundation:** reconcile this reference and common tab styling. Automated
+   contract tests guard shared imports, tokens and directly accessible Outlook.
+2. **Work windows, first slice:** a weather-only duration selector in Field,
+   using real future forecast hours, adjustable rain/gust limits and conservative
+   missing-data handling. Keep task-specific spray/drilling recommendations in
+   their existing panels until their thresholds can be validated and unified.
+3. **Forecast changes / uncertainty — pending:** introduce typed ensemble/run
+   adapters, caching and fixtures before adding a compact uncertainty display.
+4. **Observed rainfall / radar — pending audit:** exercise existing radar; add
+   gauge observations with distance, timestamps and honest coverage/failure states.
+5. **Drying/dew — pending:** upgrade existing drying signals; ET0 is reference
+   demand, not measured crop moisture.
+6. **Farm stations — optional later:** read-only WeeWX adapter; hardware optional.
+7. **Atlas/NDVI — deferred:** do not resume satellite work without a new checkpoint.
+
+### Acceptance gate for every checkpoint
+
+- Unit tests for calculations, missing inputs, forecast horizon and date boundaries.
+- Lint and production build; distinguish pre-existing failures from new ones.
+- Browser review at 390px and desktop; periodic 360px/430px checks, both themes.
+- Every tab: shared font/card/heading/control appearance, no page overflow, no
+  navigation overlap, readable values, keyboard operation and visible selected state.
+- Confirm actual loading/error/stale behaviour, not only successful fixtures.
+- Report exactly what is implemented, tested and still pending. No automatic
+  commit, push or deployment without the user's request.
+
+### Checkpoint record — 15 September 2026
+
+- Foundation and first weather-window slice implemented locally. Planner is in
+  Field → Operations; thresholds are explicitly mm/h and km/h.
+- Corrected shared heading selector to match Card's actual `.awx-kicker` markup.
+  Rain surfaces now share opaque card fill, radius and shadow instead of old
+  gradient/glass overrides. Added select/link/disclosure keyboard focus treatment.
+- Ten design/calculation tests pass: run
+  `node --test tests/design-contract.test.mjs tests/work-windows.test.mjs`.
+- Production build passed. Lint had no errors and six warnings in existing files.
+- Browser: planner inspected at 390px and 1440px; changing gust limits produced
+  real windows, including a midnight crossing. Desktop Weather tabs had no root
+  overflow; sampled surfaces shared font, white fill and 28px token radius.
+- Still required before release: full all-tab mobile/dark visual review, Atlas
+  browser parity check, stale/error UI exercises and reviewer/user sign-off.
+  This is not certification of every existing agronomy calculation or radar feed.
+- No deployment made. Later roadmap checkpoints remain pending.
+
+### Mobile density checkpoint — 16 September 2026
+
+- Shared mobile tokens: 14px card padding, 10px gaps, 20px card radius; desktop
+  geometry unchanged. Keep controls at least 44px and avoid shrinking key numbers.
+- Overview: shorter hourly chart and compact two-column metric cards, retaining
+  all values/units. At 390px the sample page reduced from 1679px to 1319px (21%).
+- Shared Field/row spacing tightened. Opaque mobile header/nav prevent text bleed.
+  Border-box shell avoids an unnecessary 98px scroll on otherwise short tabs.
+- Checked primary tabs at 360/390/430px: no root horizontal overflow or controls
+  below 44px. Reviewed light/dark Overview and secondary Radar/Seasonal/Sources
+  layouts. At 360px, the final Overview action clears bottom navigation when scrolled.
+- Local Next development indicator disabled because it covered mobile Settings.
+  Settings sheet and theme switching verified after reload.
+- Manifest has standalone display, maskable icons and viewport-fit cover; referenced
+  PNG icons exist. Development intentionally disables service workers, so a real
+  installed-device production offline/update/safe-area test is still required.
+- Do not describe this browser layout pass as full installed-PWA release approval.
+
+## Historical reference (not the current specification)
+
+
+The following records earlier implementation decisions and checks. Its old
+navigation, dark-first styling, Overview descriptions and audit outcomes are
+historical; use the current contract above for new work. Past passing checks do
+not certify the present worktree.
 
 This is the living source of truth for AceWeather design, product behavior, and mobile UX direction. Update this file whenever the product structure, visual language, data model, or mobile rules change.
 
@@ -202,6 +338,38 @@ Filtered views show subsets:
 - `Field`: Spraying, disease, soil/water, season/operations.
 - `Outlook`: 14-day outlook.
 - `Seasonal`: Seasonal context.
+
+## Atlas Surface
+
+Shared visual settings live in `src/app/design-tokens.css`: light/dark palettes,
+card/control radii, spacing, heading/label/value sizes and control height.
+Shared Weather component treatments live in `src/app/shared-surfaces.css`.
+Use these variables for new UI instead of defining local copies. The light
+palette follows the pale-blue page / white rounded-card reference; the dark
+palette uses deep-blue surfaces with the same geometry.
+
+Site typography is configured in `src/app/typography.css` using `--site-font`.
+Weather, Atlas, form controls and map UI share this font. Use inherited fonts or
+the shared aliases; do not introduce component-specific font stacks. Use
+`font-variant-numeric: tabular-nums` for aligned measurements.
+
+Atlas uses the same tokens, typography, responsive breakpoints, card rhythm, and
+"minimal by default, depth on demand" rule as Weather. It is one shared
+responsive implementation rather than separate mobile and desktop screens.
+
+Atlas data rules:
+
+- The UI reads one versioned `/api/atlas` contract (`atlas.v1`).
+- A section must never substitute hard-coded measurements when its live data is
+  unavailable.
+- Snapshot date, provisional state, cached state, and unavailable state must be
+  visibly distinct.
+- Trust-critical Atlas and Crop Dynamics requests use network-first service
+  worker caching with an explicitly labelled cached fallback.
+- Source links and methodology/caveats live under `Details`; the default view
+  contains labels and decision data, not explanatory paragraphs.
+- Map coordinates may remain presentational configuration, but every changing
+  measurement and date comes from the Atlas payload.
 
 The card pattern is:
 

@@ -2,68 +2,6 @@
    AceWeather — X-design shell (tokens, base, rail, feed head, sidebar, nav)
    See design.md for the spec. Cards/charts live in aceweather-x-cards.css.
    ====================================================================== */
-:root {
-  --awx-bg: #0a0b0d;
-  --awx-surface: #101216;
-  --awx-surface-2: #15181d;
-  --awx-surface-3: #1c2026;
-  --awx-line: rgba(255, 255, 255, 0.07);
-  --awx-line-2: rgba(255, 255, 255, 0.13);
-  --awx-text: #e9eaec;
-  --awx-muted: #9aa0a8;
-  --awx-faint: #6a7079;
-  --awx-accent: #6ea0ff;
-  --awx-accent-weak: rgba(110, 160, 255, 0.13);
-  --awx-accent-line: rgba(110, 160, 255, 0.34);
-  --awx-sun: #e0b15e;
-  --awx-warn: #d6a45c;
-  --awx-go: #5cb98c;
-  --awx-risk: #db7d84;
-  --awx-cool: #7fb6d9;
-  --awx-violet: #a596e8;
-  --awx-sky-1: #1b2536;
-  --awx-sky-2: #0d131b;
-  --awx-glow: rgba(224, 177, 94, 0.50);
-  --awx-radius: 16px;
-  --awx-radius-sm: 11px;
-  --awx-pill: 999px;
-  --awx-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 30px rgba(0, 0, 0, 0.18);
-  --awx-glass: rgba(16, 18, 22, 0.78);
-  --awx-glass-strong: rgba(18, 20, 25, 0.97);
-  --awx-glass-line: rgba(255, 255, 255, 0.12);
-  --awx-mobile-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
-  --awx-font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
-  --awx-font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
-[data-theme="light"] {
-  --awx-bg: #f6f7f9;
-  --awx-surface: #ffffff;
-  --awx-surface-2: #f1f3f6;
-  --awx-surface-3: #e8ecf1;
-  --awx-line: rgba(12, 16, 22, 0.09);
-  --awx-line-2: rgba(12, 16, 22, 0.16);
-  --awx-text: #14171c;
-  --awx-muted: #5c636d;
-  --awx-faint: #8a929c;
-  --awx-accent: #2f6cf0;
-  --awx-accent-weak: rgba(47, 108, 240, 0.10);
-  --awx-accent-line: rgba(47, 108, 240, 0.32);
-  --awx-sun: #c98a2b;
-  --awx-warn: #b67d2c;
-  --awx-go: #2f9d6b;
-  --awx-risk: #cf5158;
-  --awx-cool: #3d86b3;
-  --awx-violet: #7b6bd6;
-  --awx-sky-1: #cfe0f4;
-  --awx-sky-2: #eef3fa;
-  --awx-glow: rgba(224, 177, 94, 0.65);
-  --awx-shadow: 0 1px 2px rgba(12, 16, 22, 0.06), 0 10px 30px rgba(12, 16, 22, 0.06);
-  --awx-glass: rgba(255, 255, 255, 0.78);
-  --awx-glass-strong: rgba(255, 255, 255, 0.98);
-  --awx-glass-line: rgba(12, 16, 22, 0.10);
-  --awx-mobile-shadow: 0 18px 48px rgba(12, 16, 22, 0.12);
-}
 
 html[data-awx], html[data-awx] body { margin: 0; min-height: 100%; }
 html[data-awx] body {
@@ -108,7 +46,7 @@ html[data-awx] body {
 .awx-brand { display: flex; align-items: center; gap: 11px; padding: 2px 10px; text-decoration: none; color: var(--awx-text); }
 .awx-brand-mark {
   display: grid; place-items: center; width: 34px; height: 34px;
-  border-radius: 10px; overflow: hidden;
+  border-radius: var(--awx-control-radius); overflow: hidden;
   background: var(--awx-surface-2) url("/icons/aceweather-icon.svg") center / cover no-repeat;
   box-shadow: inset 0 0 0 1px var(--awx-line-2);
 }
@@ -118,7 +56,7 @@ html[data-awx] body {
 .awx-nav { display: grid; gap: 2px; }
 .awx-nav button {
   position: relative; display: flex; align-items: center; gap: 13px;
-  min-height: 40px; padding: 0 12px; border-radius: 10px;
+  min-height: 40px; padding: 0 12px; border-radius: var(--awx-control-radius);
   color: var(--awx-muted); font-size: 14.5px; font-weight: 500;
   transition: background 140ms ease, color 140ms ease; white-space: nowrap;
 }
@@ -140,7 +78,7 @@ html[data-awx] body {
 .awx-settings-body { display: grid; gap: 10px; }
 .awx-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 44px; padding: 0 16px; border-radius: 11px;
+  min-height: 44px; padding: 0 16px; border-radius: var(--awx-control-radius);
   font-size: 14px; font-weight: 600;
   transition: background 140ms ease, border-color 140ms ease, transform 120ms ease;
 }
@@ -201,7 +139,7 @@ html[data-awx] body {
 
 .awx-search {
   display: flex; align-items: center; gap: 10px;
-  min-height: 46px; padding: 0 15px; border-radius: 13px;
+  min-height: 46px; padding: 0 15px; border-radius: var(--awx-control-radius);
   background: var(--awx-surface-2); border: 1px solid transparent;
   transition: border-color 140ms ease, background 140ms ease;
 }
@@ -224,7 +162,7 @@ html[data-awx] body {
 .awx-search input::placeholder { color: var(--awx-faint); }
 .awx-search .awx-go {
   min-width: 44px; min-height: 44px; color: var(--awx-accent);
-  font-weight: 600; font-size: 13.5px; padding: 0 6px; border-radius: 10px;
+  font-weight: 600; font-size: 13.5px; padding: 0 6px; border-radius: var(--awx-control-radius);
 }
 .awx-location-picker { display: grid; gap: 12px; min-width: 0; }
 .awx-location-form { margin: 0; }
@@ -253,7 +191,7 @@ html[data-awx] body {
 .awx-side-card h3 { margin: 0; padding: 14px 16px 10px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
 .awx-side-body { padding: 0 12px 12px; display: grid; gap: 8px; }
 
-.awx-place { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 10px 11px; border-radius: 11px; text-align: left; color: var(--awx-text); transition: background 140ms ease; }
+.awx-place { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 10px 11px; border-radius: var(--awx-control-radius); text-align: left; color: var(--awx-text); transition: background 140ms ease; }
 .awx-place:hover, .awx-place[aria-pressed="true"] { background: var(--awx-surface-2); }
 .awx-place > span:first-child { display: grid; gap: 2px; min-width: 0; }
 .awx-place .awx-p-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -294,7 +232,7 @@ html[data-awx] body {
 .awx-rain-radar-icon {
   display: grid;
   place-items: center;
-  border-radius: 16px;
+  border-radius: var(--awx-radius-sm);
   color: var(--awx-accent);
   background: var(--awx-accent-weak);
 }
@@ -317,7 +255,7 @@ html[data-awx] body {
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--awx-line);
-  border-radius: 15px;
+  border-radius: var(--awx-radius-sm);
   background: var(--awx-line);
 }
 .awx-rain-key-metrics > div { display: grid; gap: 5px; background: var(--awx-surface); }
@@ -338,7 +276,7 @@ html[data-awx] body {
   min-height: 130px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--awx-accent) 30%, var(--awx-line));
-  border-radius: 16px;
+  border-radius: var(--awx-radius-sm);
   background: var(--awx-accent-weak);
 }
 .awx-rain-comparison-tile > span {
@@ -371,12 +309,12 @@ html[data-awx] body {
   grid-template-columns: repeat(3, 1fr);
   gap: 3px;
   padding: 3px;
-  border-radius: 15px;
+  border-radius: var(--awx-radius-sm);
   background: var(--awx-surface-2);
 }
 .awx-rain-range button {
   min-height: 44px;
-  border-radius: 12px;
+  border-radius: var(--awx-control-radius);
   color: var(--awx-faint);
   font-size: 12px;
   font-weight: 700;
@@ -413,7 +351,7 @@ html[data-awx] body {
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--awx-line);
-  border-radius: 15px;
+  border-radius: var(--awx-radius-sm);
   background: var(--awx-line);
 }
 .awx-rain-day-list > div { display: grid; align-items: center; background: var(--awx-surface); }
@@ -444,7 +382,7 @@ html[data-awx] body {
   color: var(--awx-text);
   text-align: left;
 }
-.awx-rain-radar-icon { border-radius: 14px; color: var(--awx-cool); background: color-mix(in srgb, var(--awx-cool) 12%, transparent); }
+.awx-rain-radar-icon { border-radius: var(--awx-control-radius); color: var(--awx-cool); background: color-mix(in srgb, var(--awx-cool) 12%, transparent); }
 .awx-rain-radar-link > span:nth-child(2) { display: grid; gap: 3px; }
 .awx-rain-radar-link strong { font-size: 14px; }
 .awx-rain-radar-link > b { color: var(--awx-faint); font-weight: 400; }
@@ -534,12 +472,12 @@ html[data-awx] body {
     -webkit-backdrop-filter: blur(22px) saturate(1.55);
   }
   .awx-mobile-top .awx-brand-mark {
-    width: 40px; height: 40px; border-radius: 12px;
+    width: 40px; height: 40px; border-radius: var(--awx-control-radius);
     box-shadow: inset 0 0 0 1px var(--awx-glass-line), 0 8px 22px rgba(0, 0, 0, 0.18);
   }
   .awx-location-trigger {
     display: grid; align-content: center; justify-items: center; min-width: 0; min-height: 44px; flex: 1 1 auto;
-    padding: 0 10px; border-radius: 14px; color: var(--awx-text); text-align: center;
+    padding: 0 10px; border-radius: var(--awx-control-radius); color: var(--awx-text); text-align: center;
     transition: background 140ms ease, transform 120ms ease;
   }
   .awx-location-trigger:hover { background: color-mix(in srgb, var(--awx-surface-2) 72%, transparent); }
@@ -570,7 +508,7 @@ html[data-awx] body {
   .awx-overview-rain,
   .awx-overview-section {
     border: 1px solid var(--awx-glass-line);
-    border-radius: 22px;
+    border-radius: var(--awx-radius);
     background: var(--awx-glass-strong);
     box-shadow: var(--awx-mobile-shadow);
   }
@@ -622,7 +560,7 @@ html[data-awx] body {
     width: 44px;
     height: 44px;
     border: 1px solid var(--awx-line);
-    border-radius: 14px;
+    border-radius: var(--awx-control-radius);
     color: var(--awx-muted);
     background: color-mix(in srgb, var(--awx-surface-2) 78%, transparent);
   }
@@ -642,7 +580,7 @@ html[data-awx] body {
     margin-top: 14px;
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 15px;
+    border-radius: var(--awx-radius-sm);
     background: var(--awx-line);
   }
   .awx-overview-basics > div {
@@ -684,7 +622,7 @@ html[data-awx] body {
     place-items: center;
     width: 44px;
     height: 44px;
-    border-radius: 14px;
+    border-radius: var(--awx-control-radius);
     color: var(--awx-accent);
     background: var(--awx-accent-weak);
   }
@@ -744,7 +682,7 @@ html[data-awx] body {
     padding: 12px;
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 16px;
+    border-radius: var(--awx-radius-sm);
     background: color-mix(in srgb, var(--awx-surface-2) 82%, transparent);
     color: var(--awx-text);
     text-align: left;
@@ -772,7 +710,7 @@ html[data-awx] body {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 16px;
+    border-radius: var(--awx-radius-sm);
   }
   .awx-overview-hours > div {
     display: grid;
@@ -799,7 +737,7 @@ html[data-awx] body {
     min-height: 94px;
     padding: 11px;
     border: 1px solid var(--awx-line);
-    border-radius: 16px;
+    border-radius: var(--awx-radius-sm);
     background: color-mix(in srgb, var(--awx-surface-2) 76%, transparent);
     color: var(--awx-text);
     text-align: left;
@@ -819,7 +757,7 @@ html[data-awx] body {
   .awx-now-daylight {
     min-width: 0;
     border: 1px solid var(--awx-glass-line);
-    border-radius: 22px;
+    border-radius: var(--awx-radius);
     background: var(--awx-glass-strong);
     box-shadow: var(--awx-mobile-shadow);
   }
@@ -867,7 +805,7 @@ html[data-awx] body {
     place-items: center;
     width: 48px;
     height: 48px;
-    border-radius: 16px;
+    border-radius: var(--awx-radius-sm);
     color: var(--awx-sun);
     background: color-mix(in srgb, var(--awx-sun) 14%, transparent);
   }
@@ -887,7 +825,7 @@ html[data-awx] body {
     margin-top: 13px;
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 16px;
+    border-radius: var(--awx-radius-sm);
     background: var(--awx-line);
   }
   .awx-now-key-metrics > div {
@@ -942,7 +880,7 @@ html[data-awx] body {
     min-height: 60px;
     padding: 9px 11px;
     border: 1px solid color-mix(in srgb, var(--awx-accent) 28%, var(--awx-line));
-    border-radius: 15px;
+    border-radius: var(--awx-radius-sm);
     background: var(--awx-accent-weak);
     color: var(--awx-text);
     text-align: left;
@@ -973,7 +911,7 @@ html[data-awx] body {
     min-height: 100px;
     padding: 10px 4px;
     border: 1px solid var(--awx-line);
-    border-radius: 14px;
+    border-radius: var(--awx-control-radius);
     background: color-mix(in srgb, var(--awx-surface-2) 76%, transparent);
     scroll-snap-align: start;
   }
@@ -988,7 +926,7 @@ html[data-awx] body {
     gap: 1px;
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 16px;
+    border-radius: var(--awx-radius-sm);
     background: var(--awx-line);
   }
   .awx-now-daylight-grid > div {
@@ -1003,7 +941,7 @@ html[data-awx] body {
     min-width: 0;
     overflow: hidden;
     border: 1px solid var(--awx-glass-line);
-    border-radius: 22px;
+    border-radius: var(--awx-radius);
     background: var(--awx-glass-strong);
     box-shadow: var(--awx-mobile-shadow);
   }
@@ -1022,7 +960,7 @@ html[data-awx] body {
   .awx-now-detail > summary::after { content: "+"; margin-left: auto; color: var(--awx-faint); font-size: 19px; font-weight: 400; }
   .awx-now-detail[open] > summary::after { content: "−"; }
   .awx-now-detail-body { display: grid; gap: 12px; padding: 0 14px 14px; }
-  .awx-now-trend { overflow: hidden; border: 1px solid var(--awx-line); border-radius: 15px; background: var(--awx-surface-2); }
+  .awx-now-trend { overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-surface-2); }
   .awx-now-trend .awx-line { display: block; width: 100%; height: auto; }
   .awx-now-table { min-width: 520px; }
   .awx-now-detail-body:has(.awx-now-table) { overflow-x: auto; }
@@ -1044,7 +982,7 @@ html[data-awx] body {
   .awx-rain-chart,
   .awx-rain-radar-link {
     border-color: var(--awx-glass-line);
-    border-radius: 22px;
+    border-radius: var(--awx-radius);
     background-color: var(--awx-glass-strong);
     box-shadow: var(--awx-mobile-shadow);
   }
@@ -1058,12 +996,12 @@ html[data-awx] body {
   .awx-rain-summary-icon { width: 48px; height: 48px; }
   .awx-rain-summary-head strong { font-size: 19px; }
   .awx-rain-summary-head small { font-size: 11.5px; }
-  .awx-rain-key-metrics { margin-top: 15px; border-radius: 16px; }
+  .awx-rain-key-metrics { margin-top: 15px; border-radius: var(--awx-radius-sm); }
   .awx-rain-key-metrics > div { min-height: 66px; padding: 11px; background: color-mix(in srgb, var(--awx-surface) 90%, transparent); }
   .awx-rain-key-metrics span { font-size: 10px; }
   .awx-rain-key-metrics strong { font-size: 16px; }
   .awx-rain-comparison { margin-top: 12px; }
-  .awx-rain-comparison-tile { min-height: 132px; border-radius: 17px; }
+  .awx-rain-comparison-tile { min-height: 132px; border-radius: var(--awx-radius-sm); }
   .awx-rain-chart { padding: 14px; }
   .awx-rain-chart-head { gap: 12px; }
   .awx-rain-chart-head span { font-size: 13px; }
@@ -1081,7 +1019,7 @@ html[data-awx] body {
   .awx-rain-day-list strong { font-size: 11px; }
   .awx-rain-day-list small { font-size: 9px; }
   .awx-rain-heat-strip { gap: 5px; margin-top: 13px; }
-  .awx-rain-heat-strip > div { gap: 3px; min-height: 64px; border-radius: 11px; }
+  .awx-rain-heat-strip > div { gap: 3px; min-height: 64px; border-radius: var(--awx-control-radius); }
   .awx-rain-heat-strip span { font-size: 9px; }
   .awx-rain-heat-strip strong { font-size: 10.5px; }
   .awx-rain-radar-link { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; min-height: 78px; padding: 10px 14px; }
@@ -1091,7 +1029,7 @@ html[data-awx] body {
   .awx-field-switcher {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     border-color: var(--awx-glass-line);
-    border-radius: 22px;
+    border-radius: var(--awx-radius);
     box-shadow: var(--awx-mobile-shadow);
   }
   .awx-field-switch { min-height: 68px; padding: 11px 12px; }
@@ -1102,7 +1040,7 @@ html[data-awx] body {
     min-height: 68px;
     padding: 5px;
     border: 1px solid var(--awx-glass-line);
-    border-radius: 24px;
+    border-radius: var(--awx-radius);
     background: color-mix(in srgb, var(--awx-bg) 96%, var(--awx-surface-2));
     box-shadow: var(--awx-mobile-shadow);
     backdrop-filter: blur(24px) saturate(1.45);
@@ -1110,7 +1048,7 @@ html[data-awx] body {
   }
   .awx-mobile-nav button {
     display: grid; place-items: center; gap: 2px; min-height: 56px;
-    border-radius: 18px;
+    border-radius: var(--awx-radius-sm);
     color: var(--awx-faint); font-size: 10px; font-weight: 650;
     transition: background 140ms ease, color 140ms ease, transform 120ms ease;
   }
@@ -1139,7 +1077,7 @@ html[data-awx] body {
 }
 
 /* ===================== ICON BUTTON · SETTINGS SHEET · TOAST ===================== */
-.awx-icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: var(--awx-text); background: transparent; flex: 0 0 auto; }
+.awx-icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--awx-control-radius); color: var(--awx-text); background: transparent; flex: 0 0 auto; }
 .awx-icon-btn:hover { background: var(--awx-surface-2); }
 .awx-icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .awx-mtop-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
@@ -1188,7 +1126,7 @@ html[data-awx] body {
 .awx-sheet .awx-btn span { display: inline; }
 .awx-sheet .awx-search {
   min-height: 52px;
-  border-radius: 16px;
+  border-radius: var(--awx-radius-sm);
   background: color-mix(in srgb, var(--awx-surface-2) 82%, transparent);
 }
 .awx-sheet .awx-search .awx-go { min-height: 44px; }
@@ -1207,7 +1145,7 @@ html[data-awx] body {
 .awx-more-grid button,
 .awx-more-grid a {
   min-height: 74px; display: grid; place-items: center; gap: 6px;
-  border: 1px solid var(--awx-line); border-radius: 12px; background: var(--awx-surface-2);
+  border: 1px solid var(--awx-line); border-radius: var(--awx-control-radius); background: var(--awx-surface-2);
   color: var(--awx-muted); font-size: 12px; font-weight: 650; text-decoration: none;
 }
 .awx-more-grid button[aria-pressed="true"] {
@@ -1224,7 +1162,7 @@ html[data-awx] body {
 .awx-docs-list { display: grid; gap: 7px; }
 .awx-docs-rail { margin-top: 2px; padding-top: 10px; }
 .awx-docs-rail .awx-docs-head {
-  cursor: pointer; padding: 7px 2px; border-radius: 10px; align-items: center;
+  cursor: pointer; padding: 7px 2px; border-radius: var(--awx-control-radius); align-items: center;
 }
 .awx-docs-rail .awx-docs-head::-webkit-details-marker { display: none; }
 .awx-docs-rail .awx-docs-head::marker { content: ""; }
@@ -1238,7 +1176,7 @@ html[data-awx] body {
 .awx-docs-rail .awx-doc-link { padding: 9px 10px; gap: 6px; }
 .awx-doc-link {
   display: grid; gap: 8px; padding: 11px 12px; border: 1px solid var(--awx-line);
-  border-radius: 11px; background: var(--awx-surface-2); color: var(--awx-text);
+  border-radius: var(--awx-control-radius); background: var(--awx-surface-2); color: var(--awx-text);
   text-decoration: none; transition: background 140ms ease, border-color 140ms ease;
 }
 .awx-doc-link:hover { border-color: var(--awx-accent-line); background: var(--awx-surface-3); }
@@ -1300,7 +1238,7 @@ html[data-awx] body {
     width: 44px;
     height: 44px;
     border: 1px solid var(--awx-line);
-    border-radius: 14px;
+    border-radius: var(--awx-control-radius);
     color: var(--awx-muted);
     background: var(--awx-surface-2);
   }
@@ -1312,7 +1250,7 @@ html[data-awx] body {
     margin-top: 16px;
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 15px;
+    border-radius: var(--awx-radius-sm);
     background: var(--awx-line);
   }
   .awx-overview-basics > div { display: grid; gap: 5px; min-width: 0; padding: 11px 9px; background: var(--awx-surface); }
@@ -1332,7 +1270,7 @@ html[data-awx] body {
       linear-gradient(145deg, color-mix(in srgb, var(--awx-accent) 11%, transparent), transparent 52%),
       var(--awx-surface);
   }
-  .awx-overview-rain-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; color: var(--awx-accent); background: var(--awx-accent-weak); }
+  .awx-overview-rain-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: var(--awx-radius-sm); color: var(--awx-accent); background: var(--awx-accent-weak); }
   .awx-overview-rain-icon svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .awx-overview-rain > span:nth-child(2) { display: grid; gap: 4px; min-width: 0; }
   .awx-overview-rain small { color: var(--awx-faint); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -1355,7 +1293,7 @@ html[data-awx] body {
     padding: 12px;
     overflow: hidden;
     border: 1px solid var(--awx-line);
-    border-radius: 15px;
+    border-radius: var(--awx-radius-sm);
     background: var(--awx-surface-2);
     color: var(--awx-text);
     text-align: left;
@@ -1372,7 +1310,7 @@ html[data-awx] body {
   .awx-overview-tone-go > strong { color: var(--awx-go); }
   .awx-overview-tone-warn > strong { color: var(--awx-warn); }
   .awx-overview-tone-risk > strong { color: var(--awx-risk); }
-  .awx-overview-hours { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--awx-line); border-radius: 15px; }
+  .awx-overview-hours { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); }
   .awx-overview-hours > div { display: grid; justify-items: center; gap: 7px; min-width: 0; padding: 11px 3px; border-right: 1px solid var(--awx-line); background: var(--awx-surface-2); }
   .awx-overview-hours > div:last-child { border-right: 0; }
   .awx-overview-hours span { color: var(--awx-faint); font-size: 9.5px; }
@@ -1380,7 +1318,7 @@ html[data-awx] body {
   .awx-overview-hours small { color: var(--awx-faint); font-size: 8.5px; white-space: nowrap; }
   .awx-overview-hours small.is-wet { color: var(--awx-accent); }
   .awx-overview-days { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .awx-overview-days button { display: grid; gap: 6px; min-height: 88px; padding: 11px; border: 1px solid var(--awx-line); border-radius: 15px; background: var(--awx-surface-2); color: var(--awx-text); text-align: left; }
+  .awx-overview-days button { display: grid; gap: 6px; min-height: 88px; padding: 11px; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-surface-2); color: var(--awx-text); text-align: left; }
   .awx-overview-days button > span { color: var(--awx-faint); font-size: 9.5px; font-weight: 700; text-transform: uppercase; }
   .awx-overview-days strong { font-size: 17px; }
   .awx-overview-days strong small { color: var(--awx-muted); font-size: 12px; font-weight: 550; }
@@ -1415,13 +1353,13 @@ html[data-awx] body {
   .awx-now-current-head > div:first-child > strong { display: block; margin-top: 10px; font-size: 18px; }
   .awx-now-current-head p { margin: 5px 0 0; color: var(--awx-muted); font-size: 12.5px; }
   .awx-now-condition-mark {
-    display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px;
+    display: grid; place-items: center; width: 52px; height: 52px; border-radius: var(--awx-radius-sm);
     color: var(--awx-sun); background: color-mix(in srgb, var(--awx-sun) 14%, transparent);
   }
   .awx-now-condition-mark svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .awx-now-key-metrics {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 14px;
-    overflow: hidden; border: 1px solid var(--awx-line); border-radius: 16px; background: var(--awx-line);
+    overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-line);
   }
   .awx-now-key-metrics > div { display: grid; gap: 5px; min-height: 68px; padding: 12px; background: var(--awx-surface); }
   .awx-now-key-metrics span,
@@ -1438,7 +1376,7 @@ html[data-awx] body {
   .awx-now-rain-callout {
     display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 11px; align-items: center;
     width: 100%; min-height: 62px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--awx-accent) 28%, var(--awx-line));
-    border-radius: 15px; background: var(--awx-accent-weak); color: var(--awx-text); text-align: left;
+    border-radius: var(--awx-radius-sm); background: var(--awx-accent-weak); color: var(--awx-text); text-align: left;
   }
   .awx-now-rain-callout > span:first-child { display: grid; gap: 2px; }
   .awx-now-rain-callout small { color: var(--awx-accent); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -1451,7 +1389,7 @@ html[data-awx] body {
   }
   .awx-now-hours > div {
     display: grid; justify-items: center; gap: 6px; min-height: 104px; padding: 11px 4px;
-    border: 1px solid var(--awx-line); border-radius: 14px; background: var(--awx-surface-2); scroll-snap-align: start;
+    border: 1px solid var(--awx-line); border-radius: var(--awx-control-radius); background: var(--awx-surface-2); scroll-snap-align: start;
   }
   .awx-now-hours > div.is-wet { border-color: color-mix(in srgb, var(--awx-accent) 40%, var(--awx-line)); }
   .awx-now-hours span { color: var(--awx-faint); font-size: 10px; }
@@ -1459,7 +1397,7 @@ html[data-awx] body {
   .awx-now-hours small { color: var(--awx-muted); font-size: 9px; white-space: nowrap; }
   .awx-now-hours > div.is-wet small:first-of-type { color: var(--awx-accent); }
   .awx-now-daylight { grid-column: 1 / -1; padding: 18px 20px 20px; }
-  .awx-now-daylight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--awx-line); border-radius: 16px; background: var(--awx-line); }
+  .awx-now-daylight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-line); }
   .awx-now-daylight-grid > div { display: grid; gap: 6px; min-height: 68px; padding: 12px; background: var(--awx-surface); }
   .awx-now-daylight-grid strong { font-size: 16px; font-weight: 650; }
   .awx-now-detail { grid-column: 1 / -1; overflow: hidden; }
@@ -1468,9 +1406,9 @@ html[data-awx] body {
   .awx-now-detail > summary::after { content: "+"; margin-left: auto; color: var(--awx-faint); font-size: 20px; font-weight: 400; }
   .awx-now-detail[open] > summary::after { content: "−"; }
   .awx-now-detail-body { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 14px; padding: 0 18px 18px; }
-  .awx-now-trend { align-self: start; overflow: hidden; border: 1px solid var(--awx-line); border-radius: 15px; background: var(--awx-surface-2); }
+  .awx-now-trend { align-self: start; overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-surface-2); }
   .awx-now-trend .awx-line { display: block; width: 100%; height: auto; }
-  .awx-now-table { min-width: 0; overflow: hidden; border: 1px solid var(--awx-line); border-radius: 14px; }
+  .awx-now-table { min-width: 0; overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-control-radius); }
   .awx-now-table-row { display: grid; grid-template-columns: 48px repeat(4, minmax(42px, 1fr)) minmax(82px, 1.3fr); min-height: 38px; align-items: center; border-bottom: 1px solid var(--awx-line); color: var(--awx-muted); font-size: 10.5px; }
   .awx-now-table-row:last-child { border-bottom: 0; }
   .awx-now-table-row.is-head { min-height: 32px; color: var(--awx-faint); font-size: 8.5px; font-weight: 700; text-transform: uppercase; }
@@ -1501,7 +1439,7 @@ html[data-awx] body {
   .awx-rain-timeline { gap: 4px; margin-top: 25px; }
   .awx-rain-timeline > div { grid-template-rows: 54px 18px; gap: 7px; }
   .awx-rain-timeline > div > span { height: 54px; border-radius: 8px; }
-  .awx-rain-timeline > div.is-now::before { inset: -5px -2px 13px; border-radius: 10px; }
+  .awx-rain-timeline > div.is-now::before { inset: -5px -2px 13px; border-radius: var(--awx-control-radius); }
   .awx-rain-timeline small { font-size: 9px; }
   .awx-rain-day-list { margin-top: 15px; }
   .awx-rain-day-list > div { grid-template-columns: 38px minmax(0, 1fr) 62px 34px; gap: 11px; min-height: 41px; padding: 8px 11px; }
@@ -1510,7 +1448,7 @@ html[data-awx] body {
   .awx-rain-day-list strong { font-size: 11.5px; }
   .awx-rain-day-list small { font-size: 9.5px; }
   .awx-rain-heat-strip { gap: 7px; margin-top: 18px; }
-  .awx-rain-heat-strip > div { gap: 4px; min-height: 76px; border-radius: 12px; }
+  .awx-rain-heat-strip > div { gap: 4px; min-height: 76px; border-radius: var(--awx-control-radius); }
   .awx-rain-heat-strip span { font-size: 9.5px; }
   .awx-rain-heat-strip strong { font-size: 11px; }
   .awx-rain-radar-link { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; min-height: 80px; padding: 11px 16px; }

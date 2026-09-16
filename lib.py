@@ -204,6 +204,8 @@ def fetch_history(
     history_days: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    timeout_seconds: float = weather_sources.TIMEOUT_SECONDS,
+    attempts: int = weather_sources.READ_JSON_ATTEMPTS,
 ) -> dict[str, Any]:
     return weather_sources.fetch_history(
         latitude,
@@ -212,6 +214,8 @@ def fetch_history(
         history_days=history_days,
         start_date=start_date,
         end_date=end_date,
+        timeout_seconds=timeout_seconds,
+        attempts=attempts,
     )
 
 
@@ -382,9 +386,18 @@ def _build_region_history_summary(
     region: dict[str, str],
     *,
     history_days: int = DEFAULT_DIGEST_HISTORY_DAYS,
+    timeout_seconds: float = weather_sources.TIMEOUT_SECONDS,
+    attempts: int = weather_sources.READ_JSON_ATTEMPTS,
 ) -> dict[str, Any]:
     latitude, longitude, timezone, label = resolve_region_location(region)
-    history = fetch_history(latitude, longitude, timezone, history_days=history_days)
+    history = fetch_history(
+        latitude,
+        longitude,
+        timezone,
+        history_days=history_days,
+        timeout_seconds=timeout_seconds,
+        attempts=attempts,
+    )
     return {
         "label": label,
         "query": region["query"],
@@ -611,6 +624,8 @@ def build_cropdynamics_json(
     base_url: str = "",
     history_days: int | None = None,
     include_daily: bool = False,
+    provider_timeout_seconds: float = weather_sources.TIMEOUT_SECONDS,
+    provider_attempts: int = weather_sources.READ_JSON_ATTEMPTS,
 ) -> dict[str, Any]:
     resolved_history_days = resolve_digest_history_days(
         DEFAULT_CROPDYNAMICS_JSON_HISTORY_DAYS if history_days is None else history_days
@@ -622,6 +637,8 @@ def build_cropdynamics_json(
                 lambda region: _build_region_history_summary(
                     region,
                     history_days=resolved_history_days,
+                    timeout_seconds=provider_timeout_seconds,
+                    attempts=provider_attempts,
                 ),
                 regions,
             )

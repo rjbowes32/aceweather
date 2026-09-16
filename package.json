@@ -5,7 +5,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:atlas": "node --test tests/atlas-contract.test.mjs && python3 -m unittest tests.test_atlas_api"
   },
   "dependencies": {
     "h5wasm": "^0.10.3",

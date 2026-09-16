@@ -5,6 +5,10 @@ import type { ConditionKey } from "@/lib/aceweather/format";
 const P = (d: string) => <path d={d} />;
 
 const NAV: Record<string, ReactNode> = {
+  humidity: <><path d="M9 3C7 6 3 10 3 14a6 6 0 0 0 12 0c0-4-4-8-6-11Z" /><path d="M17 3c-1 2-3 4-3 6a4 4 0 0 0 8 0c0-2-3-5-5-6Z" /></>,
+  wind: <><path d="M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h5a3 3 0 1 1-3 3" /></>,
+  thermometer: <><path d="M9 14V5a3 3 0 0 1 6 0v9a5 5 0 1 1-6 0Z" /><path d="M12 7v10" /><circle cx="12" cy="18" r="1" /></>,
+  umbrella: <><path d="M3 12a9 9 0 0 1 18 0H3ZM12 12v7a2 2 0 0 0 4 0M12 2v1" /></>,
   overview: P("M4 6h16M4 12h16M4 18h10"),
   now: <><circle cx="12" cy="12" r="4.5" />{P("M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8")}</>,
   rain: <>{P("M7 15.5h9.5a3.6 3.6 0 0 0 .5-7.2 5.5 5.5 0 0 0-10.4 1.5A3 3 0 0 0 7 15.5z")}{P("M9 18.5l-.8 2M13 18.5l-.8 2M17 18.5l-.8 2")}</>,

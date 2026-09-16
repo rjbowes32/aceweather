@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import urllib.parse
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
 import lib
@@ -35,6 +36,51 @@ SOURCE_LABELS = {
     "aceweather": "AceWeather",
 }
 
+SOURCE_DETAILS = [
+    {
+        "key": "ahdb_harvest",
+        "label": SOURCE_LABELS["ahdb_harvest"],
+        "url": SOURCES["ahdb_harvest"],
+        "licence": "AHDB website terms",
+        "observed_at": "2026-08-24",
+    },
+    {
+        "key": "environment_agency_drought",
+        "label": SOURCE_LABELS["environment_agency_drought"],
+        "url": SOURCES["environment_agency_drought"],
+        "licence": "Open Government Licence v3.0",
+        "observed_at": UPDATED,
+    },
+    {
+        "key": "met_office_climate",
+        "label": SOURCE_LABELS["met_office_climate"],
+        "url": SOURCES["met_office_climate"],
+        "licence": "Open Government Licence v3.0",
+        "observed_at": "2026-08-25",
+    },
+    {
+        "key": "ahdb_wheat_rl",
+        "label": SOURCE_LABELS["ahdb_wheat_rl"],
+        "url": SOURCES["ahdb_wheat_rl"],
+        "licence": "AHDB website terms",
+        "observed_at": "2026-08-26",
+    },
+    {
+        "key": "ahdb_forage",
+        "label": SOURCE_LABELS["ahdb_forage"],
+        "url": SOURCES["ahdb_forage"],
+        "licence": "AHDB website terms",
+        "observed_at": "2026-08-06",
+    },
+    {
+        "key": "aceweather",
+        "label": SOURCE_LABELS["aceweather"],
+        "url": SOURCES["aceweather"],
+        "licence": "AceWeather",
+        "observed_at": None,
+    },
+]
+
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
     host = handler.headers.get("x-forwarded-host") or handler.headers.get("host") or ""
@@ -44,29 +90,67 @@ def request_base_url(handler: BaseHTTPRequestHandler) -> str:
 
 def recent_rain(base_url: str) -> dict:
     try:
-        data = lib.build_cropdynamics_json(base_url=base_url, history_days=29, include_daily=False)
+        data = lib.build_cropdynamics_json(
+            base_url=base_url,
+            history_days=29,
+            include_daily=False,
+            provider_timeout_seconds=2.5,
+            provider_attempts=1,
+        )
+        date_range = data.get("date_range") if isinstance(data, dict) else None
+        rows = data.get("locations") if isinstance(data, dict) else None
+        locations = [
+            {
+                "location": row.get("query") or row.get("label") or row.get("name"),
+                "rain_mm": row.get("rain_mm"),
+                "high_c": row.get("high_c"),
+                "low_c": row.get("low_c"),
+            }
+            for row in (rows or [])
+            if isinstance(row, dict)
+            and (row.get("query") or row.get("label") or row.get("name"))
+            and isinstance(row.get("rain_mm"), (int, float))
+        ]
+        if (
+            not isinstance(date_range, dict)
+            or not date_range.get("end")
+            or not isinstance(date_range.get("days"), int)
+            or date_range["days"] < 1
+            or not locations
+        ):
+            raise ValueError("Rainfall provider returned an incomplete live layer")
         return {
-            "date_range": data.get("date_range"),
-            "locations": [
-                {
-                    "location": row.get("query") or row.get("label") or row.get("name"),
-                    "rain_mm": row.get("rain_mm"),
-                    "high_c": row.get("high_c"),
-                    "low_c": row.get("low_c"),
-                }
-                for row in data.get("locations", [])
-            ],
+            "available": True,
+            "retrieved_at": datetime.now(timezone.utc).isoformat(),
+            "date_range": date_range,
+            "locations": locations,
         }
     except Exception:  # Best-effort live layer; the core Atlas snapshot should still return.
         return {"available": False, "message": "Live AceWeather rainfall data temporarily unavailable."}
 
 
 def build_payload(base_url: str = "") -> dict:
+    generated_at = datetime.now(timezone.utc).isoformat()
+    rain = recent_rain(base_url)
+    rain_range = rain.get("date_range") if isinstance(rain, dict) else None
+    rain_as_of = rain_range.get("end") if isinstance(rain_range, dict) else None
     return {
+        "schema_version": "atlas.v1",
         "name": "UK Crop Weather Atlas",
         "edition": 2026,
         "updated": UPDATED,
         "status": "provisional",
+        "generated_at": generated_at,
+        "freshness": {
+            "snapshot": {
+                "state": "provisional",
+                "as_of": UPDATED,
+            },
+            "recent_rain": {
+                "state": "current" if rain.get("available") is not False and rain_as_of else "unavailable",
+                "as_of": rain_as_of,
+            },
+        },
         "atlas_url": f"{base_url}/atlas" if base_url else "/atlas",
         "headline": {
             "england_july_rain_mm": 6.5,
@@ -91,6 +175,7 @@ def build_payload(base_url: str = "") -> dict:
                 "notably_low": 39,
                 "exceptionally_low": 19,
             },
+            "groundwater_exceptionally_low_sites": 2,
             "groundwater_context": "Seasonal recession continues; Tilshead in the Upper Hampshire Avon Chalk and Jackaments Bottom in the Cotswolds Oolite are exceptionally low, with several other chalk sites below normal or notably low.",
             "abstraction_restrictions": 1412,
             "agriculture_context": "Root-crop lifting is difficult on hard soils while irrigation restrictions limit water for softening ground; some restrictions have eased locally after higher river levels in Yorkshire and Lincolnshire.",
@@ -106,12 +191,13 @@ def build_payload(base_url: str = "") -> dict:
             {"location": "Somerset", "grass_growth_kg_dm_ha_day": 5},
             {"location": "Ayrshire", "grass_growth_kg_dm_ha_day": 50},
         ],
-        "recent_rain": recent_rain(base_url),
+        "recent_rain": rain,
         "caveats": {
             "oilseed_rape": "The recent 10-year OSR average is affected by cabbage stem flea beetle pressure and contraction of crop area. Do not attribute the 2026 yield uplift to drought alone.",
             "2026_yields": "Harvest figures are provisional and should be read alongside harvested percentage.",
         },
         "sources": SOURCES,
+        "source_details": SOURCE_DETAILS,
         "llm_hint": "Use this as the current AceWeather Crop Weather Atlas snapshot. Keep meteorological drought, hydrological drought and measured agricultural impact separate, and preserve the OSR/CSFB caveat.",
     }
 

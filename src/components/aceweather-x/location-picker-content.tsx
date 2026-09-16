@@ -33,6 +33,9 @@ export function LocationPickerContent({
 }: LocationPickerContentProps) {
   return (
     <div className="awx-location-picker">
+      <button className="awx-btn awx-btn-ghost awx-location-gps" type="button" onClick={onLocate} disabled={gpsButtonLabel === "Locating..."}>
+        <GpsIcon /><span>{gpsButtonLabel}</span>
+      </button>
       <form className="awx-location-form" onSubmit={onSubmit}>
         <label className="awx-search">
           <SearchIcon />
@@ -77,9 +80,6 @@ export function LocationPickerContent({
         </div>
       </section>
 
-      <button className="awx-btn awx-btn-ghost awx-location-gps" type="button" onClick={onLocate}>
-        <GpsIcon /><span>{gpsButtonLabel}</span>
-      </button>
     </div>
   );
 }

@@ -1,10 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
 import { SiteModeTabs } from "@/components/site-mode-tabs";
 
 import "./aceweather-x.css";
 import "./aceweather-x-cards.css";
+import "./typography.css";
+import "./design-tokens.css";
+import "./shared-surfaces.css";
+import "./weather-dashboard.css";
+
+const themeBootstrap = `try{const theme=localStorage.getItem("awx-theme");if(theme==="light"||theme==="dark")document.documentElement.dataset.theme=theme}catch{}`;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -47,11 +54,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-awx="1" data-theme="dark">
+    <html lang="en" data-awx="1" data-theme="dark" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
       </head>
       <body>
+        <Script id="aw-theme-bootstrap" strategy="beforeInteractive">{themeBootstrap}</Script>
         <PwaBootstrap />
         {children}
         <SiteModeTabs />

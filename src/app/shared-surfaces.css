@@ -1,0 +1,146 @@
+/* Shared component treatments. Layout stays responsive in each feature. */
+.awx-rain-summary,
+.awx-rain-chart,
+.awx-rain-radar-link {
+  background: var(--awx-surface);
+  border: 0;
+  border-radius: var(--awx-radius);
+  box-shadow: var(--awx-shadow);
+}
+.awx-rain-summary { padding: var(--awx-card-padding); }
+.awx-rain-experience { gap: var(--awx-card-gap); }
+.awx-card,
+.awx-overview-current,
+.awx-overview-section,
+.awx .awx-overview-rain,
+.awx-now-current,
+.awx-now-section {
+  background: var(--awx-surface);
+  border: 0;
+  border-radius: var(--awx-radius);
+  padding: var(--awx-card-padding);
+  box-shadow: var(--awx-shadow);
+}
+
+.awx-feed-list,
+.awx-overview-experience,
+.awx-now-experience {
+  gap: var(--awx-card-gap);
+}
+.awx-feed-list { padding: var(--awx-space-md); }
+.awx-feed, .awx-side, .awx-rail { border-color: transparent; }
+
+.awx-card-head h2,
+.awx-card-head .awx-kicker,
+.awx-overview-section-head > div > span,
+.awx-now-section-head > div > span {
+  font-size: var(--awx-type-heading);
+  font-weight: 600;
+  color: var(--awx-text);
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.awx-overview-eyebrow,
+.awx-card-head .awx-meta,
+.awx-metric .awx-k,
+.awx-overview-basics span,
+.awx-overview-decision > span,
+.awx-overview-hours span {
+  font-size: var(--awx-type-label);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--awx-muted);
+}
+
+.awx-overview-temp > span { font-weight: 500; }
+.awx-overview-basics,
+.awx-metrics {
+  background: transparent;
+  gap: var(--awx-space-sm);
+  border: 0;
+}
+.awx-overview-basics > div,
+.awx-metric {
+  background: var(--awx-surface-2);
+  border: 0;
+  border-radius: var(--awx-radius-sm);
+  padding: var(--awx-space-md);
+}
+.awx-metric .awx-v { font-size: var(--awx-type-value); font-weight: 600; }
+.awx-overview-decisions { gap: var(--awx-space-md); }
+.awx .awx-overview-decision,
+.awx .awx-overview-days button {
+  border-radius: var(--awx-radius-sm);
+  background: var(--awx-surface-2);
+  border: 0;
+  padding: var(--awx-space-md);
+}
+.awx-overview-hours {
+  border: 0;
+  background: transparent;
+  gap: var(--awx-space-sm);
+}
+.awx-overview-hours > div { border: 0; min-width: 62px; }
+.awx-overview-hours strong { font-size: 24px; font-weight: 600; }
+.awx-overview-hours small { font-size: 12px; }
+.awx-overview-rain-icon,
+.awx-tick { border-radius: var(--awx-control-radius); }
+.awx button:focus-visible,
+.awx input:focus-visible {
+  outline: 3px solid var(--awx-accent);
+  outline-offset: 3px;
+}
+
+/* Shared form treatment and keyboard access apply to every Weather tab. */
+.awx select:focus-visible,
+.awx summary:focus-visible,
+.awx a:focus-visible {
+  outline: 3px solid var(--awx-accent);
+  outline-offset: 3px;
+}
+.awx-field-experience,
+.awx-field-panel { display: grid; gap: var(--awx-card-gap); min-width: 0; }
+.awx-planner-controls { display: flex; flex-wrap: wrap; gap: var(--awx-space-md); }
+.awx-planner-controls label { display: grid; flex: 1 1 130px; gap: var(--awx-space-sm); color: var(--awx-muted); font-size: var(--awx-type-label); }
+.awx-planner-controls select {
+  width: 100%; min-height: var(--awx-control-height); padding: var(--awx-space-sm);
+  border: 1px solid var(--awx-line-2); border-radius: var(--awx-control-radius);
+  background: var(--awx-surface-2); color: var(--awx-text);
+}
+.awx-planner-results { display: grid; gap: var(--awx-space-sm); margin-top: var(--awx-space-lg); }
+.awx-planner-window { display: grid; gap: var(--awx-space-sm); padding: var(--awx-space-md); border-radius: var(--awx-radius-sm); background: var(--awx-surface-2); font-variant-numeric: tabular-nums; }
+.awx-planner-window span { color: var(--awx-muted); font-size: var(--awx-type-label); }
+.awx-location-picker { display: grid; gap: var(--awx-space-md); }
+.awx .awx-location-gps {
+  min-height: var(--awx-control-height);
+  background: var(--awx-accent-weak);
+  color: var(--awx-accent);
+  border-radius: var(--awx-control-radius);
+}
+
+@media (max-width: 540px) {
+  .awx-overview-decisions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .awx-overview-basics > div { padding: 12px 8px; }
+  .awx-overview-basics span { font-size: 11px; }
+  .awx-overview-hours { overflow-x: auto; grid-template-columns: repeat(6, minmax(62px, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .awx { box-sizing: border-box; }
+  .awx-feed { min-height: calc(100dvh - 98px - env(safe-area-inset-bottom)); }
+  .awx-feed-list { padding: 10px; }
+  .awx-card { gap: 12px; }
+  .awx-metric { padding: 10px; }
+  .awx-row-item { padding: 9px 10px; }
+  .awx-field-switch { min-height: 56px; padding: 8px 10px; }
+  .awx-planner-controls { gap: 10px; }
+  .awx-planner-results { margin-top: 12px; }
+  .awx-planner-window { padding: 10px; gap: 5px; }
+  .awx select, .awx input { font-size: 16px; }
+  .awx-mobile-top { background: var(--awx-glass-strong); }
+  .awx-mobile-nav { background: var(--awx-surface); }
+  .awx-mobile-nav button { color: var(--awx-muted); }
+  .awx .awx-disclosure { min-height: var(--awx-control-height); }
+  .weather-hours-scroll:focus-visible { outline: 2px solid var(--awx-accent); outline-offset: 2px; }
+}

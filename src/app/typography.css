@@ -1,0 +1,20 @@
+/* Site-wide font setting. Change this stack to update Weather, Atlas and controls. */
+:root {
+  --site-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+
+  /* Compatibility aliases: components must not define their own font stacks. */
+  --awx-font-ui: var(--site-font);
+  --awx-font-mono: var(--site-font);
+  --font-sans: var(--site-font);
+  --font-serif: var(--site-font);
+  --font-mono: var(--site-font);
+}
+
+html[data-awx] button,
+html[data-awx] input,
+html[data-awx] select,
+html[data-awx] textarea,
+html[data-awx] .maplibregl-map,
+html[data-awx] .maplibregl-popup {
+  font-family: var(--site-font);
+}

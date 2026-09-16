@@ -5,6 +5,7 @@ const buildId =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: false,
   reactStrictMode: true,
   generateBuildId: async () => buildId,
   env: {

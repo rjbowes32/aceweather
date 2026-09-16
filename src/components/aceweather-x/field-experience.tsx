@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { WindUnit } from "@/lib/aceweather/format";
 import { DiseaseCard, SeasonCard, SoilWaterCard, SprayCard } from "./cards";
+import { WorkWindowPlanner } from "./work-window-planner";
 
 type FieldSection = "spray" | "disease" | "soil" | "season";
 
@@ -48,7 +49,7 @@ export function FieldExperience({ model, windUnit }: Props) {
         {section === "spray" ? <SprayCard model={model} windUnit={windUnit} /> : null}
         {section === "disease" ? <DiseaseCard model={model} /> : null}
         {section === "soil" ? <SoilWaterCard model={model} /> : null}
-        {section === "season" ? <SeasonCard model={model} /> : null}
+        {section === "season" ? <><WorkWindowPlanner model={model} /><SeasonCard model={model} /></> : null}
       </div>
     </section>
   );

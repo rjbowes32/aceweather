@@ -204,6 +204,7 @@ export function buildModel(raw) {
   // ---------- HOURLY OUTLOOK (rest of today, into tomorrow AM if late) ----------
   const AP = h.apparent_temperature || [];
   const mkHour = (i) => ({
+    condition: weatherCondition(h.weather_code?.[i], h.is_day?.[i] ?? 1),
     label: h.time[i].slice(11, 16), dateKey: h.time[i].slice(0, 10), weekday: weekdayShort(h.time[i]),
     temp: h.temperature_2m[i], feels: AP[i], wind: h.wind_speed_10m[i], gust: h.wind_gusts_10m[i],
     precip: h.precipitation[i] ?? 0, prob: h.precipitation_probability?.[i] ?? 0,
@@ -243,7 +244,13 @@ export function buildModel(raw) {
   }
 
   const agro = buildAgronomy(h, d, ni, di, cur);
-  return { obs, todayKey, now, trend, rain, calendar, calendarOffset, todayHours, sun, nextRain, agronomy: { access, fungal, frost, ...agro }, soil, alerts };
+  const planning = {
+    timezone: raw.timezone || "UTC",
+    time: h.time.slice(ni, ni + 73),
+    precipitation: h.precipitation?.slice(ni, ni + 73),
+    wind_gusts_10m: h.wind_gusts_10m?.slice(ni, ni + 73),
+  };
+  return { obs, todayKey, now, trend, rain, calendar, calendarOffset, todayHours, sun, nextRain, planning, agronomy: { access, fungal, frost, ...agro }, soil, alerts };
 }
 
 export type AwModel = ReturnType<typeof buildModel>;

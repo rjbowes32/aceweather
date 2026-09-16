@@ -25,9 +25,9 @@
 
   --radius-sm:    6px;
 
-  --font-serif:   var(--font-jakarta), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-sans:    var(--font-jakarta), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono:    var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --font-serif: var(--site-font);
+  --font-sans: var(--site-font);
+  --font-mono: var(--site-font);
 }
 
 *, *::before, *::after { box-sizing: border-box; }

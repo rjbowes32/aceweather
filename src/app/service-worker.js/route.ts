@@ -12,7 +12,7 @@ const BUILD_ID =
 const SW_SOURCE = `
 const SW_VERSION = ${JSON.stringify(BUILD_ID)};
 const STATIC_CACHE = "aw-static-" + SW_VERSION;
-const DATA_CACHE = "aw-data-v1";
+const DATA_CACHE = "aw-data-v2";
 const APP_SHELL = [
   "/",
   "/offline.html",
@@ -42,6 +42,7 @@ self.addEventListener("activate", (event) => {
     const keys = await caches.keys();
     await Promise.all(keys.map((key) => {
       if (key.startsWith("aw-static-") && key !== STATIC_CACHE) return caches.delete(key);
+      if (key.startsWith("aw-data-") && key !== DATA_CACHE) return caches.delete(key);
       return null;
     }));
     await self.clients.claim();
@@ -72,6 +73,11 @@ function isDataRequest(url) {
   if (url.hostname === "geocoding-api.open-meteo.com") return true;
   if (url.hostname === "met-office-radar-obs-data.s3.eu-west-2.amazonaws.com") return true;
   return false;
+}
+
+function isTrustCriticalDataRequest(url) {
+  if (url.origin !== self.location.origin) return false;
+  return url.pathname === "/api/atlas" || url.pathname === "/api/cropdynamics";
 }
 
 function isMapTileRequest(url) {
@@ -168,12 +174,39 @@ async function networkFirst(request) {
   }
 }
 
+async function networkFirstData(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const response = await fetch(request);
+    if (!response.ok) return response;
+    const headers = new Headers(response.headers);
+    headers.set("x-aw-cached-at", new Date().toISOString());
+    headers.set("x-aw-cache-source", "network");
+    const body = await response.clone().blob();
+    const stamped = new Response(body, { status: response.status, statusText: response.statusText, headers });
+    cache.put(request, stamped.clone()).catch(() => {});
+    trimCache(cacheName, DATA_MAX_ENTRIES).catch(() => {});
+    return stamped;
+  } catch (err) {
+    const cached = await cache.match(request);
+    if (!cached) throw err;
+    const headers = new Headers(cached.headers);
+    headers.set("x-aw-cache-source", "cache");
+    const body = await cached.clone().blob();
+    return new Response(body, { status: cached.status, statusText: cached.statusText, headers });
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   let url;
   try { url = new URL(request.url); } catch { return; }
 
+  if (isTrustCriticalDataRequest(url)) {
+    event.respondWith(networkFirstData(request, DATA_CACHE));
+    return;
+  }
   if (isDataRequest(url)) {
     event.respondWith(staleWhileRevalidate(request, DATA_CACHE));
     return;
