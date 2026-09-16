@@ -8,7 +8,7 @@ import lib
 from helpers import send_json, send_text
 
 
-UPDATED = "2026-08-28"
+UPDATED = "2026-09-11"
 
 CROPS = [
     {"crop": "wheat", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -13.9, "harvested_pct": 94},
@@ -20,7 +20,7 @@ CROPS = [
 
 SOURCES = {
     "ahdb_harvest": "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress",
-    "environment_agency_drought": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-21-to-27-august-2026",
+    "environment_agency_drought": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-4-to-10-september-2026",
     "met_office_climate": "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series",
     "ahdb_wheat_rl": "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists",
     "ahdb_forage": "https://ahdb.org.uk/knowledge-library/forage-for-knowledge",
@@ -156,10 +156,12 @@ def build_payload(base_url: str = "") -> dict:
             "england_july_rain_mm": 6.5,
             "england_july_rain_context": "driest July on record",
             "east_anglia_mar_may_rain_mm": 44.8,
-            "england_august_rain_pct_lta": 34,
-            "england_august_rain_to_date": "25 August 2026",
-            "reservoir_storage_pct": 59.8,
-            "reservoir_context": "18.2% below average for the time of year; nine major reservoirs exceptionally low",
+            "england_august_rain_pct_lta": 78,
+            "england_august_rain_to_date": "31 August 2026",
+            "england_september_rain_pct_lta": 33,
+            "england_september_rain_to_date": "8 September 2026",
+            "reservoir_storage_pct": 56.9,
+            "reservoir_context": "19.7% below average for the time of year; 12 reservoirs or reservoir groups below 50% full and eight exceptionally low",
             "wheat_yield_t_ha": 6.8,
             "wheat_vs_10y_pct": -13.9,
         },
@@ -169,23 +171,24 @@ def build_payload(base_url: str = "") -> dict:
             "hydrological": {"status": "serious"},
             "measured_yield_impact": {"status": "mixed"},
             "england_area_pct": 71,
-            "river_flows_below_normal_or_lower_pct": 93,
+            "river_flows_below_normal_or_lower_pct": 33,
             "river_flow_breakdown_pct": {
-                "below_normal": 35,
-                "notably_low": 39,
-                "exceptionally_low": 19,
+                "below_normal": 20,
+                "notably_low": 13,
+                "exceptionally_low": 0,
             },
             "groundwater_exceptionally_low_sites": 2,
-            "groundwater_context": "Seasonal recession continues; Tilshead in the Upper Hampshire Avon Chalk and Jackaments Bottom in the Cotswolds Oolite are exceptionally low, with several other chalk sites below normal or notably low.",
-            "abstraction_restrictions": 1412,
-            "agriculture_context": "Root-crop lifting is difficult on hard soils while irrigation restrictions limit water for softening ground; some restrictions have eased locally after higher river levels in Yorkshire and Lincolnshire.",
+            "groundwater_context": "Groundwater levels continue their seasonal recession. Tilshead in the Upper Hampshire Avon Chalk and Jackaments Bottom in the Cotswolds Oolite are exceptionally low; four chalk sites in the Wessex Downs, Yorkshire Wolds, and North and South Downs are notably low.",
+            "abstraction_restrictions": 549,
+            "voluntary_abstraction_restrictions": 1094,
+            "agriculture_context": "Recent rainfall and the end of peak irrigation have eased some drought pressure, but hard soils are still challenging root-crop lifting where water availability is restricted. There are 549 formal abstraction-licence restrictions and 1,094 voluntary 50% restrictions across Thames, Wye and Severn catchments. Fodder availability for winter livestock feeding and the ability to refill farm reservoirs remain concerns.",
         },
         "crops": CROPS,
         "wheat_genetics": {
             "benchmark": "AHDB Recommended List treated controls",
-            "2026_t_ha": 9.83,
-            "five_year_mean_t_ha": 11.05,
-            "anomaly_pct": -11.0,
+            "2026_t_ha": 9.56,
+            "five_year_mean_t_ha": 10.99,
+            "anomaly_pct": -13.0,
         },
         "forage": [
             {"location": "Somerset", "grass_growth_kg_dm_ha_day": 5},
@@ -213,6 +216,7 @@ def text_payload(payload: dict) -> str:
         f"England July rain: {h['england_july_rain_mm']} mm — {h['england_july_rain_context']}",
         f"East Anglia Mar–May rain: {h['east_anglia_mar_may_rain_mm']} mm",
         f"England August rain: {h['england_august_rain_pct_lta']}% of LTA — to {h['england_august_rain_to_date']}",
+        f"England September rain: {h['england_september_rain_pct_lta']}% of LTA — to {h['england_september_rain_to_date']}",
         f"Reservoir storage: {h['reservoir_storage_pct']}% — {h['reservoir_context']}",
         f"Wheat: {h['wheat_yield_t_ha']} t/ha ({h['wheat_vs_10y_pct']}% vs 10-y avg)",
         "",
@@ -224,7 +228,8 @@ def text_payload(payload: dict) -> str:
         f"- England in drought: {drought['england_area_pct']}%",
         f"- River flows below normal or lower: {drought['river_flows_below_normal_or_lower_pct']}%",
         f"- Groundwater: {drought['groundwater_context']}",
-        f"- Abstraction licence restrictions: {drought['abstraction_restrictions']:,}",
+        f"- Formal abstraction licence restrictions: {drought['abstraction_restrictions']:,}",
+        f"- Voluntary abstraction restrictions: {drought['voluntary_abstraction_restrictions']:,}",
         f"- Agriculture: {drought['agriculture_context']}",
         "",
         "Crops:",
