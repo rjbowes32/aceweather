@@ -8,7 +8,7 @@ import lib
 from helpers import send_json, send_text
 
 
-UPDATED = "2026-09-11"
+UPDATED = "2026-09-16"
 
 CROPS = [
     {"crop": "wheat", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -13.9, "harvested_pct": 94},
@@ -21,6 +21,7 @@ CROPS = [
 SOURCES = {
     "ahdb_harvest": "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress",
     "environment_agency_drought": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-4-to-10-september-2026",
+    "environment_agency_outlook": "https://www.gov.uk/government/news/government-environment-agency-and-water-companies-step-up-efforts-to-prevent-england-remaining-in-drought-by-next-spring",
     "met_office_climate": "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series",
     "ahdb_wheat_rl": "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists",
     "ahdb_forage": "https://ahdb.org.uk/knowledge-library/forage-for-knowledge",
@@ -30,6 +31,7 @@ SOURCES = {
 SOURCE_LABELS = {
     "ahdb_harvest": "AHDB GB Harvest Progress",
     "environment_agency_drought": "Environment Agency dry weather and drought reports",
+    "environment_agency_outlook": "Environment Agency drought recovery outlook",
     "met_office_climate": "Met Office UK climate time series",
     "ahdb_wheat_rl": "AHDB Winter Wheat Recommended List",
     "ahdb_forage": "AHDB Forage for Knowledge",
@@ -49,6 +51,13 @@ SOURCE_DETAILS = [
         "label": SOURCE_LABELS["environment_agency_drought"],
         "url": SOURCES["environment_agency_drought"],
         "licence": "Open Government Licence v3.0",
+        "observed_at": "2026-09-11",
+    },
+    {
+        "key": "environment_agency_outlook",
+        "label": SOURCE_LABELS["environment_agency_outlook"],
+        "url": SOURCES["environment_agency_outlook"],
+        "licence": "Open Government Licence v3.0",
         "observed_at": UPDATED,
     },
     {
@@ -63,7 +72,7 @@ SOURCE_DETAILS = [
         "label": SOURCE_LABELS["ahdb_wheat_rl"],
         "url": SOURCES["ahdb_wheat_rl"],
         "licence": "AHDB website terms",
-        "observed_at": "2026-08-26",
+        "observed_at": "2026-09-03",
     },
     {
         "key": "ahdb_forage",
@@ -162,6 +171,8 @@ def build_payload(base_url: str = "") -> dict:
             "england_september_rain_to_date": "8 September 2026",
             "reservoir_storage_pct": 56.9,
             "reservoir_context": "19.7% below average for the time of year; 12 reservoirs or reservoir groups below 50% full and eight exceptionally low",
+            "recovery_rainfall_pct_lta": 120,
+            "recovery_period": "September 2026 to March 2027",
             "wheat_yield_t_ha": 6.8,
             "wheat_vs_10y_pct": -13.9,
         },
@@ -182,6 +193,14 @@ def build_payload(base_url: str = "") -> dict:
             "abstraction_restrictions": 549,
             "voluntary_abstraction_restrictions": 1094,
             "agriculture_context": "Recent rainfall and the end of peak irrigation have eased some drought pressure, but hard soils are still challenging root-crop lifting where water availability is restricted. There are 549 formal abstraction-licence restrictions and 1,094 voluntary 50% restrictions across Thames, Wye and Severn catchments. Fodder availability for winter livestock feeding and the ability to refill farm reservoirs remain concerns.",
+            "recovery_outlook": {
+                "rainfall_needed_pct_lta": 120,
+                "period": "September 2026 to March 2027",
+                "most_likely_april_drought_areas": ["Devon & Cornwall", "East Anglia"],
+                "dry_scenario_probability_pct": 25,
+                "severe_drought_probability_pct": 1,
+                "context": "Environment Agency modelling indicates 120% of typical rainfall over the seven months from September to March is needed for all areas to exit drought. Under the most likely scenario, Devon & Cornwall and East Anglia are expected to remain in drought at the start of April 2027.",
+            },
         },
         "crops": CROPS,
         "wheat_genetics": {
@@ -208,6 +227,7 @@ def build_payload(base_url: str = "") -> dict:
 def text_payload(payload: dict) -> str:
     h = payload["headline"]
     drought = payload["drought"]
+    outlook = drought["recovery_outlook"]
     lines = [
         "UK Crop Weather Atlas — 2026",
         f"Updated: {payload['updated']} | Status: {payload['status']}",
@@ -231,6 +251,12 @@ def text_payload(payload: dict) -> str:
         f"- Formal abstraction licence restrictions: {drought['abstraction_restrictions']:,}",
         f"- Voluntary abstraction restrictions: {drought['voluntary_abstraction_restrictions']:,}",
         f"- Agriculture: {drought['agriculture_context']}",
+        "",
+        "Drought recovery outlook:",
+        f"- Rainfall needed for all areas to exit drought: {outlook['rainfall_needed_pct_lta']}% of typical rainfall ({outlook['period']})",
+        f"- Most likely start-April 2027 drought areas: {', '.join(outlook['most_likely_april_drought_areas'])}",
+        f"- Dry scenario likelihood: about {outlook['dry_scenario_probability_pct']}%",
+        f"- Severe drought risk in coming months: about {outlook['severe_drought_probability_pct']}%",
         "",
         "Crops:",
     ]
