@@ -182,6 +182,7 @@ export function AtlasExperience() {
         <div><span>Low river sites</span><strong>{payload.drought.river_flows_below_normal_or_lower_pct}%</strong></div>
         <div><span>Restrictions</span><strong>{payload.drought.abstraction_restrictions.toLocaleString("en-GB")}</strong></div>
         <div><span>Groundwater</span><strong>{payload.drought.groundwater_exceptionally_low_sites} exceptional</strong></div>
+        <div><span>Recovery rain</span><strong>{payload.headline.recovery_rainfall_pct_lta}% LTA</strong></div>
       </section>
 
       <section className={styles.mainGrid}>
@@ -221,6 +222,7 @@ export function AtlasExperience() {
         <summary>Details</summary>
         <div className={styles.detailBody}>
           <div className={styles.caveats}>
+            <p>{payload.drought.recovery_outlook.context}</p>
             <p>{payload.caveats["2026_yields"]}</p>
             <p>{payload.caveats.oilseed_rape}</p>
           </div>
