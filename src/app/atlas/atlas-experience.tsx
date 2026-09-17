@@ -164,7 +164,7 @@ export function AtlasExperience() {
           <div><span>July rain</span><strong className={styles.negative}>{payload.headline.england_july_rain_mm}<small> mm</small></strong></div>
           <div><span>Wheat</span><strong className={styles.negative}>{payload.headline.wheat_yield_t_ha}<small> t/ha</small></strong></div>
           <div><span>Reservoirs</span><strong>{payload.headline.reservoir_storage_pct}<small>%</small></strong></div>
-          <div><span>August rain</span><strong className={styles.negative}>{payload.headline.england_august_rain_pct_lta}<small>% LTA</small></strong></div>
+          <div><span>Recovery rain</span><strong>{payload.headline.recovery_rainfall_pct_lta}<small>% LTA</small></strong></div>
         </div>
       </section>
 
@@ -182,7 +182,6 @@ export function AtlasExperience() {
         <div><span>Low river sites</span><strong>{payload.drought.river_flows_below_normal_or_lower_pct}%</strong></div>
         <div><span>Restrictions</span><strong>{payload.drought.abstraction_restrictions.toLocaleString("en-GB")}</strong></div>
         <div><span>Groundwater</span><strong>{payload.drought.groundwater_exceptionally_low_sites} exceptional</strong></div>
-        <div><span>Recovery rain</span><strong>{payload.headline.recovery_rainfall_pct_lta}% LTA</strong></div>
       </section>
 
       <section className={styles.mainGrid}>
