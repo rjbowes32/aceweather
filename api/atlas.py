@@ -8,7 +8,7 @@ import lib
 from helpers import send_json, send_text
 
 
-UPDATED = "2026-09-16"
+UPDATED = "2026-09-18"
 
 CROPS = [
     {"crop": "wheat", "yield_t_ha": 6.8, "ten_year_avg_t_ha": 7.9, "anomaly_pct": -13.9, "harvested_pct": 94},
@@ -20,7 +20,7 @@ CROPS = [
 
 SOURCES = {
     "ahdb_harvest": "https://ahdb.org.uk/cereals-oilseeds/gb-harvest-progress",
-    "environment_agency_drought": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-4-to-10-september-2026",
+    "environment_agency_drought": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-11-to-17-september-2026",
     "environment_agency_outlook": "https://www.gov.uk/government/news/government-environment-agency-and-water-companies-step-up-efforts-to-prevent-england-remaining-in-drought-by-next-spring",
     "met_office_climate": "https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-temperature-rainfall-and-sunshine-time-series",
     "ahdb_wheat_rl": "https://ahdb.org.uk/knowledge-library/winter-wheat-recommended-and-candidate-lists",
@@ -51,14 +51,14 @@ SOURCE_DETAILS = [
         "label": SOURCE_LABELS["environment_agency_drought"],
         "url": SOURCES["environment_agency_drought"],
         "licence": "Open Government Licence v3.0",
-        "observed_at": "2026-09-11",
+        "observed_at": "2026-09-18",
     },
     {
         "key": "environment_agency_outlook",
         "label": SOURCE_LABELS["environment_agency_outlook"],
         "url": SOURCES["environment_agency_outlook"],
         "licence": "Open Government Licence v3.0",
-        "observed_at": UPDATED,
+        "observed_at": "2026-09-16",
     },
     {
         "key": "met_office_climate",
@@ -167,10 +167,10 @@ def build_payload(base_url: str = "") -> dict:
             "east_anglia_mar_may_rain_mm": 44.8,
             "england_august_rain_pct_lta": 78,
             "england_august_rain_to_date": "31 August 2026",
-            "england_september_rain_pct_lta": 33,
-            "england_september_rain_to_date": "8 September 2026",
-            "reservoir_storage_pct": 56.9,
-            "reservoir_context": "19.7% below average for the time of year; 12 reservoirs or reservoir groups below 50% full and eight exceptionally low",
+            "england_september_rain_pct_lta": 48,
+            "england_september_rain_to_date": "17 September 2026",
+            "reservoir_storage_pct": 56.1,
+            "reservoir_context": "19.7% below average for the time of year; 13 reservoirs or reservoir groups below 50% full and six exceptionally low",
             "recovery_rainfall_pct_lta": 120,
             "recovery_period": "September 2026 to March 2027",
             "wheat_yield_t_ha": 6.8,
@@ -182,17 +182,17 @@ def build_payload(base_url: str = "") -> dict:
             "hydrological": {"status": "serious"},
             "measured_yield_impact": {"status": "mixed"},
             "england_area_pct": 71,
-            "river_flows_below_normal_or_lower_pct": 33,
+            "river_flows_below_normal_or_lower_pct": 47,
             "river_flow_breakdown_pct": {
-                "below_normal": 20,
-                "notably_low": 13,
+                "below_normal": 31,
+                "notably_low": 16,
                 "exceptionally_low": 0,
             },
-            "groundwater_exceptionally_low_sites": 2,
-            "groundwater_context": "Groundwater levels continue their seasonal recession. Tilshead in the Upper Hampshire Avon Chalk and Jackaments Bottom in the Cotswolds Oolite are exceptionally low; four chalk sites in the Wessex Downs, Yorkshire Wolds, and North and South Downs are notably low.",
-            "abstraction_restrictions": 549,
+            "groundwater_exceptionally_low_sites": 1,
+            "groundwater_context": "Groundwater levels continue their seasonal decline. Tilshead in the Upper Hampshire Avon Chalk is exceptionally low; Jackaments Bottom in the Cotswolds Oolite is notably low, alongside four chalk sites in the Wessex Downs, Yorkshire Wolds, and North and South Downs.",
+            "abstraction_restrictions": 467,
             "voluntary_abstraction_restrictions": 1094,
-            "agriculture_context": "Recent rainfall and the end of peak irrigation have eased some drought pressure, but hard soils are still challenging root-crop lifting where water availability is restricted. There are 549 formal abstraction-licence restrictions and 1,094 voluntary 50% restrictions across Thames, Wye and Severn catchments. Fodder availability for winter livestock feeding and the ability to refill farm reservoirs remain concerns.",
+            "agriculture_context": "Recent rainfall and the end of peak irrigation have eased some drought pressure, but impacts remain regional. Cereal yields in the east and south-east were substantially affected by summer heat and drought. Some farm reservoirs and storage are reported at only 0% to 20% capacity, keeping winter water availability a concern. There are 467 formal abstraction-licence restrictions and 1,094 voluntary 50% restrictions across Thames, Wye and Severn catchments.",
             "recovery_outlook": {
                 "rainfall_needed_pct_lta": 120,
                 "period": "September 2026 to March 2027",
