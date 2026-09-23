@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
@@ -745,10 +746,10 @@ export function AceWeatherApp() {
                     <span>{label}</span>
                   </button>
                 ))}
-                <a href="/atlas" aria-label="Open Crop Weather Atlas">
+                <Link href="/atlas" aria-label="Open Crop Weather Atlas">
                   <NavIcon name="atlas" />
                   <span>Atlas</span>
-                </a>
+                </Link>
               </div>
               <EndpointDocs />
             </div>

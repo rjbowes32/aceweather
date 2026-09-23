@@ -4,11 +4,15 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:native": "cross-env ACEWEATHER_TARGET=native next build && cap sync",
     "start": "next start",
     "lint": "eslint .",
     "test:atlas": "node --test tests/atlas-contract.test.mjs && python3 -m unittest tests.test_atlas_api"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "h5wasm": "^0.10.3",
     "idb": "^8.0.3",
     "maplibre-gl": "^5.24.0",
@@ -18,9 +22,11 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.2.6",
     "typescript": "^5.9.3"

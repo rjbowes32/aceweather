@@ -1,0 +1,38 @@
+# Builds the Android test app in the cloud, so no Android Studio is needed.
+# Download it from the run's "Artifacts" section and install it on a phone.
+name: Android app
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "android/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.mjs"
+      - "capacitor.config.ts"
+      - ".github/workflows/android.yml"
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build:native
+      - run: ./gradlew assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aceweather-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk

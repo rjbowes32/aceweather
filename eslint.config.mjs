@@ -5,6 +5,9 @@ const config = [
   {
     ignores: [
       ".next/**",
+      "out/**",
+      "android/**",
+      "ios/**",
       ".claude/**",
       "node_modules/**",
       "static/**",

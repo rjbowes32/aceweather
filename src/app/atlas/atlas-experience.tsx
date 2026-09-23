@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RefreshIcon } from "@/components/aceweather-x/icons";
+import { apiUrl } from "@/lib/api-base";
 
 import { RainMap } from "./rain-map";
 import styles from "./atlas.module.css";
@@ -66,7 +67,7 @@ export function AtlasExperience() {
     setRefreshing(true);
     setRefreshFailed(false);
     try {
-      const response = await fetch("/api/atlas?schema=atlas.v1", { cache: "no-cache" });
+      const response = await fetch(apiUrl("/api/atlas?schema=atlas.v1"), { cache: "no-cache" });
       if (!response.ok) throw new Error(`Atlas request failed: ${response.status}`);
       const raw: unknown = await response.json();
       if (!isAtlasPayload(raw)) throw new Error("Atlas response does not match atlas.v1");

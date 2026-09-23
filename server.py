@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 from api_index import build_api_index
+from helpers import send_cors_headers
 import lib
 import snapshot_api
 from api import atlas as atlas_api
@@ -256,6 +257,7 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        send_cors_headers(self)
         self.end_headers()
         if not head_only:
             self.wfile.write(body)
@@ -266,6 +268,7 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        send_cors_headers(self)
         self.end_headers()
         if not head_only:
             self.wfile.write(body)
