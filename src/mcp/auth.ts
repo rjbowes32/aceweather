@@ -7,7 +7,6 @@ const digest = (value: string) => createHash("sha256").update(value).digest();
 /**
  * Public weather tools are open by default, like the public /api endpoints.
  * Set ACEWEATHER_MCP_TOKEN to require "Authorization: Bearer <token>" on every request.
- * Farm and field tools (AceAg) are not served here until OAuth is in place.
  */
 export function authorize(request: Request): Access {
   const expected = process.env.ACEWEATHER_MCP_TOKEN?.trim();
