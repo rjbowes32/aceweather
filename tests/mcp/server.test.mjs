@@ -33,7 +33,7 @@ test("tools/list exposes every Phase 2 tool as read-only with input and output s
   }
 });
 
-test("no farm or field data tool is reachable without the AceAg OAuth integration", async () => {
+test("no farm or field data tool is exposed", async () => {
   installFetch();
   const { body } = await rpc(handleMcpRequest, "tools/list");
   assert.equal(body.result.tools.some((t) => /farm|field/.test(t.name)), false);

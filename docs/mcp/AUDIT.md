@@ -67,12 +67,12 @@ Two connection resets seen during testing came from this session's own egress pr
 
 **Still recommended:** stop the production `/api/*` catch-all rewrite (`if (!process.env.VERCEL)`); add a `robots.txt`.
 
-**Licensing:** Open-Meteo's free API is for non-commercial use. AceWeather is a personal project, so the free tier fits. If AceAg's field weather becomes part of a paid service, that traffic is commercial and needs an Open-Meteo API key.
+**Licensing:** Open-Meteo's free API is for non-commercial use. AceWeather is a personal project, so the free tier fits.
 
 ## 3. Architecture
 
 ```
-ChatGPT · Claude · Claude Code · Cursor · MCP Inspector · (AceAg)
+ChatGPT · Claude · Claude Code · Cursor · MCP Inspector
    │  POST https://aceweather.app/mcp   Streamable HTTP, stateless, JSON responses
    ▼
 Next.js route  src/app/mcp/route.ts  (Node, same Vercel project, 30 s max)
@@ -89,7 +89,7 @@ Next.js route  src/app/mcp/route.ts  (Node, same Vercel project, 30 s max)
 
 **Why TypeScript calls Open-Meteo directly for forecasts and history.** Those Python helpers are thin fetches; the TS dashboard already has the same clients (`fetchForecast`, `fetchMultiModel`) and Phase 4 will reuse `buildAgronomy` from the same payload, so MCP results match the dashboard. Composite products with Python-only logic (search fallback, groups, Crop Dynamics, digest, Atlas) are called over HTTP so that logic stays in one place.
 
-**Security model.** Read-only tools only. Public weather tools are open, like the public `/api`. `ACEWEATHER_MCP_TOKEN` can lock the endpoint to a bearer token. No farm or field data is served (see Phase 6).
+**Security model.** Read-only tools only. Public weather tools are open, like the public `/api`. `ACEWEATHER_MCP_TOKEN` can lock the endpoint to a bearer token. No farm or field data is held or served.
 
 ## 4. Tool inventory
 
@@ -111,12 +111,13 @@ Next.js route  src/app/mcp/route.ts  (Node, same Vercel project, 30 s max)
 | get_pest_weather_risk | 4 | **needs a decision** | no pest model exists; only raw weather indicators could be offered |
 | get_atlas_report, get_atlas_insights, get_atlas_weather_drivers, compare_atlas_periods, get_atlas_capabilities | 5 | planned | `/api/atlas` (curated snapshot) — capabilities will say there are no Atlas disease/pest models and no Scout |
 | get_crop_dynamics_weather, get_crop_notes_weather, compare_crop_dynamics_seasons | 5 | planned | `/api/cropdynamics`, `/api/digest` unchanged |
-| get_field_weather | 6 | **needs a decision** | see below |
+| get_field_weather | — | dropped | not needed; pass the field's coordinates to any tool |
 
 ## 5. Plan
 
 1. **Phase 3 — historical intelligence.** Comparison against prior years and multi-year means from the archive; anomalies vs those means; records/extremes over the available span. Verify: fixtures with known means; a 30-year request over 10 years of data reports 10.
 2. **Phase 4 — agronomy.** Wrap the existing calculations without changing thresholds; each result carries method, inputs (measured vs modelled), limitations; GDD base made a parameter. Verify: parity tests against the dashboard functions on the same payload.
 3. **Phase 5 — Atlas and Crop Dynamics.** Call the Python endpoints; `/api/digest` untouched. Verify: existing digest and Atlas tests plus MCP output for the group.
-4. **Phase 6 — AceAg (approved).** Add `get_field_weather` to AceAg's existing connector (`supabase/functions/mcp`), which already signs users in through Supabase OAuth 2.1 and queries as the user under RLS. It resolves the field, then asks AceWeather for weather at the field's point. AceWeather never holds farm data or AceAg tokens, so it cannot bypass AceAg permissions. Verify: RLS tests that another farm's field is refused.
-5. **Phase 7 — deploy and verify.** Preview deploy, `node scripts/mcp-smoke.mjs <url>/mcp`, connect ChatGPT and Claude, add a Vercel firewall rate-limit rule on `/mcp`.
+4. **Deploy and verify (done 8 Oct 2026).** Live at `https://aceweather.app/mcp`; `node scripts/mcp-smoke.mjs https://aceweather.app/mcp` passes 13/13; connected in Claude. Optional: a Vercel firewall rate-limit rule on `/mcp`.
+
+AceAg integration (Phase 6) is dropped: AceWeather stays standalone.
