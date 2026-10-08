@@ -15,6 +15,7 @@ from api_index import build_api_index
 import lib
 import snapshot_api
 from api import atlas as atlas_api
+from api import groups as groups_api
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
@@ -65,6 +66,9 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/atlas":
             self._send_json(atlas_api.build_payload(self._request_base_url()), head_only=head_only)
+            return
+        if parsed.path == "/api/groups":
+            self._send_json(groups_api.build_groups_payload(), head_only=head_only)
             return
         if parsed.path == "/api/cropdynamics":
             self._handle_cropdynamics(parsed.query, head_only=head_only)

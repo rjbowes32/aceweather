@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
-from helpers import send_error, send_json
+from helpers import EDGE_CACHE, send_error, send_json
 
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
@@ -41,7 +41,7 @@ class handler(BaseHTTPRequestHandler):
                 history_days=history_days,
                 include_daily=include_daily,
             )
-            send_json(self, payload, head_only=head_only)
+            send_json(self, payload, head_only=head_only, cache_control=EDGE_CACHE)
         except ValueError as exc:
             send_error(self, HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError, KeyError) as exc:

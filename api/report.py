@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
 import periods
-from helpers import send_error, send_json, send_text
+from helpers import EDGE_CACHE, send_error, send_json, send_text
 
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
@@ -161,10 +161,10 @@ class handler(BaseHTTPRequestHandler):
 
             if format_value == "csv":
                 csv_body = lib.build_history_csv(payload)
-                send_text(self, csv_body, head_only=head_only, content_type="text/csv; charset=utf-8")
+                send_text(self, csv_body, head_only=head_only, content_type="text/csv; charset=utf-8", cache_control=EDGE_CACHE)
                 return
             if format_value == "json":
-                send_json(self, payload, head_only=head_only)
+                send_json(self, payload, head_only=head_only, cache_control=EDGE_CACHE)
                 return
 
             request_query_string = _build_request_query_string(params)
@@ -174,7 +174,7 @@ class handler(BaseHTTPRequestHandler):
                 period_label=period_label,
                 request_query_string=request_query_string,
             )
-            send_text(self, report_text, head_only=head_only)
+            send_text(self, report_text, head_only=head_only, cache_control=EDGE_CACHE)
 
         except LookupError as exc:
             send_error(self, HTTPStatus.NOT_FOUND, str(exc), head_only=head_only)

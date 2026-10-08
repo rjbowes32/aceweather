@@ -3,12 +3,16 @@ import { NextResponse } from "next/server";
 
 const APEX_HOST = "aceweather.app";
 const WWW_HOST = "www.aceweather.app";
+const MACHINE_PATHS = ["/api", "/mcp", "/llms.txt", "/openapi.json", "/report-api.md"];
+
+const isMachinePath = (pathname: string) =>
+  MACHINE_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
 export function middleware(request: NextRequest) {
   const host = request.headers.get("host");
   const { pathname, search } = request.nextUrl;
 
-  if (!host || pathname.startsWith("/api/")) {
+  if (!host || isMachinePath(pathname)) {
     return NextResponse.next();
   }
 
