@@ -90,7 +90,7 @@ Errors come back as tool errors: `{"error": {"code": "invalid_input" | "not_foun
 
 - **Default: public.** The tools serve the same public weather data as `/api`, so no sign-in is needed. This is what ChatGPT's and Claude's "no authentication" connector option expects.
 - **Locked mode:** set `ACEWEATHER_MCP_TOKEN` in Vercel. Every request then needs `Authorization: Bearer <token>`. Use it for server-to-server clients; ChatGPT and Claude connectors support only no-auth or OAuth, so they cannot use it.
-- **Farm and field data** is not served here. The plan (AUDIT.md, Phase 6) keeps it behind AceAg's own OAuth connector.
+- **Farm and field data** is not served here. AceAg's own OAuth connector has a `get_field_weather` tool: it finds the field under the user's AceAg permissions, then calls this server's `get_location_weather` or `get_weather_history` with only the field's centre point, rounded to about 100 m. AceWeather never sees farm names, field names or AceAg tokens. If you lock this server with `ACEWEATHER_MCP_TOKEN`, set the same value as `ACEWEATHER_MCP_TOKEN` on AceAg's `mcp` function.
 
 ## Deployment
 
