@@ -63,9 +63,11 @@ Two connection resets seen during testing came from this session's own egress pr
 
 **Conclusion.** The digest is reachable by automated clients; nothing blocks bots. Failures come from (1) Open-Meteo throttling or slowness turning into a 500 crash — **fixed**; (2) 5–7 s brief and 20 s full responses exceeding short fetcher budgets; (3) fetchers that will not follow redirects, or need the URL in prior context, failing on apex `/api`, `/llms.txt`, `/openapi.json` — **fixed** in `middleware.ts`; (4) browser clients blocked by missing CORS (unchanged for `/api`; `/mcp` sends CORS). MCP does not fix (1)–(2) on its own; caching does.
 
-**Recommended next (not done; needs approval):** add `Cache-Control: public, s-maxage=600, stale-while-revalidate=3600` to digest/cropdynamics/report so Vercel's edge serves repeats; stop the production `/api/*` catch-all rewrite (`if (!process.env.VERCEL)`); add a `robots.txt`.
+**Done since:** successful digest, cropdynamics and report responses now send `Cache-Control: public, s-maxage=600, stale-while-revalidate=600`, so Vercel's edge answers repeats for 10 minutes (at most 20 minutes old). Errors stay `no-store`.
 
-**Licensing:** Open-Meteo's free API is for non-commercial use. If AceWeather or AceAg is commercial, a paid Open-Meteo key (customer endpoints) is needed for both the Python API and the MCP server.
+**Still recommended:** stop the production `/api/*` catch-all rewrite (`if (!process.env.VERCEL)`); add a `robots.txt`.
+
+**Licensing:** Open-Meteo's free API is for non-commercial use. AceWeather is a personal project, so the free tier fits. If AceAg's field weather becomes part of a paid service, that traffic is commercial and needs an Open-Meteo API key.
 
 ## 3. Architecture
 
@@ -116,5 +118,5 @@ Next.js route  src/app/mcp/route.ts  (Node, same Vercel project, 30 s max)
 1. **Phase 3 — historical intelligence.** Comparison against prior years and multi-year means from the archive; anomalies vs those means; records/extremes over the available span. Verify: fixtures with known means; a 30-year request over 10 years of data reports 10.
 2. **Phase 4 — agronomy.** Wrap the existing calculations without changing thresholds; each result carries method, inputs (measured vs modelled), limitations; GDD base made a parameter. Verify: parity tests against the dashboard functions on the same payload.
 3. **Phase 5 — Atlas and Crop Dynamics.** Call the Python endpoints; `/api/digest` untouched. Verify: existing digest and Atlas tests plus MCP output for the group.
-4. **Phase 6 — AceAg.** Recommended: add `get_field_weather` to AceAg's existing connector (`supabase/functions/mcp`), which already signs users in through Supabase OAuth 2.1 and queries as the user under RLS. It resolves the field, then asks AceWeather for weather at the field's point. AceWeather never holds farm data or AceAg tokens, so it cannot bypass AceAg permissions. Verify: RLS tests that another farm's field is refused.
+4. **Phase 6 — AceAg (approved).** Add `get_field_weather` to AceAg's existing connector (`supabase/functions/mcp`), which already signs users in through Supabase OAuth 2.1 and queries as the user under RLS. It resolves the field, then asks AceWeather for weather at the field's point. AceWeather never holds farm data or AceAg tokens, so it cannot bypass AceAg permissions. Verify: RLS tests that another farm's field is refused.
 5. **Phase 7 — deploy and verify.** Preview deploy, `node scripts/mcp-smoke.mjs <url>/mcp`, connect ChatGPT and Claude, add a Vercel firewall rate-limit rule on `/mcp`.

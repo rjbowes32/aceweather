@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import lib
-from helpers import send_error, send_text
+from helpers import EDGE_CACHE, send_error, send_text
 
 
 def request_base_url(handler: BaseHTTPRequestHandler) -> str:
@@ -40,7 +40,7 @@ class handler(BaseHTTPRequestHandler):
                 history_days=history_days,
                 digest_format=digest_format,
             )
-            send_text(self, digest_text, head_only=head_only)
+            send_text(self, digest_text, head_only=head_only, cache_control=EDGE_CACHE)
         except ValueError as exc:
             send_error(self, HTTPStatus.BAD_REQUEST, str(exc), head_only=head_only)
         except LookupError as exc:
