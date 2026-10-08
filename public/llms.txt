@@ -43,6 +43,9 @@ Place search endpoint:
 Provider status endpoint:
 - GET https://aceweather.app/api/providers
 
+MCP server (Streamable HTTP, read-only tools for ChatGPT, Claude and other MCP clients):
+- https://aceweather.app/mcp
+
 Machine-readable API discovery:
 - GET https://aceweather.app/api
 - GET https://aceweather.app/openapi.json

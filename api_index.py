@@ -136,6 +136,12 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "description": "Returns a fast JSON Crop Dynamics summary for LLM fetching. Defaults to the last 29 historical days ending yesterday. Includes summary, rankings, confidence metadata, and compact per-location rain/high/low totals. Add include=daily for daily rows.",
             },
             {
+                "path": "/api/groups",
+                "method": "GET",
+                "responseFormat": "application/json",
+                "description": "Lists saved location groups (such as cropdynamics) with each location's coordinates and timezone.",
+            },
+            {
                 "path": "/api/onthisday",
                 "method": "GET",
                 "responseFormat": "application/json",

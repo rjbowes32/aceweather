@@ -40,6 +40,10 @@ NEXT_PUBLIC_ACEWEATHER_API_BASE=
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+## MCP Server
+
+AceWeather is also a remote MCP server at `https://aceweather.app/mcp` for ChatGPT, Claude and other MCP clients. See [docs/mcp/README.md](docs/mcp/README.md).
+
 ## Production API Notes
 
 The API endpoints are designed to answer both `GET` and `HEAD`, which helps LLM fetchers and uptime checks validate them before reading the full body.

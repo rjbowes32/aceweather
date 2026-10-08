@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import urllib.parse
@@ -11,6 +12,8 @@ import agronomy
 import observations
 import reports
 import weather_sources
+
+_log = logging.getLogger("aceweather")
 
 DEFAULT_PUBLIC_BASE_URL = os.getenv("ACEWEATHER_PUBLIC_BASE_URL", "https://aceweather.app")
 DEFAULT_DIGEST_HISTORY_DAYS = 7
