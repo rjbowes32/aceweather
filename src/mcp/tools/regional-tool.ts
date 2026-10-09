@@ -22,7 +22,7 @@ const rowSchema = z.object({
 type Row = z.infer<typeof rowSchema>;
 type Target = { id: string | null; label: string; resolve: () => Promise<ResolvedLocation> };
 
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   const worker = async () => {

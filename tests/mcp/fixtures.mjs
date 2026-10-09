@@ -115,7 +115,10 @@ export function installFetch({ missing = new Set(), overrides = [] } = {}) {
     if (url.host === "aceweather.test" && url.pathname === "/api/groups") return json(GROUPS);
     if (url.host === "aceweather.test" && url.pathname === "/api/search") return json(SEARCH[url.searchParams.get("query").toLowerCase()] ?? { results: [] });
     if (url.host === "aceweather.test" && url.pathname === "/api/providers") return json({ meteomaticsEnabled: false });
-    if (url.host === "archive-api.open-meteo.com") return json(archiveFixture(url.searchParams, missing));
+    if (url.host === "archive-api.open-meteo.com") {
+      const count = url.searchParams.get("latitude").split(",").length;
+      return json(count === 1 ? archiveFixture(url.searchParams, missing) : Array.from({ length: count }, () => archiveFixture(url.searchParams, missing)));
+    }
     if (url.pathname.endsWith("/static/meta.json")) return json({ last_run_initialisation_time: 1791439200, last_run_availability_time: 1791459959 });
     if (url.host === "api.open-meteo.com" && url.searchParams.get("models")?.includes(",")) return json(multiModelFixture(url.searchParams));
     if (url.host === "api.open-meteo.com") {
