@@ -8,6 +8,7 @@ const EXPECTED_TOOLS = [
   "search_locations", "get_saved_location_groups", "get_location_weather", "get_regional_weather",
   "get_current_weather", "get_weather_history", "get_weather_digest",
   "get_hourly_forecast", "get_daily_forecast", "get_extended_forecast", "compare_forecast_models", "get_forecast_confidence",
+  "get_historical_comparison", "get_crop_notes_weather",
 ];
 
 test("initialize advertises tools and usage instructions", async () => {

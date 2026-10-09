@@ -42,6 +42,8 @@ Every tool is read-only and returns one JSON envelope (also sent as text for cli
 | `get_extended_forecast` | location, `wind_unit`, `detail` | days 8–14 with lead times |
 | `compare_forecast_models` | location, `days` (1–7), `wind_unit` | ECMWF IFS, GFS, ICON, UKMO daily values, run times, per-day spread |
 | `get_forecast_confidence` | location, `days` (1–7) | high/medium/low for temperature, rain, wind and overall, with the method |
+| `get_historical_comparison` | location **or** `group`; `report_date`, `history_days` (1–31, default 14) **or** `start_date`/`end_date`; `baseline_years` (1–10, default 10) | ERA5 calendar-period statistics, per-metric completeness, yearly baselines, anomalies, regional comparisons and newsletter rows |
+| `get_crop_notes_weather` | `report_date`, `history_days` (1–31, default 14) | the same comparison for all seven Crop Dynamics saved locations over the previous ten years |
 
 Definitions used in summaries: rain day ≥ 0.2 mm; wet day ≥ 1 mm; dry spell = consecutive days < 0.2 mm; wet spell = consecutive days ≥ 1 mm; air frost = minimum < 0 °C. A missing day ends a spell and is never counted as zero rain.
 
@@ -165,3 +167,72 @@ Menu names change; OpenAI's help page "Connectors in ChatGPT" has the current st
 | Wrong place picked | Check `warnings` and `location.resolution.candidates`; pass coordinates or a saved location. |
 | Saved locations missing | `/mcp/health?deep=1` must report `aceweather_api: ok`; check `ACEWEATHER_API_BASE`. |
 | Logs | Vercel function logs: one JSON line per request (`http_request`) and per tool call (`tool_call`, `upstream_error`), with a hashed client id. |
+
+## Crop Notes and historical comparisons (MCP server 0.3.0)
+
+Call `get_crop_notes_weather {"report_date":"2026-10-09"}` for the requested
+newsletter. It selects **25 September–8 October 2026** and those same calendar
+dates in **2016–2025**, independently of when the report is regenerated.
+A future report date is refused. Historical custom windows end before today;
+comparison windows are limited to 31 days and baseline years to ten.
+
+The tools reuse saved groups from `/api/groups`, the existing archive adapter,
+cache, upstream error handling, timezone/date utilities and MCP envelope. No UI
+or existing Python REST endpoint changes are required. There are eleven batched
+archive requests for the default seven-location report (one per year), with at
+most four in flight. The MCP route allows 60 seconds for those bounded requests.
+
+The comparison pins `models=era5` throughout. Source documentation:
+[Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api).
+Air temperatures are at 2 m. Soil temperatures are the mean over the **0–7 cm
+layer**, not a reading at a single depth. Rainfall is `rain_sum`, excluding snow.
+Each current/yearly metric contains `value`, `complete`, `available_days`,
+`expected_days` and every `missing_dates` entry. Missing data is never zero-filled
+or replaced with IFS/forecast data. The recent archive can lag by five days or more.
+
+A baseline is the mean of the preceding N complete, equal-length calendar-period
+statistics, with the number of usable years reported separately for every metric.
+It is not a 30-year climate normal. February 29 is clamped in non-leap years;
+unequal window lengths are disclosed and excluded from anomalies. Full-period
+anomalies require a complete current metric and all N usable baseline years.
+Absolute anomalies are current minus baseline; rain percentage anomalies divide
+by the baseline and are null when it is zero. Calculations precede rounding.
+
+Regional rainfall, mean air and mean soil temperatures are equal-weight averages
+across all requested locations. Regional maximum/minimum temperatures are the
+extremes across those locations. A missing location is never silently dropped.
+`newsletter_rows` gives five metrics per location plus five regional rows, with
+`current`, `baseline_mean`, `baseline_years_available`, `anomaly`,
+`anomaly_percent`, units and a `complete` flag. Incomplete current values represent
+available days only; do not publish them as the full requested period.
+
+Verify an updated deployment and save newsletter data:
+
+```sh
+node scripts/mcp-crop-notes.mjs https://<updated-host>/mcp 2026-10-09 /tmp/crop-notes.json
+```
+
+## Tool availability in ChatGPT
+
+A registered/enabled plugin does not establish that an individual conversation
+received its MCP tools. Test the exact endpoint with the official SDK first:
+
+```sh
+node scripts/mcp-smoke.mjs https://aceweather.app/mcp
+```
+
+GET 405 is permitted by the
+[Streamable HTTP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
+when the server does not offer an unsolicited SSE stream. POST initialization,
+`notifications/initialized` (202, no body), `tools/list` and `tools/call` are the
+relevant tests. Do not change a working stateless transport merely to make GET
+return 200. Session IDs are optional and this server does not issue one.
+
+Use the exact discovered names: the historical tool is `get_weather_history`,
+not `get_historical_weather`. For the private plugin, select `@aceweather` in a
+new conversation and execute an actual tool call; registration alone is not a
+verification. See [OpenAI connection testing guidance](https://developers.openai.com/plugins/deploy/connect-chatgpt).
+If tools remain absent despite successful endpoint tests, capture the affected
+conversation, plugin version and failure time for host-side investigation.
+Do not report the affected ChatGPT integration as fixed until that conversation
+can discover and call the tools. See [VERIFICATION.md](VERIFICATION.md) for this audit.

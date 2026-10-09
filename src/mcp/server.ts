@@ -5,12 +5,15 @@ import { registerLocationTools } from "./tools/location-tools.ts";
 import { registerModelTools } from "./tools/model-tools.ts";
 import { registerObservedTools } from "./tools/observed-tools.ts";
 import { registerRegionalTool } from "./tools/regional-tool.ts";
+import { registerComparisonTools } from "./tools/comparison-tools.ts";
 
 const INSTRUCTIONS = `AceWeather weather intelligence (read-only). Every result carries location, period, units, sources, a classification (model_current, model_recent, forecast, reanalysis, calculated, reference or mixed), completeness and warnings.
 - Say whether figures are modelled, forecast or reanalysis; none are station or farm gauge readings.
 - Repeat location warnings to the user; ambiguous place names are flagged, never silently swapped.
 - Historical daily data ends yesterday and goes back to 1940; forecasts run 14 days; model comparison 7 days.
-- Use search_locations or get_saved_location_groups when a place is unclear.`;
+- Use search_locations or get_saved_location_groups when a place is unclear.
+- For equivalent-date historical baselines use get_historical_comparison; for Crop Dynamics newsletters use get_crop_notes_weather with the newsletter report_date.
+- Comparisons use ERA5 only. Never present partial totals as a complete period or invent anomalies when reanalysis days are missing.`;
 
 export function buildServer(): { server: McpServer; tools: string[] } {
   const server = new McpServer(
@@ -23,6 +26,7 @@ export function buildServer(): { server: McpServer; tools: string[] } {
     ...registerObservedTools(server),
     ...registerForecastTools(server),
     ...registerModelTools(server),
+    ...registerComparisonTools(server),
   ];
   return { server, tools };
 }
