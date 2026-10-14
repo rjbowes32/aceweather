@@ -97,3 +97,23 @@ export function meanBias(days: Array<DayErrors | undefined>, minDays: number): n
   for (const d of days) if (d && d.n) { n += d.n; sum += d.sum; count++; }
   return count >= minDays ? sum / n : null;
 }
+
+/**
+ * Blend of two fits, `frac` of the way from `a` to `b`: weights interpolated over both model sets (a model
+ * missing from one fit counts as weight 0 there) and renormalised; blend bias interpolated. Used to move
+ * smoothly between lead days instead of switching at each 24-hour boundary.
+ */
+export function interpolateFits(a: Fit | null, b: Fit | null, frac: number): Fit | null {
+  if (!a || frac <= 0) return a ?? b;
+  if (!b || frac >= 1) return b ?? a;
+  const models = [...new Set([...Object.keys(a.weights), ...Object.keys(b.weights)])];
+  const raw = Object.fromEntries(models.map((m) => [m, (1 - frac) * (a.weights[m] ?? 0) + frac * (b.weights[m] ?? 0)]));
+  const total = Object.values(raw).reduce((x, y) => x + y, 0) || 1;
+  const weights = Object.fromEntries(models.map((m) => [m, raw[m] / total]));
+  return {
+    ranking: [...models].sort((x, y) => weights[y] - weights[x]),
+    mae: {}, bias: {}, weights,
+    blendBias: (1 - frac) * a.blendBias + frac * b.blendBias,
+    trainingDays: Math.min(a.trainingDays, b.trainingDays),
+  };
+}

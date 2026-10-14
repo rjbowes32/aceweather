@@ -4,7 +4,7 @@ import { cached } from "./cache.ts";
 import { num, type Source } from "./envelope.ts";
 import type { ResolvedLocation } from "./locations.ts";
 import { inUk } from "./observations.ts";
-import { addError, apply, fit, type DayErrors, type Fit } from "./learning.ts";
+import { addError, apply, fit, interpolateFits, type DayErrors, type Fit } from "./learning.ts";
 import { asFit, chooseReference, type FitsFile } from "./learning-store.ts";
 import { fetchPreviousRuns, PREVIOUS_RUNS_SOURCE } from "./sources/previous-runs.ts";
 import { FORECAST_SOURCE, withTimezone } from "./sources/forecast.ts";
@@ -19,6 +19,11 @@ export const LEARN_MODELS = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "u
 /** ECMWF's AI model joins the blend from lead day 3: in the backtest it added 2-4% at days 3-5 and nothing at day 1. */
 export const AI_MODEL = "ecmwf_aifs025_single";
 export const AI_FROM_LEAD = 3;
+/**
+ * Day-7 archives have no Met Office or ICON forecasts (both stop at about seven days), so a day-7 fit covers
+ * only three models and switching to it caused a visible jump. Hours beyond six days reuse the day-6 mix.
+ */
+export const MAX_FIT_LEAD = 6;
 export const modelsFor = (lead: number) => (lead >= AI_FROM_LEAD ? [...LEARN_MODELS, AI_MODEL] : LEARN_MODELS);
 const ALL_MODELS = [...LEARN_MODELS, AI_MODEL];
 export const LEARN_LEADS = [1, 2, 3, 4, 5, 6, 7];
@@ -32,6 +37,7 @@ const SEARCH = { radiusKm: 80, maxHeightDiffM: 250, networks: ["ghcnh", "metar"]
 
 export const LEARNED_METHOD = [
   `Temperature and wind: the four models (ECMWF IFS, GFS, ICON, Met Office UM), plus ECMWF's AI model (AIFS) from day ${AI_FROM_LEAD}, weighted by their accuracy at the nearest reference station over the last ${WINDOW_DAYS} days (inverse mean squared error, fitted separately for each lead day 1-7), minus that blend's mean error over the same days.`,
+  `Weights and bias are interpolated between neighbouring lead days so the forecast changes smoothly hour by hour; beyond day ${MAX_FIT_LEAD} the day-${MAX_FIT_LEAD} mix is used, because the Met Office and ICON models have no day-7 archive.`,
   `The bias step is applied only when the station is within ${BIAS_MAX_DISTANCE_KM} km and ${BIAS_MAX_HEIGHT_DIFF_M} m of the location; otherwise the weighted blend is used as is.`,
   `Rainfall: the equal-weight mean of the same models (four, plus AIFS from day ${AI_FROM_LEAD}), with no bias shift.`,
   "Reference stations are Met Office stations (NOAA GHCNh archive), airport METARs or COSMOS-UK sites within 80 km and 250 m of height, ranked by distance plus 10 km per 100 m of height difference. Where none has 20 days of history, temperature and wind fall back to AceWeather's standard forecast.",
@@ -58,6 +64,24 @@ export const learnedDataSchema = z.object({
 export type LearnedData = z.infer<typeof learnedDataSchema>;
 
 type Fits = Map<number, { temperature: Fit | null; wind: Fit | null }>;
+
+
+/**
+ * Fit for an hour `position` days ahead (fractional), interpolated between the neighbouring lead days so the
+ * learned forecast changes smoothly through each 24-hour boundary. Up to one day ahead uses the day-1 fit.
+ */
+export function fitForPosition(fits: Fits, position: number): { temperature: Fit | null; wind: Fit | null } {
+  const p = Math.min(MAX_FIT_LEAD, Math.max(1, position));
+  const lo = Math.floor(p);
+  const hi = Math.min(MAX_FIT_LEAD, lo + 1);
+  const frac = hi === lo ? 0 : p - lo;
+  const a = fits.get(lo);
+  const b = fits.get(hi);
+  return {
+    temperature: interpolateFits(a?.temperature ?? null, b?.temperature ?? null, frac),
+    wind: interpolateFits(a?.wind ?? null, b?.wind ?? null, frac),
+  };
+}
 
 const DAILY_FITS_MAX_AGE_MS = 72 * HOUR;
 
@@ -193,16 +217,20 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
     live.time.forEach((t, i) => {
       const ms = Date.parse(`${t}:00Z`);
       if (ms < Math.floor(now / HOUR) * HOUR || ms >= endMs) return;
-      const lead = Math.min(7, Math.max(1, Math.ceil((ms - now) / DAY)));
+      const position = (ms - now) / DAY;
+      const lead = Math.min(7, Math.max(1, Math.ceil(position)));
       const models = modelsFor(lead);
-      const at = (variable: string) => Object.fromEntries(models.map((m) => [m, live.get(variable, m)[i]]));
       const standard = (variable: string) => live.get(variable, "best_match")[i];
-      const f = fits.get(lead);
+      const f = fitForPosition(fits, position);
       const strategy = biasOk ? "weighted_bias" : "weighted";
-      const temp = f?.temperature ? apply(strategy, f.temperature, at("temperature_2m"), standard("temperature_2m"), models) : standard("temperature_2m");
-      const windRaw = f?.wind ? apply(strategy, f.wind, at("wind_speed_10m"), standard("wind_speed_10m"), models) : standard("wind_speed_10m");
-      if (f?.temperature) usedFit.temperature = true;
-      if (f?.wind) usedFit.wind = true;
+      const blend = (fitted: Fit, variable: string) => {
+        const names = Object.keys(fitted.weights);
+        return apply(strategy, fitted, Object.fromEntries(names.map((m) => [m, live.get(variable, m)[i]])), standard(variable), names);
+      };
+      const temp = f.temperature ? blend(f.temperature, "temperature_2m") : standard("temperature_2m");
+      const windRaw = f.wind ? blend(f.wind, "wind_speed_10m") : standard("wind_speed_10m");
+      if (f.temperature) usedFit.temperature = true;
+      if (f.wind) usedFit.wind = true;
       const rains = models.map((m) => live.get("precipitation", m)[i]).filter(finite);
       const rain = rains.length >= 2 ? rains.reduce((a, b) => a + b, 0) / rains.length : standard("precipitation");
       hourly.push({

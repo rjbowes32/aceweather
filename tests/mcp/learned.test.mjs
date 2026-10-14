@@ -147,3 +147,25 @@ test("with a fresh daily fits file the forecast uses it and makes no learning re
     delete process.env.ACEWEATHER_LEARNED_FITS_FILE;
   }
 });
+
+test("the learned forecast has no jump at lead-day boundaries, including day 6 to 7", async () => {
+  const { fitForPosition, MAX_FIT_LEAD } = await import("../../src/mcp/learned.ts");
+  const { apply } = await import("../../src/mcp/learning.ts");
+  const fit = (weights, blendBias) => ({ ranking: Object.keys(weights), mae: {}, bias: {}, weights, blendBias, trainingDays: 50 });
+  const four = { ecmwf_ifs025: 0.25, gfs_seamless: 0.25, icon_seamless: 0.25, ukmo_seamless: 0.25 };
+  const five = { ecmwf_ifs025: 0.2, gfs_seamless: 0.2, icon_seamless: 0.2, ukmo_seamless: 0.2, ecmwf_aifs025_single: 0.2 };
+  const three = { ecmwf_ifs025: 1 / 3, gfs_seamless: 1 / 3, ecmwf_aifs025_single: 1 / 3 };
+  const fits = new Map([1, 2, 3, 4, 5, 6, 7].map((l) => [l, { temperature: fit(l < 3 ? four : l < 7 ? five : three, 0.1 * l), wind: null }]));
+  // The real case: the Met Office and ICON runs are 4 °C warmer than the rest near day 7.
+  const live = { ecmwf_ifs025: 10, gfs_seamless: 10, ecmwf_aifs025_single: 10, icon_seamless: 14, ukmo_seamless: 14 };
+  const at = (position) => {
+    const f = fitForPosition(fits, position).temperature;
+    return apply("weighted_bias", f, live, 12, Object.keys(f.weights));
+  };
+  assert.equal(MAX_FIT_LEAD, 6);
+  assert.ok(Math.abs(at(6.98) - at(7.02)) < 0.01, "day 7 reuses the day-6 mix instead of dropping two models");
+  for (const boundary of [1, 2, 3, 4, 5, 6]) assert.ok(Math.abs(at(boundary - 0.02) - at(boundary + 0.02)) < 0.1, `smooth through day ${boundary}`);
+  assert.equal(fitForPosition(fits, 0.3).temperature, fits.get(1).temperature, "the first day uses the day-1 fit");
+  const halfway = fitForPosition(fits, 2.5).temperature;
+  assert.ok(Math.abs(halfway.weights.ecmwf_aifs025_single - 0.1) < 1e-9, "the AI model ramps in between days 2 and 3");
+});

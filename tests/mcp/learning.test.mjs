@@ -45,3 +45,17 @@ test("current_bias removes today's forecast's own recent bias, never for rainfal
   assert.equal(apply("current_bias", null, {}, 3, ["a"], true, bias), 3);
   assert.equal(apply("current_bias", null, {}, 12, ["a"], false, null), 12);
 });
+
+test("interpolated fits move smoothly between lead days and renormalise across different model sets", async () => {
+  const { interpolateFits } = await import("../../src/mcp/learning.ts");
+  const a = { ranking: [], mae: {}, bias: {}, weights: { x: 0.5, y: 0.5 }, blendBias: 1, trainingDays: 40 };
+  const b = { ranking: [], mae: {}, bias: {}, weights: { x: 0.25, y: 0.25, z: 0.5 }, blendBias: 3, trainingDays: 30 };
+  const mid = interpolateFits(a, b, 0.5);
+  assert.deepEqual(mid.weights, { x: 0.375, y: 0.375, z: 0.25 });
+  assert.equal(mid.blendBias, 2);
+  assert.equal(mid.trainingDays, 30);
+  assert.equal(interpolateFits(a, b, 0), a);
+  assert.equal(interpolateFits(a, b, 1), b);
+  assert.equal(interpolateFits(null, b, 0.4), b);
+  assert.equal(interpolateFits(a, null, 0.4), a);
+});
