@@ -202,6 +202,8 @@ Menu names change; OpenAI's help page "Connectors in ChatGPT" has the current st
 
 `get_learned_forecast` reads per-station model weights from a daily job instead of computing them per request, when `ACEWEATHER_LEARNED_FITS_URL` (or `ACEWEATHER_LEARNED_FITS_FILE` locally) points at its output. The job also scores the learned forecast against the standard one every day. See [LEARNING-DAILY.md](LEARNING-DAILY.md).
 
+Bugs and their fixes are recorded in [BUG-LOG.md](BUG-LOG.md); the daily job opens `learning-health` issues automatically.
+
 ### Forecast verification
 
 `get_forecast_verification` scores ECMWF IFS, GFS, ICON, the Met Office UM and AceWeather's own forecast against real stations near a location, using Open-Meteo's archive of earlier model runs. It needs no storage. Method, sources and the first results are in [FORECAST-VERIFICATION.md](FORECAST-VERIFICATION.md).

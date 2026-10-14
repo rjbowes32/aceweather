@@ -164,7 +164,10 @@ async function processStation(state, item, bootstrap) {
   const { meta } = item;
   const st = state.stations[meta.id] ?? { meta, days: {} };
   st.meta = { ...st.meta, ...meta };
-  const pastDays = bootstrap ? WINDOW_DAYS + 2 : RECENT_DAYS;
+  // A full 60-day request only pays off when there are 60 days of observations to score it against;
+  // Met Office stations without a NOAA backfill build their history from daily MeteoGate data instead.
+  const canBackfill = meta.network !== "metoffice" || Boolean(meta.ghcnh_id);
+  const pastDays = bootstrap && canBackfill ? WINDOW_DAYS + 2 : RECENT_DAYS;
   const startMs = Date.parse(`${today}T00:00:00Z`) - pastDays * DAY;
   const endMs = Date.parse(`${today}T00:00:00Z`);
 
@@ -185,6 +188,7 @@ async function processStation(state, item, bootstrap) {
   const inWindow = (m) => new Map([...m].filter(([k]) => { const ms = Date.parse(`${k}:00Z`); return ms >= startMs && ms < endMs; }));
   obs = { t: inWindow(obs.t), w: inWindow(obs.w) };
   if (obs.t.size < 12) { state.stations[meta.id] = st; return { id: meta.id, skipped: `only ${obs.t.size} hours observed` }; }
+  if (bootstrap && !canBackfill) st.bootstrapped_at = new Date(now).toISOString();
 
   const variables = obs.w.size >= 12 ? ["temperature_2m", "wind_speed_10m"] : ["temperature_2m"];
   const body = await getJson(previousRunsUrl(meta, pastDays, variables), { timeout: bootstrap ? 180_000 : 60_000 });
@@ -253,6 +257,10 @@ async function main() {
   const entry = { date: today, stations_fitted: fits.stations.length, recent_scores: fits.recent_scores };
   writeFileSync(scoresPath, JSON.stringify([...history.filter((h) => h.date !== today), entry].slice(-120), null, 1));
   const ok = results.filter((r) => r.days != null).length;
+  writeFileSync(join(OUT, "run.json"), JSON.stringify({
+    date: today, processed: results.length, updated: ok, skipped: results.filter((r) => r.skipped).length, failed: results.filter((r) => r.error).length,
+    requests: stats.requests, gave_up: stats.failures, errors: results.filter((r) => r.error).slice(0, 20).map((r) => ({ id: r.id, error: r.error })),
+  }, null, 1));
   log(`updated ${ok}, skipped ${results.filter((r) => r.skipped).length}, failed ${results.filter((r) => r.error).length}; ${fits.stations.length} stations have fits; ${stats.requests} requests (${stats.failures} gave up)`);
   for (const r of results.filter((r) => r.error || r.skipped).slice(0, 10)) log("  ", r.id, r.error ?? r.skipped);
   for (const [variable, byLead] of Object.entries(fits.recent_scores)) for (const [lead, s] of Object.entries(byLead)) log(`  last 30 days ${variable} day ${lead}: learned ${s.learned_mae.toFixed(2)} vs standard ${s.standard_mae.toFixed(2)} (${s.stations} stations, ${s.hours} hours)`);

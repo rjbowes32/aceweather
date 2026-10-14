@@ -17,6 +17,22 @@ Once a day, for every UK reference station:
 
 The dashboard loads its Open-Meteo forecast as before. In parallel it calls `GET /learned-forecast?lat=…&lon=…&tz=…` (`src/app/learned-forecast/route.ts`) and overlays the returned hourly temperature, wind and rain for the next seven days (`src/lib/aceweather/learned.ts`). Days containing learned hours get their max, min, rain total and peak wind recomputed. Feels-like temperature shifts with the air temperature, and a gust is never shown below the learned mean wind. Everything else stays as Open-Meteo's: current conditions, humidity, cloud, soil and rain probability. If the endpoint fails, the page simply keeps Open-Meteo's values. Responses are edge-cached for 15 minutes, and coordinates are rounded to about 1 km. The Data sources card names the reference station.
 
+## Health checks
+
+After each run, `scripts/learning/health.mjs` checks the output. Errors:
+
+- the weights file is missing or more than 26 hours old;
+- the number of fitted stations drops below 80% of the last week's best;
+- more than 10% of stations fail.
+
+Warnings:
+
+- more than five requests give up after retries;
+- over the last 30 days, the learned forecast is more than 2% worse than the standard forecast for any variable and lead day, once there are at least 500 scored hours;
+- a station's bias jumps between neighbouring lead days by more than 1.5 °C or 4 km/h plus 20% of the bias.
+
+Any problem opens a GitHub issue labelled `learning-health`, or comments on the open one. The issue closes automatically when every check passes. If the job itself crashes, the same issue records the failed run. Results are also published as `health.json` and `run.json` on the release. Confirmed bugs go in [BUG-LOG.md](BUG-LOG.md).
+
 ## Files
 
 | File | Size (12 stations / about 220 UK-wide) | Used by |
