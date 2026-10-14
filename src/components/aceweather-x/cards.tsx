@@ -1,5 +1,6 @@
 "use client";
 
+import type { LearnedMeta } from "@/lib/aceweather/learned";
 import { useEffect, useRef, useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { SeasonalContext } from "@/lib/aceweather/open-meteo";
@@ -272,12 +273,21 @@ export function SeasonalCard({ seasonal }: { seasonal: SeasonalContext | null })
   );
 }
 
-export function SourcesCard({ source, freshness }: { source: string; freshness: string }) {
+export function SourcesCard({ source, freshness, learned }: { source: string; freshness: string; learned: LearnedMeta | null }) {
   if (source === "refreshing") source = "loading";
+  const learnedParts = learned ? [learned.temperature && "temperature", learned.wind && "wind", learned.rain && "rain"].filter(Boolean).join(", ") : "";
+  const learnedValue = learned
+    ? learned.station && (learned.temperature || learned.wind)
+      ? `Learned · ${learned.station}${learned.distanceKm != null ? ` (${Math.round(learned.distanceKm)} km)` : ""}`
+      : "Model average"
+    : null;
   return (
     <Card section="about" tick="go" kicker="Data sources">
       <div className="awx-rows">
-        <div className="awx-row-item"><span className="awx-k">Forecast · current, hourly, daily, soil</span><span className="awx-v awx-v-go">Open-Meteo</span></div>
+        {learnedValue ? (
+          <div className="awx-row-item"><span className="awx-k">Forecast · {learnedParts}, next 7 days</span><span className="awx-v awx-v-go">{learnedValue}</span></div>
+        ) : null}
+        <div className="awx-row-item"><span className="awx-k">Forecast · {learnedValue ? "everything else" : "current, hourly, daily, soil"}</span><span className="awx-v awx-v-go">Open-Meteo</span></div>
         <div className="awx-row-item"><span className="awx-k">Rainfall radar</span><span className="awx-v awx-v-go">Met Office open data</span></div>
         <div className="awx-row-item"><span className="awx-k">Seasonal normals</span><span className="awx-v awx-v-go">Open-Meteo archive</span></div>
         <div className="awx-row-item"><span className="awx-k">Status</span><span className={"awx-v " + (source === "live" ? "awx-v-go" : "awx-v-warn")}>{source === "live" ? "Live" : source === "loading" ? "Fetching" : "Offline"} · {freshness}</span></div>

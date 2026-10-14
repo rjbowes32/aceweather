@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
+import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
 import { NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
@@ -221,6 +222,7 @@ function EndpointDocs({ rail = false }: { rail?: boolean }) {
 export function AceWeatherApp() {
   const [location, setLocation] = useState<AwLocation>(DEFAULT_LOCATION);
   const [raw, setRaw] = useState<ForecastResponse | null>(null);
+  const [learnedOverlay, setLearnedOverlay] = useState<LearnedOverlay | null>(null);
   const [rawCacheMode, setRawCacheMode] = useState<RequestCache | undefined>(undefined);
   const [seasonal, setSeasonal] = useState<SeasonalContext | null>(null);
   const [status, setStatus] = useState<"loading" | "refreshing" | "live" | "error">("loading");
@@ -328,6 +330,9 @@ export function AceWeatherApp() {
     fetchForecast(location, ctrl.signal, cacheMode)
       .then((data) => { setRaw(data); setRawCacheMode(cacheMode); setStatus("live"); })
       .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("error"); });
+    // The learned forecast arrives separately and is laid over temperature, wind and rain; if it fails the page keeps Open-Meteo's values.
+    setLearnedOverlay(null);
+    fetchLearned(location, ctrl.signal).then(setLearnedOverlay).catch(() => {});
     return () => ctrl.abort();
   }, [location, loadRequest]);
 
@@ -347,7 +352,8 @@ export function AceWeatherApp() {
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [query]);
 
-  const model = useMemo(() => (raw ? buildModel(raw) : null), [raw]);
+  const learned = useMemo(() => (raw ? applyLearned(raw, learnedOverlay) : null), [raw, learnedOverlay]);
+  const model = useMemo(() => (learned ? buildModel(learned.forecast) : null), [learned]);
   const freshness = model ? `${model.now.obsTime} ${location.tz?.includes("London") ? "BST" : ""}`.trim() : "—";
 
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
@@ -622,7 +628,7 @@ export function AceWeatherApp() {
               {view === "outlook" ? <CalendarCard model={model} unit={unit} windUnit={windUnit} /> : null}
               {view === "field" ? <FieldExperience model={model} windUnit={windUnit} /> : null}
               {view === "seasonal" ? <SeasonalCard seasonal={seasonal} /> : null}
-              {view === "about" ? <SourcesCard source={status} freshness={freshness} /> : null}
+              {view === "about" ? <SourcesCard source={status} freshness={freshness} learned={learned?.meta ?? null} /> : null}
             </>
           ) : (
             <article className="awx-card"><div className="awx-radar-status">{status === "error" ? "Could not reach Open-Meteo. Check your connection and retry." : "Loading live conditions…"}</div></article>

@@ -1,0 +1,282 @@
+[
+ {
+  "name": "Berwick-upon-Tweed",
+  "area": "north-east coast",
+  "latitude": 55.7687,
+  "longitude": -2.0054,
+  "nation": "England"
+ },
+ {
+  "name": "Longhirst",
+  "area": "Northumberland coastal plain",
+  "latitude": 55.1774,
+  "longitude": -1.6894,
+  "nation": "England"
+ },
+ {
+  "name": "Hexham",
+  "area": "Tyne valley",
+  "latitude": 54.9711,
+  "longitude": -2.101,
+  "nation": "England"
+ },
+ {
+  "name": "Alston",
+  "area": "North Pennines upland",
+  "latitude": 54.8108,
+  "longitude": -2.4386,
+  "nation": "England"
+ },
+ {
+  "name": "Carlisle",
+  "area": "Solway and lower Eden",
+  "latitude": 54.8925,
+  "longitude": -2.9329,
+  "nation": "England"
+ },
+ {
+  "name": "Penrith",
+  "area": "Eden valley",
+  "latitude": 54.6641,
+  "longitude": -2.7524,
+  "nation": "England"
+ },
+ {
+  "name": "Keswick",
+  "area": "Lake District fells",
+  "latitude": 54.6013,
+  "longitude": -3.1347,
+  "nation": "England"
+ },
+ {
+  "name": "Seascale",
+  "area": "west Cumbrian coast",
+  "latitude": 54.396,
+  "longitude": -3.4846,
+  "nation": "England"
+ },
+ {
+  "name": "Kendal",
+  "area": "south Cumbria",
+  "latitude": 54.328,
+  "longitude": -2.7463,
+  "nation": "England"
+ },
+ {
+  "name": "Garstang",
+  "area": "Fylde and Lancashire plain",
+  "latitude": 53.901,
+  "longitude": -2.774,
+  "nation": "England"
+ },
+ {
+  "name": "Settle",
+  "area": "Yorkshire Dales",
+  "latitude": 54.0689,
+  "longitude": -2.278,
+  "nation": "England"
+ },
+ {
+  "name": "Scotch Corner",
+  "area": "Tees lowland",
+  "latitude": 54.44158,
+  "longitude": -1.6658,
+  "nation": "England"
+ },
+ {
+  "name": "Boroughbridge",
+  "area": "Vale of York",
+  "latitude": 54.0895,
+  "longitude": -1.4011,
+  "nation": "England"
+ },
+ {
+  "name": "Pocklington",
+  "area": "Wolds edge",
+  "latitude": 53.93335,
+  "longitude": -0.78106,
+  "nation": "England"
+ },
+ {
+  "name": "Driffield",
+  "area": "Yorkshire Wolds",
+  "latitude": 54.006,
+  "longitude": -0.443,
+  "nation": "England"
+ },
+ {
+  "name": "Penzance",
+  "nation": "England",
+  "area": "west Cornwall",
+  "latitude": 50.12,
+  "longitude": -5.54
+ },
+ {
+  "name": "Crediton",
+  "nation": "England",
+  "area": "mid Devon",
+  "latitude": 50.79,
+  "longitude": -3.65
+ },
+ {
+  "name": "Taunton",
+  "nation": "England",
+  "area": "Somerset Levels",
+  "latitude": 51.02,
+  "longitude": -3.1
+ },
+ {
+  "name": "Salisbury",
+  "nation": "England",
+  "area": "Wiltshire chalk",
+  "latitude": 51.07,
+  "longitude": -1.8
+ },
+ {
+  "name": "Canterbury",
+  "nation": "England",
+  "area": "east Kent",
+  "latitude": 51.28,
+  "longitude": 1.08
+ },
+ {
+  "name": "Cambridge",
+  "nation": "England",
+  "area": "Cambridgeshire arable",
+  "latitude": 52.21,
+  "longitude": 0.12
+ },
+ {
+  "name": "Norwich",
+  "nation": "England",
+  "area": "Norfolk",
+  "latitude": 52.63,
+  "longitude": 1.3
+ },
+ {
+  "name": "Hereford",
+  "nation": "England",
+  "area": "Wye valley",
+  "latitude": 52.06,
+  "longitude": -2.72
+ },
+ {
+  "name": "Shrewsbury",
+  "nation": "England",
+  "area": "Shropshire plain",
+  "latitude": 52.71,
+  "longitude": -2.75
+ },
+ {
+  "name": "Lincoln",
+  "nation": "England",
+  "area": "Lincolnshire",
+  "latitude": 53.23,
+  "longitude": -0.54
+ },
+ {
+  "name": "Carmarthen",
+  "nation": "Wales",
+  "area": "south-west Wales",
+  "latitude": 51.86,
+  "longitude": -4.31
+ },
+ {
+  "name": "Aberystwyth",
+  "nation": "Wales",
+  "area": "Cardigan Bay",
+  "latitude": 52.41,
+  "longitude": -4.08
+ },
+ {
+  "name": "Brecon",
+  "nation": "Wales",
+  "area": "Brecon Beacons",
+  "latitude": 51.95,
+  "longitude": -3.39
+ },
+ {
+  "name": "Welshpool",
+  "nation": "Wales",
+  "area": "Severn valley",
+  "latitude": 52.66,
+  "longitude": -3.15
+ },
+ {
+  "name": "Llangefni",
+  "nation": "Wales",
+  "area": "Anglesey",
+  "latitude": 53.26,
+  "longitude": -4.31
+ },
+ {
+  "name": "Dumfries",
+  "nation": "Scotland",
+  "area": "Dumfries and Galloway",
+  "latitude": 55.07,
+  "longitude": -3.61
+ },
+ {
+  "name": "Kelso",
+  "nation": "Scotland",
+  "area": "Scottish Borders",
+  "latitude": 55.6,
+  "longitude": -2.43
+ },
+ {
+  "name": "Ayr",
+  "nation": "Scotland",
+  "area": "Ayrshire",
+  "latitude": 55.46,
+  "longitude": -4.63
+ },
+ {
+  "name": "Perth",
+  "nation": "Scotland",
+  "area": "Perthshire",
+  "latitude": 56.4,
+  "longitude": -3.43
+ },
+ {
+  "name": "Huntly",
+  "nation": "Scotland",
+  "area": "Aberdeenshire",
+  "latitude": 57.45,
+  "longitude": -2.79
+ },
+ {
+  "name": "Elgin",
+  "nation": "Scotland",
+  "area": "Moray",
+  "latitude": 57.65,
+  "longitude": -3.32
+ },
+ {
+  "name": "Fort William",
+  "nation": "Scotland",
+  "area": "west Highlands",
+  "latitude": 56.82,
+  "longitude": -5.11
+ },
+ {
+  "name": "Enniskillen",
+  "nation": "Northern Ireland",
+  "area": "Fermanagh",
+  "latitude": 54.34,
+  "longitude": -7.64
+ },
+ {
+  "name": "Armagh",
+  "nation": "Northern Ireland",
+  "area": "Armagh",
+  "latitude": 54.35,
+  "longitude": -6.65
+ },
+ {
+  "name": "Coleraine",
+  "nation": "Northern Ireland",
+  "area": "north coast",
+  "latitude": 55.13,
+  "longitude": -6.67
+ }
+]

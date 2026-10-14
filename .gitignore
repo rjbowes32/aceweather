@@ -37,3 +37,6 @@ Thumbs.db
 
 # Claude Code (local worktrees, plans, settings)
 .claude/
+
+# Backtest download cache
+.cache/

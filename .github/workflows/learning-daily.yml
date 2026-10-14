@@ -1,0 +1,50 @@
+# Daily learning job for get_learned_forecast (see docs/mcp/LEARNING-DAILY.md).
+# State and output live as assets on the "learning-data" release, not as commits, so this never triggers a deploy.
+name: Learning (daily)
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+    inputs:
+      max_bootstrap:
+        description: "New stations to backfill this run"
+        default: "60"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: learning-daily
+  cancel-in-progress: false
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OUT: .cache/learning
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Fetch previous state
+        run: |
+          mkdir -p "$OUT"
+          if gh release view learning-data >/dev/null 2>&1; then
+            gh release download learning-data --pattern 'state.json.gz' --pattern 'scores.json' --dir "$OUT" --clobber || true
+            [ -f "$OUT/state.json.gz" ] && gunzip -f "$OUT/state.json.gz" || true
+          fi
+      - name: Learn
+        run: node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}"
+      - name: Publish
+        run: |
+          gzip -kf "$OUT/state.json"
+          gh release view learning-data >/dev/null 2>&1 || gh release create learning-data --prerelease --title "Learning data" --notes "Daily output of scripts/learning/daily.mjs. fits.json is read by get_learned_forecast via ACEWEATHER_LEARNED_FITS_URL."
+          gh release upload learning-data "$OUT/fits.json" "$OUT/scores.json" "$OUT/state.json.gz" --clobber
+      - name: Summary
+        run: node -e "const f=require('./$OUT/fits.json');console.log(f.stations.length,'stations fitted at',f.generated_at);for(const[v,b]of Object.entries(f.recent_scores))for(const[l,s]of Object.entries(b))console.log(v,'day',l,'learned',s.learned_mae,'standard',s.standard_mae,'stations',s.stations)" >> "$GITHUB_STEP_SUMMARY"

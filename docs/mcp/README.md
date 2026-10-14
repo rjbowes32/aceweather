@@ -13,7 +13,7 @@ Every tool is read-only and returns one JSON envelope (also sent as text for cli
 | Field | Meaning |
 |---|---|
 | `summary` | one human-readable sentence |
-| `classification` | `model_current`, `model_recent`, `forecast`, `reanalysis`, `calculated`, `reference` or `mixed` |
+| `classification` | `observation`, `model_current`, `model_recent`, `forecast`, `reanalysis`, `calculated`, `reference` or `mixed` |
 | `location` | name, coordinates, timezone, elevation and how it was resolved (`geocoded`, `coordinates`, `saved_location`; alternatives when ambiguous) |
 | `period` | label, start/end (local dates) or hours, timezone, `years_ago` |
 | `units` | units for every value |
@@ -34,7 +34,8 @@ Every tool is read-only and returns one JSON envelope (also sent as text for cli
 | `get_saved_location_groups` | `group?` | groups and their locations with ids and coordinates |
 | `get_location_weather` | location, `wind_unit`, `detail` | modelled current conditions, next 7 days, last 7 days summary |
 | `get_regional_weather` | `locations[]` (≤12) **or** `group`, period, `forecast_days` (0–7), `wind_unit` | per-location summaries, rankings, regional mean; failed locations reported |
-| `get_current_weather` | location, `wind_unit` | current temperature, feels-like, humidity, dew point, pressure, cloud, wind, gust, direction, rain, visibility, UV, today's max/min/rain |
+| `get_current_weather` | location, `wind_unit` | `preferred` (`observation` or `model`); `observed`: the nearest fresh, quality-controlled official station (temperature, dew point, humidity, pressure, wind, gust, direction, rain last hour and 24 h) plus the nearest rain-gauge 24 h total and COSMOS-UK soil moisture; `model`: the grid-point analysis (temperature, feels-like, humidity, dew point, pressure, cloud, wind, gust, direction, rain, visibility, UV, today's max/min/rain) |
+| `get_nearby_observations` | location, `radius_km` (5–100, default 50), `limit` (1–25, default 10), `wind_unit` | stations sorted by distance with network, tier, age, values and quality flags; tier and flag definitions |
 | `get_weather_history` | location, period, `wind_unit`, `detail` | daily rows (monthly beyond 31 days, or 366 with `full`) or hourly rows, plus summary |
 | `get_weather_digest` | location, period, `wind_unit` | summary only: rain total, rain/wet days, wettest day, max/min, mean, frost days, max gust, humidity, ET0, sunshine, radiation, soil temperature and moisture, longest dry/wet spell |
 | `get_hourly_forecast` | location, `hours` (1–168), `wind_unit`, `detail` | hourly rows from the current hour, totals, first rain |
@@ -42,6 +43,8 @@ Every tool is read-only and returns one JSON envelope (also sent as text for cli
 | `get_extended_forecast` | location, `wind_unit`, `detail` | days 8–14 with lead times |
 | `compare_forecast_models` | location, `days` (1–7), `wind_unit` | ECMWF IFS, GFS, ICON, UKMO daily values, run times, per-day spread |
 | `get_forecast_confidence` | location, `days` (1–7) | high/medium/low for temperature, rain, wind and overall, with the method |
+| `get_learned_forecast` | location, `days` (1–7, default 7), `wind_unit`, `detail` (`full` adds hourly rows) | AceWeather's learned forecast: daily max/min temperature, rain and wind from the models blended by their recent accuracy at the nearest reference station, a Met Office station (NOAA GHCNh archive), airport or COSMOS-UK site within 80 km and 250 m (bias-corrected when within 40 km and 150 m), AIFS added from day 3, rainfall as the model mean; AceWeather's standard forecast alongside; station, weights and bias per lead day. UK learning only; elsewhere temperature and wind are the standard forecast. See [LEARNING-BACKTEST.md](LEARNING-BACKTEST.md) |
+| `get_forecast_verification` | location, `days` (3–28, default 14), `lead_days` (1–7, up to 4, default `[1,3,5]`), `wind_unit` | per model and lead day: temperature and wind MAE and bias against the nearest METAR, daily-rainfall MAE, bias and wet/dry accuracy against the nearest Environment Agency gauge (COSMOS-UK fallback); the best model per variable with ties; which model AceWeather's forecast is identical to. UK only. See [FORECAST-VERIFICATION.md](FORECAST-VERIFICATION.md) |
 | `get_historical_comparison` | location **or** `group`; `report_date`, `history_days` (1–31, default 14) **or** `start_date`/`end_date`; `baseline_years` (1–10, default 10) | ERA5 calendar-period statistics, per-metric completeness, yearly baselines, anomalies, regional comparisons and newsletter rows |
 | `get_crop_notes_weather` | `report_date`, `history_days` (1–31, default 14) | the same comparison for all seven Crop Dynamics saved locations over the previous ten years |
 
@@ -145,7 +148,8 @@ Menu names change; OpenAI's help page "Connectors in ChatGPT" has the current st
 
 ## Provenance and limitations
 
-- **Current** values are the forecast model's current-hour analysis at the grid point (`model_current`), not a station reading.
+- **Observations** (`observation`) are real station readings from open sources, measured at the station and not at the location: Met Office synoptic and automatic stations relayed through MeteoGate E-SOH (CC BY 4.0, usually 30–60 minutes behind), airport METARs from aviationweather.gov (public domain, whole-degree temperatures, no rainfall for UK airports), Environment Agency 15-minute rain gauges (OGL v3, latency varies by gauge) and COSMOS-UK soil moisture sites (OGL, published in daily batches). See [OBSERVATIONS.md](OBSERVATIONS.md).
+- **Current** conditions prefer the nearest official station within 40 km that reported in the last 90 minutes and passed quality control (`classification` becomes `mixed`); otherwise they are the forecast model's current-hour analysis at the grid point (`model_current`), not a station reading. The model value is always included for comparison.
 - **Recent hours** (`today`, `last_24h/48h/72h`) are the model's recent hindcast (`model_recent`).
 - **Daily history** is ERA5 / ERA5-Land reanalysis via Open-Meteo (`reanalysis`): gridded at roughly 9–25 km, smooths local showers, and is not a rain gauge. The latest one or two days can lag; missing days are listed and excluded from totals.
 - **Forecasts** use Open-Meteo `best_match`, which blends models and has no single issue time; `compare_forecast_models` gives each model's run time. Skill falls with lead time; days 8–14 are an outlook and nothing beyond 14 days is offered.
@@ -167,6 +171,40 @@ Menu names change; OpenAI's help page "Connectors in ChatGPT" has the current st
 | Wrong place picked | Check `warnings` and `location.resolution.candidates`; pass coordinates or a saved location. |
 | Saved locations missing | `/mcp/health?deep=1` must report `aceweather_api: ok`; check `ACEWEATHER_API_BASE`. |
 | Logs | Vercel function logs: one JSON line per request (`http_request`) and per tool call (`tool_call`, `upstream_error`), with a hashed client id. |
+
+## Observed layer and forecast verification (MCP server 0.4.0)
+
+`get_current_weather` now answers from a real station when a good one is close enough, and `get_nearby_observations` lists every open station around a location. Sources, quality control, tiers and known gaps are documented in [OBSERVATIONS.md](OBSERVATIONS.md). No new infrastructure: every source is fetched on demand, cached in memory for ten minutes (station catalogues for six to twenty-four hours), and a failing source becomes a warning rather than an error.
+
+`get_current_weather {"saved_location":"cropdynamics/pocklington"}` (trimmed):
+
+```json
+{
+  "summary": "Pocklington, England, United Kingdom: Observed at Leconfield (Met Office synoptic station, 23.2 km) 2026-10-13T17:00:00Z (51 min ago): 14.6 °C, wind 21.6 gusting 55.4 km/h from W, humidity 64%, 0 mm rain in the last hour. Rain last 24 h: 1.1 mm at Rain gauge 038179 (SE888685) (Environment Agency rain gauge, 21.1 km). Soil moisture 26.5% at 10 cm, Hollin Hill (COSMOS-UK research site, 22.9 km) (2026-10-13T00:00:00Z). Model grid point at 2026-10-13T18:45 (Europe/London): 13.4 °C, Overcast, wind 19.1 gusting 35.6 km/h, humidity 64%.",
+  "classification": "mixed",
+  "warnings": ["Observation is from a station 23.2 km away; conditions at the location itself can differ, especially rainfall and wind."],
+  "data": {
+    "preferred": "observation",
+    "observed": {
+      "station": { "id": "0-20000-0-03382", "name": "Leconfield", "network": "metoffice_synop", "tier": "official", "distance_km": 23.2, "observed_at": "2026-10-13T17:00:00Z", "age_minutes": 51,
+                   "values": { "temperature_c": 14.6, "dew_point_c": 7.9, "relative_humidity_pct": 64, "pressure_msl_hpa": 1018, "wind_speed": 21.6, "wind_gust": 55.4, "wind_direction_deg": 260, "precipitation_1h_mm": 0, "precipitation_24h_mm": 0.6 },
+                   "quality": { "flags": [], "usable_for_current": true, "notes": [] } },
+      "rain_24h": { "station": "Rain gauge 038179 (SE888685) (Environment Agency rain gauge, 21.1 km)", "precipitation_24h_mm": 1.1, "observed_at": "2026-10-13T17:15:00Z" },
+      "soil": { "station": "Hollin Hill (COSMOS-UK research site, 22.9 km)", "soil_moisture_10cm_pct": 26.5, "soil_temperature_10cm_c": 13.6, "observed_at": "2026-10-13T00:00:00Z" }
+    },
+    "model": { "temperature_c": 13.4, "condition": "Overcast", "wind_speed": 19.1, "wind_gust": 35.6 },
+    "nearby_stations": 19
+  }
+}
+```
+
+### Daily learning
+
+`get_learned_forecast` reads per-station model weights from a daily job instead of computing them per request, when `ACEWEATHER_LEARNED_FITS_URL` (or `ACEWEATHER_LEARNED_FITS_FILE` locally) points at its output. The job also scores the learned forecast against the standard one every day. See [LEARNING-DAILY.md](LEARNING-DAILY.md).
+
+### Forecast verification
+
+`get_forecast_verification` scores ECMWF IFS, GFS, ICON, the Met Office UM and AceWeather's own forecast against real stations near a location, using Open-Meteo's archive of earlier model runs. It needs no storage. Method, sources and the first results are in [FORECAST-VERIFICATION.md](FORECAST-VERIFICATION.md).
 
 ## Crop Notes and historical comparisons (MCP server 0.3.0)
 
