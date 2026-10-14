@@ -7,6 +7,7 @@ Added 14 October 2026. Code: `scripts/learning/daily.mjs` (job), `src/mcp/learni
 Once a day, for every UK reference station:
 
 1. **Observations.** Met Office stations come from one UK-wide MeteoGate query covering the last 25 hours, about 195 stations in a single response of about 1 MB. Airports come from the Iowa Environmental Mesonet METAR archive, and COSMOS-UK sites from their API. A new Met Office station is backfilled once from NOAA's GHCNh archive where it has a WMO id. Without one, it builds history from daily MeteoGate data and becomes usable after 20 days.
+   Only stations inside the learned forecast's UK area are processed, so the Channel Islands airports in the Iowa archive's UK list are skipped. A download is tried up to five times, with waits growing from 5 to 40 seconds.
 2. **Model errors.** It fetches each model's archived forecasts (Open-Meteo Previous Runs, lead days 1–7) for the last six days. It then recomputes each day's error sums per lead and model. The state keeps these daily error sums for 75 days, never raw history.
 3. **Fits.** For each lead it builds weights and blend bias from the last 60 days, using `learning.ts`, the same maths as the backtest.
 4. **Live scoring.** For each fully observed day it scores the learned forecast against the standard one. The learned forecast only uses fits from before that forecast's issue date. The pooled last-30-day result goes into `fits.json` and the daily history into `scores.json`.

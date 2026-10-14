@@ -12,6 +12,8 @@ import { emptyState, errorDays, exportFits, prune, scoreDay, updateDays } from "
 import { AI_FROM_LEAD, LEARN_LEADS, modelsFor, WINDOW_DAYS } from "../../src/mcp/learned.ts";
 import { ghcnhYearUrl, parsePsv, parseStationList } from "../../src/mcp/sources/ghcnh.ts";
 import { hourKey, parseCsv } from "../../src/mcp/sources/iem.ts";
+import { inUk } from "../../src/mcp/observations.ts";
+import { RETRY, retryDelayMs, shouldRetry } from "../../src/mcp/retry.ts";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith("--") ? [...acc, [a.slice(2), all[i + 1]?.startsWith("--") || all[i + 1] == null ? "true" : all[i + 1]]] : acc), []));
 const OUT = args.out ?? ".cache/learning";
@@ -33,20 +35,30 @@ const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
 const log = (...a) => console.log(...a);
 const stats = { requests: 0, failures: 0 };
 
-/** GET text with retries; `validate` rejects a 200 whose body is not what was asked for (Open-Meteo can do this). */
-async function getText(url, { validate = null, retries = 3, timeout = 120_000 } = {}) {
+/**
+ * GET text with retries; `validate` rejects a 200 whose body is not what was asked for (Open-Meteo can do this).
+ * Every failed attempt counts towards the limit (L-24), and waits grow from 5 to 40 s (L-21).
+ */
+async function getText(url, { validate = null, retries = RETRY.attempts, timeout = 120_000 } = {}) {
   for (let attempt = 1; ; attempt++) {
     stats.requests++;
+    let status = null;
+    let reason = "";
     try {
       const r = await fetch(url, { signal: AbortSignal.timeout(timeout), headers: { "user-agent": "AceWeather learning job (non-commercial)" } });
+      status = r.status;
       const text = await r.text();
       if (r.status === 404) return null;
-      if (r.ok && (!validate || validate(text))) return text;
-      if (r.status < 500 && r.status !== 429 && r.ok === false) throw new Error(`HTTP ${r.status}`);
+      const valid = !validate || validate(text);
+      if (r.ok && valid) return text;
+      reason = r.ok ? "invalid response body" : `HTTP ${r.status}`;
+      if (!shouldRetry(r.status, valid)) { stats.failures++; throw new Error(reason); }
     } catch (error) {
-      if (attempt >= retries) { stats.failures++; throw error; }
+      if (status != null && !shouldRetry(status, false)) throw error;
+      reason ||= String(error?.cause?.code ?? error?.message ?? error);
     }
-    await sleep(5000 * attempt);
+    if (attempt >= retries) { stats.failures++; throw new Error(`${reason} after ${attempt} attempts`); }
+    await sleep(retryDelayMs(attempt));
   }
 }
 const isJson = (t) => { try { JSON.parse(t); return true; } catch { return false; } };
@@ -123,7 +135,10 @@ async function discover(state) {
     const elev = await getJson(`https://api.open-meteo.com/v1/elevation?latitude=${chunk.map((m) => m.meta.latitude.toFixed(4)).join(",")}&longitude=${chunk.map((m) => m.meta.longitude.toFixed(4)).join(",")}`).catch(() => null);
     chunk.forEach((m, k) => { m.meta.elevation_m = elev?.elevation?.[k] ?? null; });
   }
-  return metas;
+  // Only stations where the learned forecast can be used (L-22): the Iowa archive's GB network also lists Jersey and Guernsey.
+  const inArea = metas.filter((m) => inUk(m.meta, 0));
+  if (inArea.length < metas.length) log(`  ${metas.length - inArea.length} station(s) outside the learning area skipped: ${metas.filter((m) => !inUk(m.meta, 0)).map((m) => m.meta.name).join(", ")}`);
+  return inArea;
 }
 
 async function metarObs(icao, startMs, endMs) {
