@@ -34,7 +34,7 @@ attribution and non-commercial terms; open data is not unlimited free compute.
   stack. Outlook has a day selector and selected-day detail on both screen sizes.
 - Location search/saved places/GPS use shared content. Foreground GPS follow is
   supported; selecting a manual location disables follow. No background GPS claim.
-- Met Office radar integration already exists: verify it before adding another.
+- Met Office radar is decoded and reprojected server-side; verify it before adding another.
 - Theme currently has manual Light/Dark controls. Sunrise/sunset automatic theme
   remains pending, not an implemented feature.
 
@@ -178,6 +178,21 @@ visible keyboard focus and a minimum 44px target. Charts have accessible values.
   localStorage. Dropped the unused direct `sharp` dependency.
 - Pruned unused CSS rules (about 22 KB) after checking every live selector was
   kept, plus unused UI helpers. Lint now has no warnings.
+
+### Radar checkpoint — 14 October 2026
+
+- Frames are decoded on the server (`/radar/frames`, `/radar/frame/<stamp>`) and
+  served as small palette PNGs, cached by the CDN for a year. Browsers no longer
+  download the 7 MB HDF5 decoder or the 730 KB source files.
+- The Met Office grid is reprojected properly from its transverse Mercator
+  projection. The old four-corner stretch drew rain 70 to 190 km east of where
+  it fell over Great Britain.
+- Twelve frames (three hours), resting on the latest. Playback pauses when the
+  page is hidden, and the frame list refreshes every five minutes.
+- The card shows frame time and age, whether rain is falling at the user's
+  location, a full rate legend with a no-coverage swatch, and one credits line.
+  The map's own attribution overlay is off because the credits sit beside it.
+- A failed frame is retried and skipped rather than blanking the radar.
 
 ## Historical reference (not the current specification)
 

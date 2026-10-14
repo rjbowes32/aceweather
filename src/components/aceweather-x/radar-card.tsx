@@ -3,31 +3,35 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl from "maplibre-gl";
 import type { FeatureCollection, LineString, Position } from "geojson";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AwLocation } from "@/lib/aceweather/open-meteo";
 import {
   fetchMetOfficeRadarFrames,
+  formatRadarAge,
   formatRadarFrameTime,
+  frameIndexAfterRefresh,
   metOfficeRadarUrl,
   type MetOfficeRadarFrame,
+  type RadarIndex,
 } from "@/lib/aceweather/met-office-radar";
+import { nearestPaletteIndex, PALETTE, PALETTE_BANDS, radarPixel } from "@/lib/aceweather/radar-palette";
 import { Card } from "./ui";
 
 const OPEN_FREE_MAP = (theme: "dark" | "light") =>
   `https://tiles.openfreemap.org/styles/${theme === "light" ? "positron" : "dark"}`;
 
 const FRAME_ID = "awx-radar-frame";
-const PLAY_INTERVAL_MS = 1400;
+const STEP_MS = 900;
+const LATEST_DWELL_MS = 2400;
 const FRAME_FADE_MS = 320;
 const RASTER_OPACITY = 0.86;
 const RING_RADII = [25, 50, 100, 200];
+const REFRESH_MS = 5 * 60_000;
+const LEGEND = [2, 3, 4, 5, 6, 7, 8, 9].map((i) => `rgba(${PALETTE[i].slice(0, 3).join(",")},${(PALETTE[i][3] / 255).toFixed(2)})`);
+const NO_RADAR = `rgba(${PALETTE[1].slice(0, 3).join(",")},${Math.min(1, (PALETTE[1][3] / 255) * 2.4).toFixed(2)})`;
 
-type RadarCoordinates = [[number, number], [number, number], [number, number], [number, number]];
-type RadarImage = { url: string; coordinates: RadarCoordinates };
-type H5Attribute = { value: unknown };
-type H5Node = { attrs: Record<string, H5Attribute>; value?: Float32Array; shape?: number[] };
-type H5File = H5Node & { get: (path: string) => H5Node; close: () => void };
+type LoadedFrame = { band: number | null };
 
 function rings(lat: number, lon: number, radiiKm: number[]): FeatureCollection<LineString, { km: number }> {
   return {
@@ -51,80 +55,29 @@ function removeRaster(map: maplibregl.Map, id: string) {
   if (map.getSource(id)) map.removeSource(id);
 }
 
-function attributeNumber(node: H5Node, name: string) {
-  return Number(node.attrs[name]?.value);
-}
-
-function radarColour(rate: number): readonly [number, number, number, number] {
-  if (!Number.isFinite(rate) || rate <= 0.05) return [0, 0, 0, 0];
-  if (rate < 0.5) return [110, 160, 255, 115];
-  if (rate < 1) return [73, 130, 238, 155];
-  if (rate < 2) return [65, 190, 225, 185];
-  if (rate < 4) return [77, 211, 158, 205];
-  if (rate < 8) return [238, 202, 91, 220];
-  if (rate < 16) return [239, 153, 74, 232];
-  if (rate < 32) return [232, 104, 119, 242];
-  return [194, 91, 220, 250];
-}
-
-function canvasBlob(canvas: HTMLCanvasElement) {
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not render radar image")), "image/png");
+/** Downloads a frame image (warming the HTTP cache for the map) and reads the rain band at the user's location. */
+async function loadFrame(frame: MetOfficeRadarFrame, lat: number, lon: number): Promise<LoadedFrame> {
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+  // load/error rather than decode(): decode() can wait indefinitely for a paint that a throttled page never gets.
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Radar frame failed to load"));
+    image.src = metOfficeRadarUrl(frame);
   });
-}
-
-async function renderRadarFrame(frame: MetOfficeRadarFrame, signal?: AbortSignal): Promise<RadarImage> {
-  const response = await fetch(metOfficeRadarUrl(frame), { signal, cache: "force-cache" });
-  if (!response.ok) throw new Error(`Met Office radar frame ${response.status}`);
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-
-  const { default: h5wasm } = await import("h5wasm");
-  const { FS } = await h5wasm.ready;
-  const filename = `/aceweather-radar-${frame.time}.h5`;
-  let file: H5File | null = null;
-
+  const pixel = radarPixel(lat, lon, image.naturalWidth, image.naturalHeight);
+  if (!pixel) return { band: null };
   try {
-    FS.writeFile(filename, bytes);
-    file = new h5wasm.File(filename, "r") as unknown as H5File;
-    const dataset = file.get("dataset1/data1/data");
-    const where = file.get("where");
-    const values = dataset.value;
-    const [height, width] = dataset.shape ?? [];
-    if (!values || !width || !height || values.length !== width * height) {
-      throw new Error("Met Office radar frame had an unexpected grid");
-    }
-
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d", { alpha: true });
-    if (!context) throw new Error("Radar canvas unavailable");
-    const image = context.createImageData(width, height);
-    const pixels = image.data;
-    for (let index = 0; index < values.length; index += 1) {
-      const [red, green, blue, alpha] = radarColour(values[index]);
-      const pixel = index * 4;
-      pixels[pixel] = red;
-      pixels[pixel + 1] = green;
-      pixels[pixel + 2] = blue;
-      pixels[pixel + 3] = alpha;
-    }
-    context.putImageData(image, 0, 0);
-    const blob = await canvasBlob(canvas);
-
-    return {
-      url: URL.createObjectURL(blob),
-      coordinates: [
-        [attributeNumber(where, "UL_lon"), attributeNumber(where, "UL_lat")],
-        [attributeNumber(where, "UR_lon"), attributeNumber(where, "UR_lat")],
-        [attributeNumber(where, "LR_lon"), attributeNumber(where, "LR_lat")],
-        [attributeNumber(where, "LL_lon"), attributeNumber(where, "LL_lat")],
-      ],
-    };
-  } finally {
-    file?.close();
-    try { FS.unlink(filename); } catch { /* already removed */ }
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return { band: null };
+    context.drawImage(image, pixel[0], pixel[1], 1, 1, 0, 0, 1, 1);
+    const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
+    return { band: nearestPaletteIndex(r, g, b, a) };
+  } catch {
+    return { band: null };
   }
 }
 
@@ -133,225 +86,207 @@ type RadarMapProps = { lat: number; lon: number; theme: "dark" | "light"; active
 export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const indexRef = useRef<RadarIndex | null>(null);
   const frameRef = useRef<MetOfficeRadarFrame | null>(null);
-  const framesRef = useRef<MetOfficeRadarFrame[]>([]);
-  const frameIndexRef = useRef(0);
   const mountedRef = useRef(false);
   const layerSlotRef = useRef(0);
   const fadeTimerRef = useRef<number | null>(null);
-  const readyTimerRef = useRef<number | null>(null);
-  const initialReadyRef = useRef(false);
-  const renderSequenceRef = useRef(0);
-  const imageCacheRef = useRef(new Map<string, Promise<RadarImage>>());
+  const sequenceRef = useRef(0);
+  const loadsRef = useRef(new Map<string, Promise<LoadedFrame>>());
+  const shownRef = useRef<string | null>(null);
+  // MapLibre's isStyleLoaded() also waits for tiles, so track the style.load event directly.
+  const loadedRef = useRef(false);
 
-  const [frames, setFrames] = useState<MetOfficeRadarFrame[]>([]);
-  const [framesLoaded, setFramesLoaded] = useState(false);
+  const [index, setIndex] = useState<RadarIndex | null>(null);
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const playingRef = useRef(true);
+  const [visible, setVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [initialFrameReady, setInitialFrameReady] = useState(false);
+  const [shownStamp, setShownStamp] = useState<string | null>(null);
+  const [bands, setBands] = useState<Record<string, number | null>>({});
+  const [now, setNow] = useState(() => Date.now());
+
+  const frames = useMemo(() => index?.frames ?? [], [index]);
   const currentFrame = frames[frameIdx] ?? null;
 
   useEffect(() => {
     mountedRef.current = true;
-    const imageCache = imageCacheRef.current;
+    const onVisibility = () => setVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVisibility);
+    const clock = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => {
       mountedRef.current = false;
-      renderSequenceRef.current += 1;
+      sequenceRef.current += 1;
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(clock);
       if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
-      if (readyTimerRef.current) window.clearTimeout(readyTimerRef.current);
-      for (const image of imageCache.values()) image.then((value) => URL.revokeObjectURL(value.url)).catch(() => {});
-      imageCache.clear();
     };
   }, []);
 
   useEffect(() => {
+    indexRef.current = index;
     frameRef.current = currentFrame;
-    framesRef.current = frames;
-    frameIndexRef.current = frameIdx;
-  }, [currentFrame, frameIdx, frames]);
+    playingRef.current = playing;
+  }, [index, currentFrame, playing]);
 
+  // Frame list: load once, then refresh every few minutes while the radar is on screen.
   useEffect(() => {
+    if (!visible) return undefined;
     const controller = new AbortController();
-    setError(null);
-    setFramesLoaded(false);
-    fetchMetOfficeRadarFrames(controller.signal)
-      .then((availableFrames) => {
+    const load = () => fetchMetOfficeRadarFrames(controller.signal)
+      .then((next) => {
         if (!mountedRef.current) return;
-        setFrames(availableFrames);
-        setFrameIdx(Math.max(0, availableFrames.length - 1));
-        setFramesLoaded(true);
+        setError(null);
+        const previous = indexRef.current;
+        if (previous && previous.frames.at(-1)?.stamp === next.frames.at(-1)?.stamp) return;
+        const nextIdx = frameIndexAfterRefresh(previous?.frames ?? null, next.frames, frameRef.current?.stamp ?? null, playingRef.current);
+        indexRef.current = next;
+        setIndex(next);
+        setFrameIdx(nextIdx);
       })
       .catch((caught: unknown) => {
-        if (!(caught instanceof DOMException && caught.name === "AbortError")) {
-          setFramesLoaded(true);
-          setError("Radar unavailable");
-        }
+        if (!(caught instanceof DOMException && caught.name === "AbortError") && mountedRef.current && !indexRef.current) setError("Radar unavailable");
       });
-    return () => controller.abort();
-  }, []);
-
-  const markInitialFrameReady = useCallback((map: maplibregl.Map) => {
-    if (initialReadyRef.current) return;
-    const done = () => {
-      if (!mountedRef.current || initialReadyRef.current) return;
-      initialReadyRef.current = true;
-      setInitialFrameReady(true);
+    load();
+    const timer = window.setInterval(load, REFRESH_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
     };
-    map.once("idle", done);
-    if (readyTimerRef.current) window.clearTimeout(readyTimerRef.current);
-    readyTimerRef.current = window.setTimeout(done, 1000);
-  }, []);
+  }, [visible]);
 
-  const getRadarImage = useCallback((frame: MetOfficeRadarFrame) => {
-    const cached = imageCacheRef.current.get(frame.key);
+  // Frame reads depend on the location, so a new place starts with fresh reads.
+  useEffect(() => {
+    loadsRef.current.clear();
+    setBands({});
+  }, [lat, lon]);
+
+  const loadOnce = useCallback((frame: MetOfficeRadarFrame) => {
+    const cacheKey = `${frame.stamp}|${lat}|${lon}`;
+    const cached = loadsRef.current.get(cacheKey);
     if (cached) return cached;
-    const pending = renderRadarFrame(frame).catch((caught) => {
-      imageCacheRef.current.delete(frame.key);
+    const attempt = () => loadFrame(frame, lat, lon);
+    // One retry covers a cold server or a dropped connection; a frame that still fails is skipped, not fatal.
+    const pending = attempt().catch(() => new Promise<void>((resolve) => window.setTimeout(resolve, 1200)).then(attempt)).then((loaded) => {
+      if (mountedRef.current) setBands((previous) => ({ ...previous, [cacheKey]: loaded.band }));
+      return loaded;
+    }).catch((caught) => {
+      loadsRef.current.delete(cacheKey);
       throw caught;
     });
-    imageCacheRef.current.set(frame.key, pending);
+    loadsRef.current.set(cacheKey, pending);
     return pending;
-  }, []);
+  }, [lat, lon]);
+
+  // Warm every frame in the background, newest first, so playback never waits.
+  useEffect(() => {
+    if (!frames.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const frame of [...frames].reverse()) {
+        if (cancelled) return;
+        await loadOnce(frame).catch(() => {});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [frames, loadOnce]);
 
   const applyFrame = useCallback(async () => {
     const map = mapRef.current;
     const frame = frameRef.current;
-    if (!map || !frame || !map.isStyleLoaded()) return;
-    const sequence = ++renderSequenceRef.current;
-
+    const corners = indexRef.current?.corners;
+    if (!map || !frame || !corners || !loadedRef.current) return;
+    const sequence = ++sequenceRef.current;
     try {
-      const rendered = await getRadarImage(frame);
-      if (!mountedRef.current || sequence !== renderSequenceRef.current || mapRef.current !== map) return;
+      await loadOnce(frame);
+      if (!mountedRef.current || sequence !== sequenceRef.current || mapRef.current !== map) return;
       const nextSlot = layerSlotRef.current === 0 ? 1 : 0;
-      const previousSlot = layerSlotRef.current;
+      const previousId = `${FRAME_ID}-${layerSlotRef.current}`;
       const nextId = `${FRAME_ID}-${nextSlot}`;
-      const previousId = `${FRAME_ID}-${previousSlot}`;
-
       removeRaster(map, nextId);
-      map.addSource(nextId, { type: "image", url: rendered.url, coordinates: rendered.coordinates });
+      map.addSource(nextId, { type: "image", url: metOfficeRadarUrl(frame), coordinates: corners });
       map.addLayer({
         id: nextId,
         type: "raster",
         source: nextId,
-        paint: {
-          "raster-opacity": 0,
-          "raster-fade-duration": 180,
-          "raster-opacity-transition": { duration: FRAME_FADE_MS, delay: 0 },
-        },
-      }, map.getLayer("station") ? "station" : undefined);
-
+        paint: { "raster-opacity": 0, "raster-fade-duration": 0, "raster-resampling": "nearest", "raster-opacity-transition": { duration: FRAME_FADE_MS, delay: 0 } },
+      }, map.getLayer("rings") ? "rings" : undefined);
       window.requestAnimationFrame(() => {
         if (!mountedRef.current || mapRef.current !== map) return;
         if (map.getLayer(nextId)) map.setPaintProperty(nextId, "raster-opacity", RASTER_OPACITY);
         if (map.getLayer(previousId)) map.setPaintProperty(previousId, "raster-opacity", 0);
       });
       if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
-      fadeTimerRef.current = window.setTimeout(() => {
-        if (mapRef.current === map) removeRaster(map, previousId);
-      }, FRAME_FADE_MS + 90);
+      fadeTimerRef.current = window.setTimeout(() => { if (mapRef.current === map) removeRaster(map, previousId); }, FRAME_FADE_MS + 90);
       layerSlotRef.current = nextSlot;
-      markInitialFrameReady(map);
-
-      const availableFrames = framesRef.current;
-      const nextFrame = availableFrames[(frameIndexRef.current + 1) % availableFrames.length];
-      if (nextFrame) getRadarImage(nextFrame).catch(() => {});
-    } catch (caught) {
-      if (!(caught instanceof DOMException && caught.name === "AbortError") && mountedRef.current) setError("Radar unavailable");
+      shownRef.current = frame.stamp;
+      setShownStamp(frame.stamp);
+    } catch {
+      // Keep the last good frame on screen; only report failure when nothing can be shown.
+      if (mountedRef.current && !shownRef.current && frame.stamp === indexRef.current?.frames.at(-1)?.stamp) setError("Radar unavailable");
     }
-  }, [getRadarImage, markInitialFrameReady]);
+  }, [loadOnce]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined;
     setMapReady(false);
-    setInitialFrameReady(false);
-    initialReadyRef.current = false;
+    setShownStamp(null);
+    shownRef.current = null;
+    loadedRef.current = false;
     layerSlotRef.current = 0;
-
+    const container = containerRef.current;
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container,
       style: OPEN_FREE_MAP(theme),
       center: [lon, lat],
       zoom: 6,
+      minZoom: 4,
       maxZoom: 10,
-      attributionControl: {
-        compact: true,
-        customAttribution: '<a href="https://registry.opendata.aws/met-office-uk-radar-observations/" target="_blank" rel="noreferrer">Met Office radar</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a>',
-      },
+      // Full credits are shown in the card footer, next to the map, so the overlay control is not needed.
+      attributionControl: false,
     });
-
     map.on("styleimagemissing", ({ id }) => {
       if (!map.hasImage(id)) map.addImage(id, { width: 1, height: 1, data: new Uint8Array([0, 0, 0, 0]) });
     });
-
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.on("load", () => {
+    // Add overlays as soon as the style is parsed rather than on "load", which also waits for every base tile.
+    map.once("style.load", () => {
       if (!mountedRef.current) return;
-      setMapReady(true);
       map.addSource("rings", { type: "geojson", data: rings(lat, lon, RING_RADII) });
-      map.addLayer({
-        id: "rings",
-        type: "line",
-        source: "rings",
-        paint: {
-          "line-color": theme === "light" ? "#2f6cf0" : "#6ea0ff",
-          "line-width": 0.6,
-          "line-opacity": 0.4,
-          "line-dasharray": [2, 2],
-        },
-      });
-      map.addSource("station", {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [lon, lat] } }],
-        },
-      });
-      map.addLayer({
-        id: "station",
-        type: "circle",
-        source: "station",
-        paint: {
-          "circle-radius": 4,
-          "circle-color": "#e0b15e",
-          "circle-stroke-color": theme === "light" ? "#fff" : "#0a0b0d",
-          "circle-stroke-width": 1.5,
-        },
-      });
-      applyFrame();
+      map.addLayer({ id: "rings", type: "line", source: "rings", paint: { "line-color": theme === "light" ? "#2f6cf0" : "#6ea0ff", "line-width": 0.6, "line-opacity": 0.4, "line-dasharray": [2, 2] } });
+      map.addSource("station", { type: "geojson", data: { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [lon, lat] } }] } });
+      map.addLayer({ id: "station", type: "circle", source: "station", paint: { "circle-radius": 4.5, "circle-color": "#e0b15e", "circle-stroke-color": theme === "light" ? "#fff" : "#0a0b0d", "circle-stroke-width": 1.5 } });
+      loadedRef.current = true;
+      setMapReady(true);
     });
-
     mapRef.current = map;
     return () => {
       if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
-      if (readyTimerRef.current) window.clearTimeout(readyTimerRef.current);
+      loadedRef.current = false;
       map.remove();
       mapRef.current = null;
     };
-  }, [lat, lon, theme, applyFrame]);
+  }, [lat, lon, theme]);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    if (!map.isStyleLoaded()) map.once("load", applyFrame);
-    else applyFrame();
-  }, [currentFrame, applyFrame]);
+    if (mapReady) applyFrame();
+  }, [currentFrame, mapReady, applyFrame]);
 
+  // Playback: step through the frames and rest on the latest one before looping.
   useEffect(() => {
-    if (!playing || !active || frames.length === 0) return undefined;
-    const timer = window.setInterval(() => setFrameIdx((index) => (index + 1) % frames.length), PLAY_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [playing, active, frames.length]);
+    if (!playing || !active || !visible || !shownStamp || frames.length < 2) return undefined;
+    const delay = frameIdx === frames.length - 1 ? LATEST_DWELL_MS : STEP_MS;
+    const timer = window.setTimeout(() => setFrameIdx((i) => (i + 1) % frames.length), delay);
+    return () => window.clearTimeout(timer);
+  }, [playing, active, visible, shownStamp, frameIdx, frames.length]);
 
   useEffect(() => {
     if (!active || !mapRef.current) return undefined;
     const first = window.setTimeout(() => mapRef.current?.resize(), 80);
     const second = window.setTimeout(() => mapRef.current?.resize(), 280);
-    return () => {
-      window.clearTimeout(first);
-      window.clearTimeout(second);
-    };
+    return () => { window.clearTimeout(first); window.clearTimeout(second); };
   }, [active]);
 
   function selectFrame(next: number) {
@@ -362,12 +297,17 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   function stepFrame(delta: number) {
     if (!frames.length) return;
     setPlaying(false);
-    setFrameIdx((index) => (index + delta + frames.length) % frames.length);
+    setFrameIdx((i) => (i + delta + frames.length) % frames.length);
   }
 
-  const frameLabel = currentFrame ? formatRadarFrameTime(currentFrame, tz) : "--:--";
-  const hasFrames = frames.length > 0;
-  const loading = !error && (!mapReady || !framesLoaded || (hasFrames && !initialFrameReady));
+  const shownFrame = frames.find((f) => f.stamp === shownStamp) ?? null;
+  const frameLabel = shownFrame ? formatRadarFrameTime(shownFrame, tz) : "--:--";
+  const age = shownFrame ? formatRadarAge(shownFrame.time, now) : "";
+  const latest = frames.at(-1);
+  const hereBand = shownFrame ? bands[`${shownFrame.stamp}|${lat}|${lon}`] : undefined;
+  const here = hereBand == null ? null : PALETTE_BANDS[hereBand];
+  const loading = !error && (!mapReady || !index || (frames.length > 0 && !shownStamp));
+  const stale = latest ? now - latest.time > 45 * 60_000 : false;
 
   return (
     <div className={"awx-radar" + (loading ? " is-loading" : "")}>
@@ -380,44 +320,39 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
       </div>
 
       {error ? <div className="awx-radar-status is-error">Radar unavailable.</div> : null}
-      {!loading && !error && !hasFrames ? <div className="awx-radar-status">No radar frames available.</div> : null}
+      {!loading && !error && !frames.length ? <div className="awx-radar-status">No radar frames available.</div> : null}
 
-      {!error && hasFrames ? (
+      {!error && frames.length ? (
         <div className="awx-radar-controls">
+          <div className="awx-radar-now">
+            <div className="awx-radar-time">
+              <span className="awx-tag-sm">Observed</span>
+              <span className="awx-radar-time-main">{frameLabel}</span>
+              <span className={"awx-radar-age" + (stale && shownFrame?.stamp === latest?.stamp ? " is-stale" : "")}>{age}</span>
+            </div>
+            {here ? <span className={"awx-radar-here" + (here.rain ? " is-rain" : "")}>{hereBand === 1 ? "No radar here" : `${here.label} here`}</span> : null}
+          </div>
           <div className="awx-radar-control-row">
             <button type="button" className="awx-radar-play" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause radar animation" : "Play radar animation"} aria-pressed={playing}>
               <span className={"awx-radar-play-icon" + (playing ? " is-pause" : " is-play")} aria-hidden="true" />
-              <span className="awx-radar-play-label">{playing ? "Pause" : "Play"}</span>
             </button>
             <button type="button" className="awx-radar-step" onClick={() => stepFrame(-1)} aria-label="Previous radar frame"><span className="awx-radar-step-icon is-prev" aria-hidden="true" /></button>
+            <input type="range" min={0} max={frames.length - 1} step={1} value={frameIdx} aria-label="Radar frame" aria-valuetext={`${currentFrame ? formatRadarFrameTime(currentFrame, tz) : ""} observed`} onChange={(event) => selectFrame(Number(event.target.value))} />
             <button type="button" className="awx-radar-step" onClick={() => stepFrame(1)} aria-label="Next radar frame"><span className="awx-radar-step-icon is-next" aria-hidden="true" /></button>
-            <div className="awx-radar-time" aria-live="polite">
-              <span className="awx-radar-time-main">{frameLabel}</span>
-              <span className="awx-tag-sm">OBSERVED</span>
-              <span className="awx-radar-count">{frameIdx + 1}/{frames.length}</span>
-            </div>
-          </div>
-
-          <input type="range" min={0} max={frames.length - 1} step={1} value={frameIdx} aria-label="Radar frame" aria-valuetext={`${frameLabel} observed`} onChange={(event) => selectFrame(Number(event.target.value))} />
-
-          <div className="awx-radar-frames" aria-label="Radar frame shortcuts">
-            {frames.map((frame, index) => {
-              const selected = index === frameIdx;
-              const label = formatRadarFrameTime(frame, tz);
-              return (
-                <button key={frame.key} type="button" className={"awx-radar-frame" + (selected ? " is-active" : "")} aria-pressed={selected} aria-label={`Observed radar frame at ${label}`} onClick={() => selectFrame(index)}>
-                  <span>{label}</span>
-                  <small>Obs</small>
-                </button>
-              );
-            })}
           </div>
         </div>
       ) : null}
 
       <div className="awx-radar-foot">
-        <span>Rings {RING_RADII.join(" / ")} km</span>
-        <span className="awx-radar-scale"><i />Light <i />Heavy</span>
+        <div className="awx-radar-legend" role="img" aria-label="Rain rate from light, under 1 millimetre an hour, to very heavy, over 16. Grey shows no radar coverage.">
+          <span>Light</span>
+          <span className="awx-radar-ramp" aria-hidden="true">{LEGEND.map((colour) => <i key={colour} style={{ background: colour }} />)}</span>
+          <span>Heavy</span>
+          <span className="awx-radar-norad"><i aria-hidden="true" style={{ background: NO_RADAR }} />No radar</span>
+        </div>
+        <div className="awx-radar-credit">
+          Radar © <a href="https://registry.opendata.aws/met-office-uk-radar-observations/" target="_blank" rel="noreferrer">Met Office</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a> · Map <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a>, data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>
+        </div>
       </div>
     </div>
   );
@@ -429,7 +364,7 @@ export function RadarCard({ location, theme }: { location: AwLocation; theme: "d
       section="radar"
       tick="rain"
       kicker="Rainfall radar"
-      detail="Observed UK Radar data © Met Office, licensed CC BY-SA 4.0 and recoloured by AceWeather. Frames update every 15 minutes. Rings mark distance from your location."
+      detail="Observed UK radar from the Met Office (CC BY-SA 4.0), reprojected and recoloured by AceWeather. A new frame arrives every 15 minutes, usually 5 to 10 minutes after it was observed. Rings mark 25, 50, 100 and 200 km from your location. Rain rate bands: light under 1 mm/h, moderate 1 to 4, heavy 4 to 16, very heavy over 16."
     >
       <RadarMap lat={location.lat} lon={location.lon} theme={theme} active tz={location.tz} />
     </Card>
