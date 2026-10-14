@@ -54,6 +54,17 @@ test("only the variables the server applied are overlaid; nothing applied means 
   assert.equal(applyLearned(raw, null).forecast, raw);
 });
 
+test("the calibrated daily rain chance is aligned by date and Open-Meteo's probability is never used", () => {
+  const raw = forecast();
+  raw.daily.precipitation_probability_max = [66, 80, 90];
+  const daily = [{ date: "2026-10-16", rain_chance_pct: 7 }, { date: "2026-10-15", rain_chance_pct: 46 }, { date: "2026-10-14", rain_chance_pct: null }];
+  const { forecast: out } = applyLearned(raw, { ...overlay({ temperature: false, wind_speed: false, rainfall: false, bias_correction: false }, []), daily });
+  assert.deepEqual(out.daily.rain_chance, [null, 46, 7], "missing days stay unavailable, never zero or the Open-Meteo value");
+  assert.equal(raw.daily.rain_chance, undefined, "the original forecast is not mutated");
+  const failed = applyLearned(raw, null).forecast;
+  assert.equal(failed.daily.rain_chance, undefined, "with no overlay there is no chance to show");
+});
+
 test("the endpoint returns local-time learned hours and rejects bad input", async () => {
   installFetch();
   const ok = await GET(new Request("http://localhost/learned-forecast?lat=53.93&lon=-0.78&tz=Europe/London"));
@@ -65,6 +76,9 @@ test("the endpoint returns local-time learned hours and rejects bad input", asyn
   assert.ok(body.reference.name);
   assert.ok(body.hourly.length >= 24 * 6);
   assert.match(body.hourly[0].time, /^\d{4}-\d{2}-\d{2}T\d{2}:00$/);
+  assert.ok(Array.isArray(body.daily), "daily rain chances are returned");
+  for (const d of body.daily) assert.ok(d.rain_chance_pct === null || (d.rain_chance_pct >= 0 && d.rain_chance_pct <= 100));
+  assert.deepEqual(Object.keys(body.daily[0] ?? { date: 0, rain_chance_pct: 0 }).sort(), ["date", "rain_chance_pct"], "no method detail in the public daily rows");
   const bad = await GET(new Request("http://localhost/learned-forecast?lat=abc"));
   assert.equal(bad.status, 400);
 });

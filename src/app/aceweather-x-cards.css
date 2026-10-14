@@ -104,13 +104,13 @@
 
 /* ---- 14-DAY CALENDAR GRID ---- */
 .awx-outlook-lead {
-  display: grid; grid-template-columns: minmax(170px, 1.25fr) repeat(3, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; background: var(--awx-line);
 }
 .awx-outlook-lead-main,
 .awx-outlook-stat { background: var(--awx-surface); }
 .awx-outlook-lead-main {
-  display: flex; align-items: center; gap: 12px; min-width: 0; padding: 13px 14px;
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 13px 14px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--awx-cool) 16%, var(--awx-surface)), var(--awx-surface));
 }
 .awx-outlook-lead.is-wet .awx-outlook-lead-main {
@@ -142,7 +142,7 @@
   --awx-cal-fill: var(--awx-cal-tile);
   --awx-cal-edge: color-mix(in srgb, var(--awx-accent) 10%, transparent);
   position: relative; background: var(--awx-cal-fill); display: grid; gap: 7px; padding: 10px 8px 9px;
-  text-align: left; align-content: start; min-height: 154px; border-radius: 7px;
+  text-align: left; align-content: start; grid-template-rows: auto auto 1fr; min-height: 118px; border-radius: 7px;
   box-shadow: 0 0 0 1px var(--awx-cal-edge);
   transition: background 140ms ease, box-shadow 140ms ease;
 }
@@ -175,24 +175,24 @@
 .awx-cal-day.is-today .awx-date b { color: var(--awx-accent); }
 .awx-cal-day .awx-date b { font-weight: 750; color: var(--awx-text); }
 .awx-cal-day .awx-cal-icon { width: 16px; height: 16px; flex: 0 0 auto; stroke: var(--awx-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.awx-cal-temps { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
-.awx-cal-hi { font-size: 18px; font-weight: 700; color: var(--awx-text); line-height: 1; }
-.awx-cal-temps .awx-lo { color: var(--awx-muted); font-size: 13px; font-weight: 500; }
-.awx-cal-rainbar { height: 4px; border-radius: var(--awx-pill); background: var(--awx-surface-3); overflow: hidden; }
-.awx-cal-rainbar i { display: block; height: 100%; width: var(--awx-v); background: var(--awx-accent); border-radius: var(--awx-pill); }
-.awx-cal-meta { display: grid; gap: 3px; min-width: 0; }
-.awx-cal-mini {
-  min-width: 0; min-height: 23px; display: flex; align-items: baseline; justify-content: flex-start; gap: 2px;
-  padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--awx-line-2) 70%, transparent); border-radius: 7px; background: var(--awx-cal-chip);
-  color: var(--awx-text); font-size: 10.5px; font-weight: 700; overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
+.awx-cal-temps { display: grid; gap: 3px; min-width: 0; }
+.awx-cal-hi { font-size: 20px; font-weight: 700; color: var(--awx-text); line-height: 1; }
+.awx-cal-temps .awx-lo { color: var(--awx-muted); font-size: 14px; font-weight: 500; line-height: 1.1; }
+.awx-cal-rainrow {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 6px; min-width: 0;
+  margin-top: auto; padding-top: 7px; border-top: 1px solid var(--awx-line); font-size: 13px; white-space: nowrap;
 }
-.awx-cal-mini b { flex: 0 0 auto; min-width: 0; overflow: visible; white-space: nowrap; }
-.awx-cal-mini small { flex: 0 0 auto; color: var(--awx-faint); font-size: 8.5px; font-weight: 650; }
-.awx-cal-mini.awx-cal-rain { color: var(--awx-accent); }
-.awx-cal-mini.awx-cal-rain.is-dry { color: var(--awx-faint); }
-.awx-cal-wind { color: var(--awx-muted); }
-.awx-cal-wind b { color: var(--awx-text); }
+.awx-cal-rainrow b { color: var(--awx-accent); font-weight: 700; }
+.awx-cal-rainrow span { color: var(--awx-muted); font-weight: 500; }
+.awx-cal-rainrow span.is-dry { color: var(--awx-faint); }
+.awx-cal-day.is-further {
+  --awx-cal-fill: transparent;
+  --awx-cal-edge: transparent;
+  border: 1px dashed var(--awx-line-2);
+}
+.awx-cal-day.is-further .awx-date b,
+.awx-cal-day.is-further .awx-cal-hi { color: var(--awx-muted); }
+.awx-cal-day.is-further .awx-cal-hi { font-weight: 600; }
 
 /* ---- STATUS ROWS / SOIL ---- */
 .awx-rows { display: grid; gap: 1px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
@@ -321,8 +321,13 @@
 .awx-hourly-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; }
 .awx-hourly-head strong { font-size: 14px; font-weight: 600; }
 .awx-hourly-head span { font-size: 12.5px; color: var(--awx-muted); font-variant-numeric: tabular-nums; }
+.awx-hourly-chart text { font-size: 17px; }
 .awx-hourly-chart { background: var(--awx-surface); border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); }
-.awx-hours-cap { font-size: 11px; color: var(--awx-faint); }
+.awx-hours-cap { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--awx-muted); }
+.awx-hours-cap span { display: inline-flex; align-items: center; gap: 6px; }
+.awx-hours-cap i { display: inline-block; width: 16px; height: 0; border-top: 2.4px solid var(--awx-sun); }
+.awx-hours-cap .awx-key-rain { width: 8px; height: 10px; border: 0; border-radius: 1px; background: var(--awx-accent); opacity: 0.7; }
+.awx-hours-cap .awx-key-wind { border-top: 1.6px dashed var(--awx-cool); }
 .awx-hours { display: grid; grid-auto-flow: column; grid-auto-columns: 46px; gap: 1px; overflow-x: auto; background: var(--awx-line); border-radius: var(--awx-radius-sm); }
 .awx-hours::-webkit-scrollbar { height: 6px; }
 .awx-hours::-webkit-scrollbar-thumb { background: var(--awx-line-2); border-radius: 999px; }
@@ -526,20 +531,20 @@
   .awx-decision { grid-template-columns: 1fr; }
   .awx-meter-wrap { justify-items: start; }
   .awx-meter { width: 100%; }
-  .awx-outlook-lead { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .awx-outlook-lead { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .awx-outlook-lead-main { grid-column: 1 / -1; padding: 12px; }
-  .awx-outlook-stat { padding: 10px 8px; }
-  .awx-outlook-stat span { font-size: 9.5px; }
-  .awx-outlook-stat b { font-size: 14px; white-space: normal; }
-  .awx-outlook-stat small { font-size: 10px; }
+  .awx-outlook-stat { grid-column: span 2; padding: 10px 8px; }
+  .awx-outlook-stat:nth-last-child(-n + 2) { grid-column: span 3; }
+  .awx-outlook-stat span { font-size: 11px; }
+  .awx-outlook-stat b { font-size: 15px; white-space: normal; }
+  .awx-outlook-stat small { font-size: 11px; }
   .awx-cal {
     display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden;
     overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 4px;
   }
   .awx-cal-dow,
   .awx-cal-day.is-empty { display: none; }
-  .awx-cal-day { flex: 0 0 112px; min-height: 132px; scroll-snap-align: center; border-radius: var(--awx-radius-sm); }
-  .awx-cal-mini { min-height: 21px; padding-inline: 5px; font-size: 10px; }
+  .awx-cal-day { flex: 0 0 112px; min-height: 112px; scroll-snap-align: center; border-radius: var(--awx-radius-sm); }
   .awx-radar-stage { min-height: 260px; }
   .awx-radar-map { height: 260px !important; }
   .awx-radar-controls { padding-inline: 12px; }

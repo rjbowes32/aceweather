@@ -8,6 +8,12 @@ export const fmt1 = (v: Num): string => (v == null || Number.isNaN(v) ? "—" : 
 export type TemperatureUnit = "c" | "f";
 export type WindUnit = "kmh" | "mph";
 
+/** Rainfall amount without unit, to 0.1 mm with no trailing ".0" (0.04 → "0", 2.0 → "2", 1.14 → "1.1"). */
+export function formatRain(value: Num): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return String(Math.max(0, +Number(value).toFixed(1)));
+}
+
 export function formatTemperature(value: Num, unit: TemperatureUnit): string {
   if (value == null || Number.isNaN(value)) return "—";
   return String(Math.round(unit === "f" ? Number(value) * 9 / 5 + 32 : Number(value)));
@@ -33,7 +39,7 @@ export type NextRainLike = {
   prob?: number | null;
 } | null | undefined;
 
-export function formatNextRain(nextRain: NextRainLike, fallbackTotal = 0, fallbackProbability = 0): { headline: string; detail: string } {
+export function formatNextRain(nextRain: NextRainLike, fallbackTotal = 0): { headline: string; detail: string } {
   if (!nextRain) {
     return {
       headline: "No meaningful rain next 24h",
@@ -47,7 +53,7 @@ export function formatNextRain(nextRain: NextRainLike, fallbackTotal = 0, fallba
       : `Rain from ${nextRain.atLabel}`;
   return {
     headline,
-    detail: `${nextRain.mm} mm spell · ${Math.round(nextRain.prob ?? fallbackProbability)}% chance`,
+    detail: `${nextRain.mm} mm spell`,
   };
 }
 

@@ -14,7 +14,11 @@
 }
 
 .tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 76px;
+  min-height: 44px;
   padding: 9px 13px;
   border-radius: 999px;
   color: var(--awx-muted, #a8b0ad);

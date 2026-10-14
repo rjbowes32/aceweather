@@ -36,6 +36,7 @@ export async function GET(request: Request): Promise<Response> {
       applied: d.learned_applied,
       reference: d.reference ? { name: d.reference.name, network: d.reference.network, distance_km: d.reference.distance_km } : null,
       timezone,
+      daily: d.daily.map((r) => ({ date: r.date, rain_chance_pct: r.rain_chance_pct })),
       hourly: (d.hourly ?? []).map((h) => ({ time: localHour(h.time, timezone), temperature_c: h.temperature_c, wind_speed_kmh: h.wind_speed, precipitation_mm: h.precipitation_mm })),
     }, { headers: { "cache-control": "public, s-maxage=900, stale-while-revalidate=900" } });
   } catch (error) {

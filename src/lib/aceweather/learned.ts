@@ -9,6 +9,8 @@ export type LearnedOverlay = {
   applied: { temperature: boolean; wind_speed: boolean; rainfall: boolean; bias_correction: boolean };
   reference: { name: string; network: string; distance_km: number } | null;
   timezone: string;
+  /** Calibrated chance (0-100) of at least 1 mm per local date, today to seven days ahead. */
+  daily?: Array<{ date: string; rain_chance_pct: number | null }>;
   hourly: Array<{ time: string; temperature_c: number | null; wind_speed_kmh: number | null; precipitation_mm: number | null }>;
 };
 
@@ -34,7 +36,21 @@ type Num = number | null;
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 /** Returns a new forecast with the learned hours applied, and the days containing them re-aggregated. */
+/** The daily chance of rain shown in the app: only AceWeather's calibrated chance, never Open-Meteo's hourly maximum. */
+function withRainChance(raw: ForecastResponse, overlay: LearnedOverlay | null): ForecastResponse {
+  // Only AceWeather's calibrated chance is ever shown; with none supplied the forecast is left untouched and views show "—".
+  if (!overlay?.daily?.some((d) => isNum(d.rain_chance_pct))) return raw;
+  const byDate = new Map(overlay.daily.map((d) => [d.date, d.rain_chance_pct]));
+  const dates = (raw.daily.time ?? []) as string[];
+  return { ...raw, daily: { ...raw.daily, rain_chance: dates.map((d) => (isNum(byDate.get(d)) ? (byDate.get(d) as number) : null)) } };
+}
+
 export function applyLearned(raw: ForecastResponse, overlay: LearnedOverlay | null): { forecast: ForecastResponse; meta: LearnedMeta | null } {
+  const result = applyLearnedValues(raw, overlay);
+  return { forecast: withRainChance(result.forecast, overlay), meta: result.meta };
+}
+
+function applyLearnedValues(raw: ForecastResponse, overlay: LearnedOverlay | null): { forecast: ForecastResponse; meta: LearnedMeta | null } {
   if (!overlay || !overlay.hourly.length || (!overlay.applied.temperature && !overlay.applied.wind_speed && !overlay.applied.rainfall)) return { forecast: raw, meta: null };
   const times = (raw.hourly.time ?? []) as string[];
   const index = new Map<string, number>();

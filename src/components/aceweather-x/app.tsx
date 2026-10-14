@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import dynamic from "next/dynamic";
 
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
-import { formatNextRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
+import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
 import { NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
@@ -68,7 +68,7 @@ const SEED_SAVED = [
 function RainExperience({ model, seasonal, onSelectView }: { model: AwModel; seasonal: SeasonalContext | null; onSelectView: (view: View) => void }) {
   const [range, setRange] = useState<RainRange>("24h");
   const selected = model.rain.ranges[range];
-  const rainTiming = formatNextRain(model.nextRain, model.rain.sum24, model.rain.peakProb);
+  const rainTiming = formatNextRain(model.nextRain, model.rain.sum24);
   const lastYearRain = seasonal?.lastYearMtdRain;
   const comparisonDelta = seasonal == null || lastYearRain == null ? null : +(seasonal.mtdRain - lastYearRain).toFixed(1);
   const comparisonDirection = comparisonDelta == null || Math.abs(comparisonDelta) < 0.1
@@ -89,7 +89,7 @@ function RainExperience({ model, seasonal, onSelectView }: { model: AwModel; sea
         </div>
         <div className="awx-rain-key-metrics">
           <div><span>Next 24h</span><strong className="awx-tnum">{model.rain.sum24} <small>mm</small></strong></div>
-          <div><span>Peak chance</span><strong className="awx-tnum">{Math.round(model.rain.peakProb)}%</strong></div>
+          <div><span>Rain tomorrow</span><strong className="awx-tnum">{model.rain.tomorrowChance == null ? "—" : `${Math.round(model.rain.tomorrowChance)}%`}</strong></div>
           <div><span>Next 7 days</span><strong className="awx-tnum">{model.rain.next7} <small>mm</small></strong></div>
           <div><span>Past 7 days</span><strong className="awx-tnum">{model.rain.past7} <small>mm</small></strong></div>
         </div>
@@ -128,8 +128,8 @@ function RainExperience({ model, seasonal, onSelectView }: { model: AwModel; sea
               <div key={`${bar.label}-${index}`} role="listitem">
                 <span>{bar.label}</span>
                 <i><b style={{ width: `${bar.h}%` }} /></i>
-                <strong className="awx-tnum">{bar.value.toFixed(1)} mm</strong>
-                <small>{Math.round(model.calendar[index]?.prob ?? 0)}%</small>
+                <strong className="awx-tnum">{formatRain(bar.value)} mm</strong>
+                <small>{model.calendar[index]?.chance == null ? "—" : `${Math.round(model.calendar[index].chance as number)}%`}</small>
               </div>
             ))}
           </div>
@@ -628,7 +628,7 @@ export function AceWeatherApp() {
               {view === "outlook" ? <CalendarCard model={model} unit={unit} windUnit={windUnit} /> : null}
               {view === "field" ? <FieldExperience model={model} windUnit={windUnit} /> : null}
               {view === "seasonal" ? <SeasonalCard seasonal={seasonal} /> : null}
-              {view === "about" ? <SourcesCard source={status} freshness={freshness} learned={learned?.meta ?? null} /> : null}
+              {view === "about" ? <SourcesCard source={status} freshness={freshness} aceForecast={Boolean(learned?.meta)} /> : null}
             </>
           ) : (
             <article className="awx-card"><div className="awx-radar-status">{status === "error" ? "Could not reach Open-Meteo. Check your connection and retry." : "Loading live conditions…"}</div></article>

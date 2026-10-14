@@ -123,9 +123,9 @@ export function HourlyChart({ temp, rain, wind, labels }: { temp: number[]; rain
         const hgt = (v / rmax) * (yBase - yTop) * 0.8;
         return <rect key={i} x={xs(i) - colW / 2} y={yBase - hgt} width={colW} height={hgt} rx="1" fill="var(--awx-accent)" opacity="0.7" />;
       })}
-      <path d={wPath} fill="none" stroke="var(--awx-cool)" strokeWidth="1.6" opacity="0.75" />
+      <path d={wPath} fill="none" stroke="var(--awx-cool)" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.75" />
       <path className="awx-temp" d={tPath} />
-      {labels.map((l, i) => (["00", "06", "12", "18", "23"].includes(l) ? <text key={i} x={xs(i)} y={H - 6} textAnchor="middle">{l}:00</text> : null))}
+      {labels.map((l, i) => (["00", "06", "12", "18", "23"].includes(l) ? <text key={i} x={xs(i)} y={H - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}>{l}:00</text> : null))}
     </svg>
   );
 }

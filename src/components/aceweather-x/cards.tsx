@@ -1,10 +1,9 @@
 "use client";
 
-import type { LearnedMeta } from "@/lib/aceweather/learned";
 import { useEffect, useRef, useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { SeasonalContext } from "@/lib/aceweather/open-meteo";
-import { formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
+import { formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -24,13 +23,17 @@ function HourlyDetail({ day, unit, windUnit }: { day?: CalendarDay; unit: Temper
         <span>High {tC(hrs.tMax, unit)}° · Low {tC(hrs.tMin, unit)}° · {hrs.rainSum} mm · wind to {wSpd(hrs.windMax, windUnit)} {WU(windUnit)}</span>
       </div>
       <HourlyChart temp={hrs.temp} rain={hrs.rain} wind={hrs.wind} labels={hrs.labels} />
-      <div className="awx-hours-cap">Hour · temp · rain (mm) · wind ({WU(windUnit)})</div>
+      <div className="awx-hours-cap">
+        <span><i className="awx-key-temp" aria-hidden="true" />Temp</span>
+        <span><i className="awx-key-rain" aria-hidden="true" />Rain mm</span>
+        <span><i className="awx-key-wind" aria-hidden="true" />Wind {WU(windUnit)}</span>
+      </div>
       <div className="awx-hours">
         {hrs.labels.map((l: string, i: number) => (
           <div className="awx-hour" key={i}>
             <span className="awx-h-h">{l}</span>
             <b className="awx-h-t awx-tnum">{tC(hrs.temp[i], unit)}°</b>
-            <span className={"awx-h-r awx-tnum" + ((hrs.rain[i] || 0) > 0 ? " wet" : "")}>{(hrs.rain[i] || 0) > 0 ? hrs.rain[i].toFixed(1) : "·"}</span>
+            <span className={"awx-h-r awx-tnum" + (formatRain(hrs.rain[i]) !== "0" ? " wet" : "")}>{formatRain(hrs.rain[i]) === "0" ? "·" : formatRain(hrs.rain[i])}</span>
             <span className="awx-h-w awx-tnum">{wSpd(hrs.wind[i], windUnit)}</span>
           </div>
         ))}
@@ -39,14 +42,9 @@ function HourlyDetail({ day, unit, windUnit }: { day?: CalendarDay; unit: Temper
   );
 }
 
-function outlookRainNumber(v: number | null | undefined) {
-  if (v == null) return "—";
-  return (v || 0) < 0.1 ? "0" : v.toFixed(1);
-}
-
 function outlookRainText(v: number | null | undefined) {
   if (v == null) return "—";
-  return `${outlookRainNumber(v)} mm`;
+  return `${formatRain(v)} mm`;
 }
 
 function outlookChanceText(v: number | null | undefined) {
@@ -58,18 +56,19 @@ function outlookWind(day: CalendarDay | undefined, windUnit: WindUnit) {
   return wind == null ? "—" : wSpd(wind, windUnit);
 }
 
-function outlookWindText(day: CalendarDay | undefined, windUnit: WindUnit) {
-  const wind = day?.hours?.windMax;
-  return wind == null ? "—" : `${wSpd(wind, windUnit)} ${WU(windUnit)}`;
-}
-
 function outlookTone(day: CalendarDay | undefined) {
   const rain = day?.rain ?? 0;
-  const chance = day?.prob ?? 0;
+  const chance = day?.chance ?? 0;
   const wind = day?.hours?.windMax ?? 0;
   if (rain >= 5 || chance >= 70) return " is-wet";
   if (wind >= 30) return " is-breezy";
   return "";
+}
+
+/** Day squares only flag likely rain; wind is shown in the selected-day panel, not as colour alone. */
+function dayTone(day: CalendarDay) {
+  if (day.further) return " is-further";
+  return (day.rain ?? 0) >= 5 || (day.chance ?? 0) >= 70 ? " is-wet" : "";
 }
 
 export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: TemperatureUnit; windUnit: WindUnit }) {
@@ -95,12 +94,20 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
             </div>
           </div>
           <div className="awx-outlook-stat">
-            <span>High / low</span>
-            <b className="awx-tnum">{tC(day.hi, unit)}° / {tC(day.lo, unit)}°</b>
+            <span>High</span>
+            <b className="awx-tnum">{tC(day.hi, unit)}°</b>
           </div>
           <div className="awx-outlook-stat">
-            <span>Rain</span>
-            <b className="awx-tnum">{outlookRainText(day.rain)} <small>{outlookChanceText(day.prob)}</small></b>
+            <span>Low</span>
+            <b className="awx-tnum">{tC(day.lo, unit)}°</b>
+          </div>
+          <div className="awx-outlook-stat">
+            <span>Rain chance</span>
+            <b className="awx-tnum">{outlookChanceText(day.chance)}</b>
+          </div>
+          <div className="awx-outlook-stat">
+            <span>Rainfall</span>
+            <b className="awx-tnum">{outlookRainText(day.rain)}</b>
           </div>
           <div className="awx-outlook-stat">
             <span>Wind</span>
@@ -112,23 +119,23 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
         {DOW.map((dn) => <div key={dn} className="awx-cal-dow">{dn}</div>)}
         {leading.map((_, i) => <div key={"e" + i} className="awx-cal-day is-empty" />)}
         {model.calendar.map((c, i) => {
-          const dry = (c.rain ?? 0) < 0.1;
-          const wind = c.hours?.windMax;
+          const label = `${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°` +
+            (c.further ? ", further ahead and less certain" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
           return (
             <button key={c.dateKey} type="button"
               ref={sel === i ? selectedDayRef : null}
-              className={"awx-cal-day" + (c.isToday ? " is-today" : "") + (sel === i ? " is-sel" : "") + outlookTone(c)}
+              className={"awx-cal-day" + (c.isToday ? " is-today" : "") + (sel === i ? " is-sel" : "") + dayTone(c)}
               aria-pressed={sel === i}
-              aria-label={`${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°, rain ${outlookRainText(c.rain)}, chance ${outlookChanceText(c.prob)}, wind ${outlookWindText(c, windUnit)}`}
+              aria-label={label}
               onClick={() => setSel(i)}>
-              <div className="awx-date"><b>{c.dayNum}</b><ConditionIcon className="awx-cal-icon" k={c.condition.key} /></div>
+              <div className="awx-date"><b>{c.weekday} {c.dayNum}</b><ConditionIcon className="awx-cal-icon" k={c.condition.key} /></div>
               <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
-              <div className="awx-cal-rainbar" aria-hidden="true"><i style={{ width: c.rainPct + "%" }} /></div>
-              <div className="awx-cal-meta">
-                <span className={"awx-cal-mini awx-cal-rain" + (dry ? " is-dry" : "")} title="Rainfall"><b>{outlookRainNumber(c.rain)}</b><small>mm</small></span>
-                <span className="awx-cal-mini" title="Rain chance"><b>{outlookChanceText(c.prob)}</b><small>rain</small></span>
-                <span className="awx-cal-mini awx-cal-wind" title="Max wind"><b>{wind == null ? "—" : wSpd(wind, windUnit)}</b><small>{wind == null ? "" : WU(windUnit)}</small></span>
-              </div>
+              {c.further ? null : (
+                <div className="awx-cal-rainrow awx-tnum">
+                  <b>{outlookChanceText(c.chance)}</b>
+                  <span className={formatRain(c.rain ?? 0) === "0" ? "is-dry" : ""}>{outlookRainText(c.rain)}</span>
+                </div>
+              )}
             </button>
           );
         })}
@@ -273,21 +280,13 @@ export function SeasonalCard({ seasonal }: { seasonal: SeasonalContext | null })
   );
 }
 
-export function SourcesCard({ source, freshness, learned }: { source: string; freshness: string; learned: LearnedMeta | null }) {
+export function SourcesCard({ source, freshness, aceForecast }: { source: string; freshness: string; aceForecast: boolean }) {
   if (source === "refreshing") source = "loading";
-  const learnedParts = learned ? [learned.temperature && "temperature", learned.wind && "wind", learned.rain && "rain"].filter(Boolean).join(", ") : "";
-  const learnedValue = learned
-    ? learned.station && (learned.temperature || learned.wind)
-      ? `Learned · ${learned.station}${learned.distanceKm != null ? ` (${Math.round(learned.distanceKm)} km)` : ""}`
-      : "Model average"
-    : null;
   return (
     <Card section="about" tick="go" kicker="Data sources">
       <div className="awx-rows">
-        {learnedValue ? (
-          <div className="awx-row-item"><span className="awx-k">Forecast · {learnedParts}, next 7 days</span><span className="awx-v awx-v-go">{learnedValue}</span></div>
-        ) : null}
-        <div className="awx-row-item"><span className="awx-k">Forecast · {learnedValue ? "everything else" : "current, hourly, daily, soil"}</span><span className="awx-v awx-v-go">Open-Meteo</span></div>
+        <div className="awx-row-item"><span className="awx-k">Forecast</span><span className={"awx-v " + (aceForecast ? "awx-v-go" : "awx-v-warn")}>{aceForecast ? "AceWeather" : "Open-Meteo only"}</span></div>
+        <div className="awx-row-item"><span className="awx-k">Weather data</span><span className="awx-v awx-v-go">Open-Meteo</span></div>
         <div className="awx-row-item"><span className="awx-k">Rainfall radar</span><span className="awx-v awx-v-go">Met Office open data</span></div>
         <div className="awx-row-item"><span className="awx-k">Seasonal normals</span><span className="awx-v awx-v-go">Open-Meteo archive</span></div>
         <div className="awx-row-item"><span className="awx-k">Status</span><span className={"awx-v " + (source === "live" ? "awx-v-go" : "awx-v-warn")}>{source === "live" ? "Live" : source === "loading" ? "Fetching" : "Offline"} · {freshness}</span></div>
