@@ -2,10 +2,26 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { locationOut } from "../envelope.ts";
 import { learnedDataSchema, learnedForecast } from "../learned.ts";
-import { locationInput, resolveLocation } from "../locations.ts";
+import { cached } from "../cache.ts";
+import { locationInput, resolveLocation, type ResolvedLocation } from "../locations.ts";
+import { inUk } from "../observations.ts";
+import { fetchJson } from "../upstream.ts";
 import { withTimezone } from "../sources/forecast.ts";
 import { units, type WindUnit } from "../units.ts";
 import { detailInput, readTool, windUnitInput } from "./define.ts";
+
+/**
+ * UK coordinates need only a time zone and an elevation, so skip the full dashboard forecast that
+ * withTimezone() downloads for them (several seconds) and ask the elevation API instead.
+ */
+async function prepare(location: ResolvedLocation): Promise<ResolvedLocation> {
+  if (location.timezone !== "auto" || !inUk(location, 0)) return withTimezone(location);
+  const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
+  const elevation = await cached(`elevation:${key}`, 24 * 3600_000, () =>
+    fetchJson("Open-Meteo elevation", `https://api.open-meteo.com/v1/elevation?latitude=${location.latitude.toFixed(4)}&longitude=${location.longitude.toFixed(4)}`)
+      .then((body) => (typeof body?.elevation?.[0] === "number" ? body.elevation[0] : null))).catch(() => null);
+  return { ...location, timezone: "Europe/London", elevation_m: location.elevation_m ?? elevation };
+}
 
 export function registerLearnedTool(server: McpServer): string[] {
   return [
@@ -15,7 +31,7 @@ export function registerLearnedTool(server: McpServer): string[] {
       input: { ...locationInput, days: z.number().int().min(1).max(7).default(7).describe("Days ahead (1-7). Default 7."), wind_unit: windUnitInput, detail: detailInput },
       data: learnedDataSchema,
     }, async (args) => {
-      const location = await withTimezone(await resolveLocation(args));
+      const location = await prepare(await resolveLocation(args));
       const wind = args.wind_unit as WindUnit;
       const result = await learnedForecast(location, { days: args.days, wind, hourly: args.detail === "full" });
       const d = result.data;

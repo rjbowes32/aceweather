@@ -1,9 +1,11 @@
+import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { cached } from "./cache.ts";
 import { num, type Source } from "./envelope.ts";
 import type { ResolvedLocation } from "./locations.ts";
 import { inUk } from "./observations.ts";
 import { addError, apply, fit, type DayErrors, type Fit } from "./learning.ts";
+import { asFit, chooseReference, type FitsFile } from "./learning-store.ts";
 import { fetchPreviousRuns, PREVIOUS_RUNS_SOURCE } from "./sources/previous-runs.ts";
 import { FORECAST_SOURCE } from "./sources/forecast.ts";
 import { MODEL_INFO } from "./sources/models.ts";
@@ -21,7 +23,7 @@ export const modelsFor = (lead: number) => (lead >= AI_FROM_LEAD ? [...LEARN_MOD
 const ALL_MODELS = [...LEARN_MODELS, AI_MODEL];
 export const LEARN_LEADS = [1, 2, 3, 4, 5, 6, 7];
 export const WINDOW_DAYS = 60;
-const MIN_TRAIN_DAYS = 20;
+export const MIN_TRAIN_DAYS = 20;
 /** The blend's recent bias is a property of the station; only apply it to a location that resembles the station. */
 const BIAS_MAX_DISTANCE_KM = 40;
 const BIAS_MAX_HEIGHT_DIFF_M = 150;
@@ -39,6 +41,8 @@ export const LEARNED_METHOD = [
 const leadSchema = z.object({ lead_day: z.number(), training_days: z.number(), weights: z.record(z.string(), z.number()), bias: num }).nullable();
 
 export const learnedDataSchema = z.object({
+  learning_source: z.enum(["daily", "on_demand", "none"]),
+  fits_generated_at: z.string().nullable(),
   learned_applied: z.object({ temperature: z.boolean(), wind_speed: z.boolean(), rainfall: z.boolean(), bias_correction: z.boolean() }),
   reference: referenceSchema.nullable(),
   training: z.array(z.object({ lead_day: z.number(), temperature: leadSchema, wind_speed: leadSchema })),
@@ -54,6 +58,33 @@ export const learnedDataSchema = z.object({
 export type LearnedData = z.infer<typeof learnedDataSchema>;
 
 type Fits = Map<number, { temperature: Fit | null; wind: Fit | null }>;
+
+const DAILY_FITS_MAX_AGE_MS = 72 * HOUR;
+
+/**
+ * The daily learning job's output (scripts/learning/daily.mjs): ACEWEATHER_LEARNED_FITS_URL in production,
+ * or ACEWEATHER_LEARNED_FITS_FILE for a local file. Null when unset, unreadable or more than three days old.
+ */
+export function loadDailyFits(now = Date.now()): Promise<FitsFile | null> {
+  const file = process.env.ACEWEATHER_LEARNED_FITS_FILE?.trim();
+  const url = process.env.ACEWEATHER_LEARNED_FITS_URL?.trim();
+  if (!file && !url) return Promise.resolve(null);
+  return cached(`learned:daily-fits:${file ?? url}`, 30 * 60_000, async () => {
+    try {
+      const text = file ? await readFile(file, "utf8") : await (await fetch(url!, { signal: AbortSignal.timeout(10_000) })).text();
+      const fits = JSON.parse(text) as FitsFile;
+      return now - Date.parse(fits.generated_at) <= DAILY_FITS_MAX_AGE_MS && Array.isArray(fits.stations) ? fits : null;
+    } catch {
+      return null;
+    }
+  });
+}
+
+const NETWORK_SOURCE: Record<string, Omit<Source, "retrieved_at" | "classification">> = {
+  metoffice: { name: "Met Office stations via MeteoGate E-SOH and NOAA GHCNh", url: "https://api.meteogate.eu/eu-eumetnet-surface-observations" },
+  metar: { name: "Airport METARs (Iowa Environmental Mesonet archive)", url: "https://mesonet.agron.iastate.edu/request/download.phtml" },
+  cosmos_uk: { name: "COSMOS-UK (UK Centre for Ecology & Hydrology)", url: "https://cosmos-api.ceh.ac.uk" },
+};
 
 /** Per-lead fits from the last WINDOW_DAYS complete UTC days at the reference station. */
 async function trainFits(air: AirObs, now: number): Promise<Fits> {
@@ -114,18 +145,46 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
   return cached(key, 15 * 60_000, async () => {
     const warnings: string[] = [];
     const today = Math.floor(now / DAY) * DAY;
-    let air: AirObs | null = null;
+    let reference: LearnedData["reference"] = null;
+    let fits: Fits = new Map();
+    let learningSource: LearnedData["learning_source"] = "none";
+    let fitsGeneratedAt: string | null = null;
+    const learningSources: Source[] = [];
+    const retrievedAt = new Date(now).toISOString();
     if (inUk(location, 0)) {
-      air = await airObservations(location, today - WINDOW_DAYS * DAY, today, SEARCH).catch(() => null);
-      if (!air) warnings.push("No reference station with enough recent history; temperature and wind use AceWeather's standard forecast.");
+      const daily = await loadDailyFits(now);
+      const pick = daily ? chooseReference(daily, location, { radiusKm: SEARCH.radiusKm, maxHeightDiffM: SEARCH.maxHeightDiffM, minDays: MIN_TRAIN_DAYS }) : null;
+      if (daily && pick) {
+        const m = pick.station.meta;
+        reference = { id: m.id, name: m.name, network: m.network, latitude: m.latitude, longitude: m.longitude, elevation_m: m.elevation_m, distance_km: round(pick.distance_km) ?? 0, measures: pick.station.leads["1"]?.w ? ["temperature", "wind_speed"] : ["temperature"] };
+        fits = new Map(LEARN_LEADS.map((l) => {
+          const lf = pick.station.leads[String(l)];
+          return [l, { temperature: lf?.t ? asFit(lf.t) : null, wind: lf?.w ? asFit(lf.w) : null }];
+        }));
+        learningSource = "daily";
+        fitsGeneratedAt = daily.generated_at;
+        learningSources.push(
+          { name: "AceWeather daily learning job", classification: "calculated", retrieved_at: retrievedAt, issued_at: daily.generated_at, notes: `Model weights and bias per station from the last ${daily.window_days} days of archived forecasts (Open-Meteo Previous Runs) against station observations, refreshed daily.` },
+          { ...(NETWORK_SOURCE[m.network] ?? { name: m.network }), classification: "observation", retrieved_at: retrievedAt },
+        );
+      } else {
+        const air: AirObs | null = await airObservations(location, today - WINDOW_DAYS * DAY, today, SEARCH).catch(() => null);
+        if (air) {
+          reference = air.reference;
+          fits = await cached(`learned-fits:${air.reference.id}:${today}`, 6 * HOUR, () => trainFits(air, now)).catch(() => new Map());
+          learningSource = "on_demand";
+          warnings.push(...air.warnings);
+          learningSources.push({ ...PREVIOUS_RUNS_SOURCE, classification: "forecast", retrieved_at: retrievedAt, notes: "Archived forecasts used to learn each model's recent accuracy at the reference station." }, { ...air.source, classification: "observation", retrieved_at: retrievedAt });
+        } else {
+          warnings.push("No reference station with enough recent history; temperature and wind use AceWeather's standard forecast.");
+        }
+      }
     } else {
       warnings.push("Learning needs UK station history; outside the UK temperature and wind use AceWeather's standard forecast.");
     }
-    const fits: Fits = air ? await cached(`learned-fits:${air.reference.id}:${today}`, 6 * HOUR, () => trainFits(air!, now)).catch(() => new Map()) : new Map();
-    const heightDiff = air && air.reference.elevation_m != null && location.elevation_m != null ? Math.abs(air.reference.elevation_m - location.elevation_m) : null;
-    const biasOk = Boolean(air && air.reference.distance_km <= BIAS_MAX_DISTANCE_KM && (heightDiff == null || heightDiff <= BIAS_MAX_HEIGHT_DIFF_M));
-    if (air && !biasOk) warnings.push(`The reference station is ${air.reference.distance_km} km away${heightDiff != null ? ` and ${Math.round(heightDiff)} m different in height` : ""}, so model weights are applied but not its bias correction.`);
-    if (air) warnings.push(...air.warnings);
+    const heightDiff = reference && reference.elevation_m != null && location.elevation_m != null ? Math.abs(reference.elevation_m - location.elevation_m) : null;
+    const biasOk = Boolean(reference && reference.distance_km <= BIAS_MAX_DISTANCE_KM && (heightDiff == null || heightDiff <= BIAS_MAX_HEIGHT_DIFF_M));
+    if (reference && !biasOk) warnings.push(`The reference station is ${reference.distance_km} km away${heightDiff != null ? ` and ${Math.round(heightDiff)} m different in height` : ""}, so model weights are applied but not its bias correction.`);
 
     const live = await liveForecast(location, options.days);
     const endMs = Math.floor(now / HOUR) * HOUR + options.days * DAY;
@@ -181,15 +240,16 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       weights: Object.fromEntries(Object.entries(fitted.weights).map(([m, w]) => [m, Math.round(w * 1000) / 1000])),
       bias: biasOk ? round(fitted.blendBias, 2) : null,
     } : null;
-    const retrieved_at = new Date(now).toISOString();
     const sources: Source[] = [
-      { ...FORECAST_SOURCE, model: `multi-model: ${LEARN_MODELS.map((m) => MODEL_INFO[m as keyof typeof MODEL_INFO].name).join(", ")}, plus ECMWF AIFS from day ${AI_FROM_LEAD}; standard forecast is best_match`, classification: "forecast", retrieved_at },
-      ...(air ? [{ ...PREVIOUS_RUNS_SOURCE, classification: "forecast" as const, retrieved_at, notes: "Archived forecasts used to learn each model's recent accuracy at the reference station." }, { ...air.source, classification: "observation" as const, retrieved_at }] : []),
+      { ...FORECAST_SOURCE, model: `multi-model: ${LEARN_MODELS.map((m) => MODEL_INFO[m as keyof typeof MODEL_INFO].name).join(", ")}, plus ECMWF AIFS from day ${AI_FROM_LEAD}; standard forecast is best_match`, classification: "forecast", retrieved_at: retrievedAt },
+      ...learningSources,
     ];
     return {
       data: {
+        learning_source: learningSource,
+        fits_generated_at: fitsGeneratedAt,
         learned_applied: { temperature: usedFit.temperature, wind_speed: usedFit.wind, rainfall: true, bias_correction: biasOk && (usedFit.temperature || usedFit.wind) },
-        reference: air?.reference ?? null,
+        reference,
         training: LEARN_LEADS.map((l) => ({ lead_day: l, temperature: lead(fits.get(l)?.temperature, l), wind_speed: lead(fits.get(l)?.wind, l) })),
         daily,
         ...(options.hourly ? { hourly } : {}),

@@ -108,3 +108,42 @@ test("GHCNh parsing keeps quality-passed reports nearest the hour and UK station
   const { GHCNH_LIST } = await import("./observation-fixtures.mjs");
   assert.deepEqual(parseStationList(GHCNH_LIST).map((s) => s.id), ["UKM00003382", "UKM00003999", "UKU12-00001"]);
 });
+
+test("with a fresh daily fits file the forecast uses it and makes no learning requests; a stale one is ignored", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const four = { ecmwf_ifs025: 0.25, gfs_seamless: 0.25, icon_seamless: 0.25, ukmo_seamless: 0.25 };
+  const five = { ...Object.fromEntries(Object.keys(four).map((m) => [m, 0.2])), ecmwf_aifs025_single: 0.2 };
+  // Equal weights with the fixture's model errors: blend bias 0.375 (four models) or 0.36 (five) for temperature.
+  const leads = Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map((l) => [l, l < 3
+    ? { t: { weights: four, bias: 0.375, days: 50 }, w: { weights: four, bias: 1.75, days: 50 } }
+    : { t: { weights: five, bias: 0.36, days: 50 }, w: { weights: five, bias: 1.8, days: 50 } }]));
+  const fits = (generatedAt) => JSON.stringify({ version: 1, generated_at: generatedAt, window_days: 60, ai_from_lead: 3, recent_scores: {}, stations: [
+    { meta: { id: "0-20000-0-03382", name: "Leconfield", network: "metoffice", latitude: 53.875, longitude: -0.442, elevation_m: 7 }, leads },
+    { meta: { id: "metar:EGXX", name: "Too high", network: "metar", latitude: 53.94, longitude: -0.78, elevation_m: 400 }, leads },
+  ] });
+  const dir = mkdtempSync(join(tmpdir(), "aceweather-fits-"));
+  const file = join(dir, "fits.json");
+  process.env.ACEWEATHER_LEARNED_FITS_FILE = file;
+  try {
+    writeFileSync(file, fits(new Date().toISOString()));
+    const calls = installFetch();
+    const { data, error } = await call("get_learned_forecast", { place: "Pocklington", detail: "full", days: 4 });
+    assert.equal(error, null, JSON.stringify(error));
+    assert.equal(data.data.learning_source, "daily");
+    assert.equal(data.data.reference.id, "0-20000-0-03382", "the nearer station 400 m higher is not representative");
+    assert.equal(data.data.learned_applied.bias_correction, true);
+    const errors = data.data.hourly.map((r) => r.temperature_c - trueTemperature(ms(r.time)));
+    assert.ok(meanAbs(errors) < 0.06, `exact weights and bias reproduce the truth (${meanAbs(errors)})`);
+    assert.equal(calls.filter((u) => ["previous-runs-api.open-meteo.com", "mesonet.agron.iastate.edu", "www.ncei.noaa.gov", "cosmos-api.ceh.ac.uk"].includes(u.host)).length, 0, "no station history or archived forecasts are fetched");
+    assert.match(data.sources[1].name, /daily learning job/);
+
+    writeFileSync(file, fits(new Date(Date.now() - 5 * 86_400_000).toISOString()));
+    installFetch();
+    const stale = await call("get_learned_forecast", { place: "Pocklington", days: 2 });
+    assert.equal(stale.data.data.learning_source, "on_demand", "a fits file older than three days is not trusted");
+  } finally {
+    delete process.env.ACEWEATHER_LEARNED_FITS_FILE;
+  }
+});
