@@ -38,3 +38,18 @@ test("logistic regression recovers a known relationship and gives calibrated pro
   const samples = X.map((x, i) => ({ p: predict(w, x), wet: y[i] === 1 }));
   for (const bin of reliability(samples, 5).filter((b) => b.n > 200)) assert.ok(Math.abs(bin.forecast - bin.observed) < 0.06, "reliable within 6 points");
 });
+
+test("the saved calibrations cover days 1-7 with weights for each threshold and the models each lead uses", async () => {
+  const { readFileSync } = await import("node:fs");
+  const cal = JSON.parse(readFileSync(new URL("../../src/mcp/rain-calibration.json", import.meta.url), "utf8"));
+  assert.deepEqual(Object.keys(cal.leads), ["1", "2", "3", "4", "5", "6", "7"]);
+  for (const [lead, entry] of Object.entries(cal.leads)) {
+    assert.ok(entry.models.length >= 3, `lead ${lead} models`);
+    for (const t of ["1", "0.2"]) {
+      assert.equal(entry.thresholds[t].weights.length, 5, `lead ${lead} threshold ${t}`);
+      assert.ok(entry.thresholds[t].climatology.uk > 0.2 && entry.thresholds[t].climatology.uk < 0.8);
+      assert.ok(entry.thresholds[t].weights[1] > 0, "more models forecasting rain raises the chance");
+    }
+  }
+  assert.ok(!cal.leads[7].models.includes("ukmo_seamless"), "day 7 has no Met Office archive");
+});
