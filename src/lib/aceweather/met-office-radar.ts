@@ -46,3 +46,14 @@ export function formatRadarAge(time: number, now = Date.now()) {
   const rest = minutes % 60;
   return rest ? `${hours} h ${rest} min ago` : `${hours} h ago`;
 }
+
+/**
+ * Which frame to show after the frame list refreshes: the newest one, unless the user has paused on an
+ * earlier frame that is still in the list, in which case they stay on it.
+ */
+export function frameIndexAfterRefresh(previous: MetOfficeRadarFrame[] | null, next: MetOfficeRadarFrame[], viewing: string | null, playing: boolean): number {
+  const latest = Math.max(0, next.length - 1);
+  if (!previous || playing || !viewing || viewing === previous.at(-1)?.stamp) return latest;
+  const keep = next.findIndex((f) => f.stamp === viewing);
+  return keep >= 0 ? keep : latest;
+}

@@ -103,6 +103,32 @@ test("a dropped S3 connection is retried rather than failing the frame", async (
     if (calls === 1) throw new TypeError("fetch failed");
     return new Response("not found", { status: 404 });
   };
-  await assert.rejects(renderFrame("202610141515", fetcher), /not found/);
+  await assert.rejects(renderFrame("202610141515", fetcher, Date.UTC(2026, 9, 14, 16)), /not found/);
   assert.equal(calls, 2);
+});
+
+test("only recent frames are rendered, so the archive cannot be walked at our expense", async () => {
+  const { renderFrame } = await import("../../src/lib/aceweather/radar-server.ts");
+  let calls = 0;
+  const fetcher = async () => { calls += 1; return new Response("", { status: 404 }); };
+  const now = Date.UTC(2026, 9, 14, 16);
+  await assert.rejects(renderFrame("202610111515", fetcher, now), /recent window/);
+  await assert.rejects(renderFrame("202610150000", fetcher, now), /recent window/);
+  assert.equal(calls, 0, "rejected before contacting S3");
+});
+
+test("a refresh moves to the newest frame unless the user paused on an earlier one", async () => {
+  const { frameIndexAfterRefresh, formatRadarAge } = await import("../../src/lib/aceweather/met-office-radar.ts");
+  const f = (s) => ({ stamp: s, time: 0 });
+  const before = ["1300", "1315", "1330", "1345"].map(f);
+  const after = ["1315", "1330", "1345", "1400"].map(f);
+  assert.equal(frameIndexAfterRefresh(null, after, null, true), 3);
+  assert.equal(frameIndexAfterRefresh(before, after, "1345", false), 3, "on the latest frame: follow the new latest");
+  assert.equal(frameIndexAfterRefresh(before, after, "1315", true), 3, "playing: follow the new latest");
+  assert.equal(frameIndexAfterRefresh(before, after, "1315", false), 0, "paused on an earlier frame: stay on it");
+  assert.equal(frameIndexAfterRefresh(before, after, "1300", false), 3, "paused frame dropped off the list: go to latest");
+  assert.equal(formatRadarAge(0, 60_000), "just now");
+  assert.equal(formatRadarAge(0, 12 * 60_000), "12 min ago");
+  assert.equal(formatRadarAge(0, 125 * 60_000), "2 h 5 min ago");
+  assert.equal(formatRadarAge(0, 120 * 60_000), "2 h ago");
 });

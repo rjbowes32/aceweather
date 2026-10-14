@@ -19,6 +19,8 @@ import { shouldRetry } from "../../mcp/retry.ts";
 
 export const RADAR_FRAME_LIMIT = 12;
 const RETRY_DELAYS_MS = [250, 750];
+/** Only recent frames are rendered: the app never asks for older ones, and it caps decoding cost if someone walks the archive. */
+export const RADAR_MAX_AGE_MS = 48 * 3_600_000;
 
 /**
  * S3 sometimes closes a reused connection mid-download ("other side closed"), so fetches are retried
@@ -109,9 +111,11 @@ export async function renderFrameFromHdf5(bytes: Uint8Array): Promise<Uint8Array
 
 export class RadarFrameNotFound extends Error {}
 
-export async function renderFrame(stamp: string, fetcher: typeof fetch = fetch): Promise<Uint8Array> {
+export async function renderFrame(stamp: string, fetcher: typeof fetch = fetch, now = Date.now()): Promise<Uint8Array> {
   const key = frameKey(stamp);
-  if (!key) throw new RadarFrameNotFound("Invalid radar frame");
+  const time = key ? stampFromKey(key)?.time : undefined;
+  if (!key || time == null) throw new RadarFrameNotFound("Invalid radar frame");
+  if (time < now - RADAR_MAX_AGE_MS || time > now + 15 * 60_000) throw new RadarFrameNotFound("Radar frame outside the recent window");
   const { status, bytes } = await downloadWithRetry(`${RADAR_BUCKET}/${key}`, fetcher);
   if (status === 404 || status === 403) throw new RadarFrameNotFound("Radar frame not found");
   if (!bytes) throw new Error(`Met Office radar frame ${status}`);

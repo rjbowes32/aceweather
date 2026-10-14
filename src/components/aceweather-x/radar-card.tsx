@@ -10,6 +10,7 @@ import {
   fetchMetOfficeRadarFrames,
   formatRadarAge,
   formatRadarFrameTime,
+  frameIndexAfterRefresh,
   metOfficeRadarUrl,
   type MetOfficeRadarFrame,
   type RadarIndex,
@@ -99,6 +100,7 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   const [index, setIndex] = useState<RadarIndex | null>(null);
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const playingRef = useRef(true);
   const [visible, setVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -126,7 +128,8 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   useEffect(() => {
     indexRef.current = index;
     frameRef.current = currentFrame;
-  }, [index, currentFrame]);
+    playingRef.current = playing;
+  }, [index, currentFrame, playing]);
 
   // Frame list: load once, then refresh every few minutes while the radar is on screen.
   useEffect(() => {
@@ -138,9 +141,10 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
         setError(null);
         const previous = indexRef.current;
         if (previous && previous.frames.at(-1)?.stamp === next.frames.at(-1)?.stamp) return;
+        const nextIdx = frameIndexAfterRefresh(previous?.frames ?? null, next.frames, frameRef.current?.stamp ?? null, playingRef.current);
         indexRef.current = next;
         setIndex(next);
-        setFrameIdx(Math.max(0, next.frames.length - 1));
+        setFrameIdx(nextIdx);
       })
       .catch((caught: unknown) => {
         if (!(caught instanceof DOMException && caught.name === "AbortError") && mountedRef.current && !indexRef.current) setError("Radar unavailable");
@@ -153,19 +157,26 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
     };
   }, [visible]);
 
+  // Frame reads depend on the location, so a new place starts with fresh reads.
+  useEffect(() => {
+    loadsRef.current.clear();
+    setBands({});
+  }, [lat, lon]);
+
   const loadOnce = useCallback((frame: MetOfficeRadarFrame) => {
-    const cached = loadsRef.current.get(frame.stamp);
+    const cacheKey = `${frame.stamp}|${lat}|${lon}`;
+    const cached = loadsRef.current.get(cacheKey);
     if (cached) return cached;
     const attempt = () => loadFrame(frame, lat, lon);
     // One retry covers a cold server or a dropped connection; a frame that still fails is skipped, not fatal.
     const pending = attempt().catch(() => new Promise<void>((resolve) => window.setTimeout(resolve, 1200)).then(attempt)).then((loaded) => {
-      if (mountedRef.current) setBands((previous) => ({ ...previous, [frame.stamp]: loaded.band }));
+      if (mountedRef.current) setBands((previous) => ({ ...previous, [cacheKey]: loaded.band }));
       return loaded;
     }).catch((caught) => {
-      loadsRef.current.delete(frame.stamp);
+      loadsRef.current.delete(cacheKey);
       throw caught;
     });
-    loadsRef.current.set(frame.stamp, pending);
+    loadsRef.current.set(cacheKey, pending);
     return pending;
   }, [lat, lon]);
 
@@ -221,6 +232,8 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined;
     setMapReady(false);
+    setShownStamp(null);
+    shownRef.current = null;
     loadedRef.current = false;
     layerSlotRef.current = 0;
     const container = containerRef.current;
@@ -291,7 +304,7 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   const frameLabel = shownFrame ? formatRadarFrameTime(shownFrame, tz) : "--:--";
   const age = shownFrame ? formatRadarAge(shownFrame.time, now) : "";
   const latest = frames.at(-1);
-  const hereBand = latest ? bands[latest.stamp] : undefined;
+  const hereBand = shownFrame ? bands[`${shownFrame.stamp}|${lat}|${lon}`] : undefined;
   const here = hereBand == null ? null : PALETTE_BANDS[hereBand];
   const loading = !error && (!mapReady || !index || (frames.length > 0 && !shownStamp));
   const stale = latest ? now - latest.time > 45 * 60_000 : false;
@@ -351,7 +364,7 @@ export function RadarCard({ location, theme }: { location: AwLocation; theme: "d
       section="radar"
       tick="rain"
       kicker="Rainfall radar"
-      detail="Observed UK radar from the Met Office (CC BY-SA 4.0), reprojected and recoloured by AceWeather. A new frame arrives every 15 minutes, usually 10 to 20 minutes after it was observed. Rings mark 25, 50, 100 and 200 km from your location. Rain rate bands: light under 1 mm/h, moderate 1 to 4, heavy 4 to 16, very heavy over 16."
+      detail="Observed UK radar from the Met Office (CC BY-SA 4.0), reprojected and recoloured by AceWeather. A new frame arrives every 15 minutes, usually 5 to 10 minutes after it was observed. Rings mark 25, 50, 100 and 200 km from your location. Rain rate bands: light under 1 mm/h, moderate 1 to 4, heavy 4 to 16, very heavy over 16."
     >
       <RadarMap lat={location.lat} lon={location.lon} theme={theme} active tz={location.tz} />
     </Card>
