@@ -2,8 +2,6 @@
 
 import { useEffect } from "react";
 
-import { migrateFromLocalStorage } from "@/lib/store";
-
 const PWA_UPDATE_CHECK_MS = 60 * 60 * 1000;
 const SKIP_WAITING_MESSAGE = { type: "aw-skip-waiting" };
 
@@ -15,8 +13,6 @@ function activateWaitingWorker(worker?: ServiceWorker | null) {
 
 export function PwaBootstrap() {
   useEffect(() => {
-    migrateFromLocalStorage().catch(() => {});
-
     if (!("serviceWorker" in navigator)) return;
 
     if (process.env.NODE_ENV !== "production") {

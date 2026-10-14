@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 /* Agronomy models computed from the Open-Meteo hourly forecast.
    Spraying (Delta-T, inversion, rain-fast, drying) + disease (Hutton late blight,

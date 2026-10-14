@@ -751,10 +751,6 @@ export function AceWeatherApp() {
                     <span>{label}</span>
                   </button>
                 ))}
-                <a href="/atlas" aria-label="Open Crop Weather Atlas">
-                  <NavIcon name="atlas" />
-                  <span>Atlas</span>
-                </a>
               </div>
               <EndpointDocs />
             </div>

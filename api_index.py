@@ -141,20 +141,6 @@ def build_api_index(base_url: str = "") -> dict[str, Any]:
                 "responseFormat": "application/json",
                 "description": "Lists saved location groups (such as cropdynamics) with each location's coordinates and timezone.",
             },
-            {
-                "path": "/api/onthisday",
-                "method": "GET",
-                "responseFormat": "application/json",
-                "requiredParamsOneOf": [["query"], ["lat", "lon"]],
-                "optionalParams": ["timezone", "label", "date", "month", "day", "years"],
-                "description": "Returns the same calendar date across the last N years (Open-Meteo ERA5 archive back to 1940). Default years=40. Includes hottest/coldest/wettest/windiest year for the date.",
-            },
-            {
-                "path": "/api/tropical",
-                "method": "GET",
-                "responseFormat": "application/json",
-                "description": "Aggregates active tropical systems from NHC (Atlantic + East Pacific JSON) and JTWC (West Pacific + Indian Ocean RSS). Returns one storm list normalized across both agencies with category, winds, pressure, position, and advisory link.",
-            },
         ],
         "agentHint": "If you need one standard Crop Dynamics regional summary, call /api/cropdynamics first. It returns compact JSON with summary, rankings, confidence, and per-location totals. If you need daily rows, call /api/cropdynamics?include=daily or /api/report for a single place.",
     }

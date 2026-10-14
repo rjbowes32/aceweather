@@ -15,10 +15,8 @@ test("Outlook remains in primary mobile navigation", () => {
   const nav = read("src/components/aceweather-x/app.tsx").split("const MOBILE_NAV:")[1].split(";")[0];
   assert.match(nav, /\["outlook", "Outlook"\]/);
 });
-test("site font aliases and Atlas surfaces share tokens", () => {
+test("site font aliases share tokens", () => {
   assert.match(read("src/app/typography.css"), /--awx-font-ui: var\(--site-font\)/);
-  assert.match(read("src/app/atlas/atlas.module.css"), /border-radius: var\(--awx-radius\)/);
-  assert.match(read("src/app/atlas/atlas.module.css"), /background: var\(--awx-surface\)/);
 });
 
 test("mobile density preserves tap targets and navigation clearance", () => {

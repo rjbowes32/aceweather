@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* Opt-in rain notifications. Local (when the app is opened) + best-effort
    background via Periodic Background Sync where the platform supports it.
    Reliable closed-app push would need a server with Web Push — not included. */

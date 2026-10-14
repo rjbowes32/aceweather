@@ -10,11 +10,7 @@
 .awx-rain-summary { padding: var(--awx-card-padding); }
 .awx-rain-experience { gap: var(--awx-card-gap); }
 .awx-card,
-.awx-overview-current,
-.awx-overview-section,
-.awx .awx-overview-rain,
-.awx-now-current,
-.awx-now-section {
+.awx-now-current {
   background: var(--awx-surface);
   border: 0;
   border-radius: var(--awx-radius);
@@ -23,7 +19,6 @@
 }
 
 .awx-feed-list,
-.awx-overview-experience,
 .awx-now-experience {
   gap: var(--awx-card-gap);
 }
@@ -32,7 +27,6 @@
 
 .awx-card-head h2,
 .awx-card-head .awx-kicker,
-.awx-overview-section-head > div > span,
 .awx-now-section-head > div > span {
   font-size: var(--awx-type-heading);
   font-weight: 600;
@@ -42,49 +36,13 @@
 }
 
 .awx-overview-eyebrow,
-.awx-card-head .awx-meta,
-.awx-metric .awx-k,
-.awx-overview-basics span,
-.awx-overview-decision > span,
-.awx-overview-hours span {
+.awx-card-head .awx-meta {
   font-size: var(--awx-type-label);
   letter-spacing: normal;
   text-transform: none;
   color: var(--awx-muted);
 }
 
-.awx-overview-temp > span { font-weight: 500; }
-.awx-overview-basics,
-.awx-metrics {
-  background: transparent;
-  gap: var(--awx-space-sm);
-  border: 0;
-}
-.awx-overview-basics > div,
-.awx-metric {
-  background: var(--awx-surface-2);
-  border: 0;
-  border-radius: var(--awx-radius-sm);
-  padding: var(--awx-space-md);
-}
-.awx-metric .awx-v { font-size: var(--awx-type-value); font-weight: 600; }
-.awx-overview-decisions { gap: var(--awx-space-md); }
-.awx .awx-overview-decision,
-.awx .awx-overview-days button {
-  border-radius: var(--awx-radius-sm);
-  background: var(--awx-surface-2);
-  border: 0;
-  padding: var(--awx-space-md);
-}
-.awx-overview-hours {
-  border: 0;
-  background: transparent;
-  gap: var(--awx-space-sm);
-}
-.awx-overview-hours > div { border: 0; min-width: 62px; }
-.awx-overview-hours strong { font-size: 24px; font-weight: 600; }
-.awx-overview-hours small { font-size: 12px; }
-.awx-overview-rain-icon,
 .awx-tick { border-radius: var(--awx-control-radius); }
 .awx button:focus-visible,
 .awx input:focus-visible {
@@ -119,19 +77,12 @@
   border-radius: var(--awx-control-radius);
 }
 
-@media (max-width: 540px) {
-  .awx-overview-decisions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .awx-overview-basics > div { padding: 12px 8px; }
-  .awx-overview-basics span { font-size: 11px; }
-  .awx-overview-hours { overflow-x: auto; grid-template-columns: repeat(6, minmax(62px, 1fr)); }
-}
-
 @media (max-width: 700px) {
   .awx { box-sizing: border-box; }
   .awx-feed { min-height: calc(100dvh - 98px - env(safe-area-inset-bottom)); }
   .awx-feed-list { padding: 10px; }
   .awx-card { gap: 12px; }
-  .awx-metric { padding: 10px; }
+
   .awx-row-item { padding: 9px 10px; }
   .awx-field-switch { min-height: 56px; padding: 8px 10px; }
   .awx-planner-controls { gap: 10px; }

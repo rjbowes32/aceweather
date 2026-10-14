@@ -2,9 +2,6 @@
 
 export type Num = number | null | undefined;
 
-export const fmt0 = (v: Num): string => (v == null || Number.isNaN(v) ? "—" : Math.round(v).toString());
-export const fmt1 = (v: Num): string => (v == null || Number.isNaN(v) ? "—" : Number(v).toFixed(1));
-
 export type TemperatureUnit = "c" | "f";
 export type WindUnit = "kmh" | "mph";
 

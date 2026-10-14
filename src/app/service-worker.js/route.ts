@@ -78,7 +78,7 @@ function isDataRequest(url) {
 
 function isTrustCriticalDataRequest(url) {
   if (url.origin !== self.location.origin) return false;
-  return url.pathname === "/api/atlas" || url.pathname === "/api/cropdynamics";
+  return url.pathname === "/api/cropdynamics";
 }
 
 function isMapTileRequest(url) {

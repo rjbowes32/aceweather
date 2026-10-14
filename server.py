@@ -14,7 +14,6 @@ from typing import Any
 from api_index import build_api_index
 import lib
 import snapshot_api
-from api import atlas as atlas_api
 from api import groups as groups_api
 
 DEFAULT_HOST = "127.0.0.1"
@@ -64,8 +63,6 @@ class AceWeatherHandler(BaseHTTPRequestHandler):
                 "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
             }, head_only=head_only)
             return
-        if parsed.path == "/api/atlas":
-            self._send_json(atlas_api.build_payload(self._request_base_url()), head_only=head_only)
             return
         if parsed.path == "/api/groups":
             self._send_json(groups_api.build_groups_payload(), head_only=head_only)

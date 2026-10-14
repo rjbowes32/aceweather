@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 /* Builds the view-model the cards render, from a live Open-Meteo forecast.
    Critically: nowIndex is derived from current.time vs hourly.time (not hard-coded),
