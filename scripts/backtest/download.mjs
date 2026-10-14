@@ -177,8 +177,8 @@ async function firstWithData(candidates, load, minimum) {
   return null;
 }
 
-export function previousRunsUrl(point, variables) {
-  const hourly = variables.flatMap((v) => LEADS.map((l) => `${v}_previous_day${l}`)).join(",");
+export function previousRunsUrl(point, variables, leads = LEADS) {
+  const hourly = variables.flatMap((v) => leads.map((l) => `${v}_previous_day${l}`)).join(",");
   const elevation = point.elevation_m != null ? `&elevation=${Math.round(point.elevation_m)}` : "";
   return `https://previous-runs-api.open-meteo.com/v1/forecast?latitude=${point.latitude.toFixed(4)}&longitude=${point.longitude.toFixed(4)}${elevation}&hourly=${hourly}&models=best_match,${MODELS.join(",")}&start_date=${PERIOD.trainStart}&end_date=${PERIOD.end}&timezone=UTC&wind_speed_unit=kmh`;
 }

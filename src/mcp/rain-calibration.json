@@ -1,0 +1,324 @@
+{
+ "generated_at": "2026-10-14T13:30:45.917Z",
+ "method": "Logistic regression on [1, share of models at or above the threshold, log(1 + mean daily total), log(1 + max daily total), logit(climatology)]; daily totals are UTC days of hourly model precipitation; climatology is the station's wet-day frequency (use the national value without a gauge).",
+ "period": {
+  "from": "2025-08-01",
+  "to": "2026-09-17"
+ },
+ "gauges": 38,
+ "leads": {
+  "1": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless",
+    "ukmo_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -3.2676,
+      0.8629,
+      1.2792,
+      0.9817,
+      0.1546
+     ],
+     "climatology": {
+      "uk": 0.413,
+      "England": 0.383,
+      "Wales": 0.477,
+      "Scotland": 0.454,
+      "Northern Ireland": 0.512
+     },
+     "days": 14711
+    },
+    "0.2": {
+     "weights": [
+      -2.1266,
+      1.116,
+      1.1201,
+      0.8948,
+      0.1688
+     ],
+     "climatology": {
+      "uk": 0.572,
+      "England": 0.539,
+      "Wales": 0.619,
+      "Scotland": 0.636,
+      "Northern Ireland": 0.674
+     },
+     "days": 14711
+    }
+   }
+  },
+  "2": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless",
+    "ukmo_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -3.0914,
+      0.8499,
+      1.2346,
+      0.8134,
+      0.1587
+     ],
+     "climatology": {
+      "uk": 0.422,
+      "England": 0.393,
+      "Wales": 0.49,
+      "Scotland": 0.46,
+      "Northern Ireland": 0.526
+     },
+     "days": 13288
+    },
+    "0.2": {
+     "weights": [
+      -2.097,
+      1.0735,
+      1.0598,
+      0.796,
+      0.1736
+     ],
+     "climatology": {
+      "uk": 0.58,
+      "England": 0.549,
+      "Wales": 0.629,
+      "Scotland": 0.638,
+      "Northern Ireland": 0.683
+     },
+     "days": 13288
+    }
+   }
+  },
+  "3": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless",
+    "ukmo_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -3.0069,
+      0.9119,
+      1.1671,
+      0.6892,
+      0.1107
+     ],
+     "climatology": {
+      "uk": 0.414,
+      "England": 0.384,
+      "Wales": 0.478,
+      "Scotland": 0.456,
+      "Northern Ireland": 0.512
+     },
+     "days": 14381
+    },
+    "0.2": {
+     "weights": [
+      -2.0993,
+      1.0497,
+      1.0652,
+      0.6878,
+      0.1538
+     ],
+     "climatology": {
+      "uk": 0.572,
+      "England": 0.54,
+      "Wales": 0.619,
+      "Scotland": 0.635,
+      "Northern Ireland": 0.675
+     },
+     "days": 14381
+    }
+   }
+  },
+  "4": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless",
+    "ukmo_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -2.7539,
+      0.9312,
+      1.0716,
+      0.5354,
+      0.1295
+     ],
+     "climatology": {
+      "uk": 0.435,
+      "England": 0.403,
+      "Wales": 0.498,
+      "Scotland": 0.479,
+      "Northern Ireland": 0.548
+     },
+     "days": 13350
+    },
+    "0.2": {
+     "weights": [
+      -1.9489,
+      1.1595,
+      1.0102,
+      0.4516,
+      0.189
+     ],
+     "climatology": {
+      "uk": 0.596,
+      "England": 0.562,
+      "Wales": 0.642,
+      "Scotland": 0.661,
+      "Northern Ireland": 0.71
+     },
+     "days": 13350
+    }
+   }
+  },
+  "5": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless",
+    "ukmo_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -2.5868,
+      0.9311,
+      0.9799,
+      0.4934,
+      0.1521
+     ],
+     "climatology": {
+      "uk": 0.415,
+      "England": 0.388,
+      "Wales": 0.484,
+      "Scotland": 0.446,
+      "Northern Ireland": 0.507
+     },
+     "days": 13136
+    },
+    "0.2": {
+     "weights": [
+      -1.9316,
+      1.1316,
+      0.8856,
+      0.4897,
+      0.1645
+     ],
+     "climatology": {
+      "uk": 0.572,
+      "England": 0.543,
+      "Wales": 0.621,
+      "Scotland": 0.623,
+      "Northern Ireland": 0.662
+     },
+     "days": 13136
+    }
+   }
+  },
+  "6": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "icon_seamless",
+    "ukmo_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -2.3071,
+      0.9851,
+      1.013,
+      0.2216,
+      0.1936
+     ],
+     "climatology": {
+      "uk": 0.409,
+      "England": 0.38,
+      "Wales": 0.473,
+      "Scotland": 0.449,
+      "Northern Ireland": 0.514
+     },
+     "days": 13870
+    },
+    "0.2": {
+     "weights": [
+      -1.7629,
+      1.1962,
+      0.9327,
+      0.1831,
+      0.2242
+     ],
+     "climatology": {
+      "uk": 0.567,
+      "England": 0.534,
+      "Wales": 0.612,
+      "Scotland": 0.629,
+      "Northern Ireland": 0.667
+     },
+     "days": 13870
+    }
+   }
+  },
+  "7": {
+   "models": [
+    "ecmwf_ifs025",
+    "gfs_seamless",
+    "ecmwf_aifs025_single"
+   ],
+   "thresholds": {
+    "1": {
+     "weights": [
+      -2.0711,
+      0.6096,
+      0.7867,
+      0.4534,
+      0.3058
+     ],
+     "climatology": {
+      "uk": 0.415,
+      "England": 0.387,
+      "Wales": 0.478,
+      "Scotland": 0.453,
+      "Northern Ireland": 0.514
+     },
+     "days": 14976
+    },
+    "0.2": {
+     "weights": [
+      -1.6842,
+      0.82,
+      0.7399,
+      0.473,
+      0.2888
+     ],
+     "climatology": {
+      "uk": 0.572,
+      "England": 0.54,
+      "Wales": 0.619,
+      "Scotland": 0.634,
+      "Northern Ireland": 0.673
+     },
+     "days": 14976
+    }
+   }
+  }
+ }
+}
