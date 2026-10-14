@@ -7,7 +7,7 @@ import { inUk } from "./observations.ts";
 import { addError, apply, fit, type DayErrors, type Fit } from "./learning.ts";
 import { asFit, chooseReference, type FitsFile } from "./learning-store.ts";
 import { fetchPreviousRuns, PREVIOUS_RUNS_SOURCE } from "./sources/previous-runs.ts";
-import { FORECAST_SOURCE } from "./sources/forecast.ts";
+import { FORECAST_SOURCE, withTimezone } from "./sources/forecast.ts";
 import { MODEL_INFO } from "./sources/models.ts";
 import { fetchJson } from "./upstream.ts";
 import { convertWind, round, type WindUnit } from "./units.ts";
@@ -259,4 +259,17 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       warnings,
     };
   });
+}
+
+/**
+ * UK coordinates need only a time zone and an elevation, so skip the full dashboard forecast that
+ * withTimezone() downloads for them (several seconds) and ask the elevation API instead.
+ */
+export async function prepareLocation(location: ResolvedLocation): Promise<ResolvedLocation> {
+  if (location.timezone !== "auto" || !inUk(location, 0)) return withTimezone(location);
+  const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
+  const elevation = await cached(`elevation:${key}`, 24 * HOUR, () =>
+    fetchJson("Open-Meteo elevation", `https://api.open-meteo.com/v1/elevation?latitude=${location.latitude.toFixed(4)}&longitude=${location.longitude.toFixed(4)}`)
+      .then((body) => (typeof body?.elevation?.[0] === "number" ? body.elevation[0] : null))).catch(() => null);
+  return { ...location, timezone: "Europe/London", elevation_m: location.elevation_m ?? elevation };
 }

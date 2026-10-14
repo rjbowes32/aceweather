@@ -13,6 +13,10 @@ Once a day, for every UK reference station:
 
 `get_learned_forecast` reads `fits.json`, chooses the nearest representative station by the same rules as before (80 km, 250 m, 20 training days) and applies its weights instantly. If the file is missing or more than three days old, it falls back to learning on demand, which is slower.
 
+## Dashboard
+
+The dashboard loads its Open-Meteo forecast as before. In parallel it calls `GET /learned-forecast?lat=…&lon=…&tz=…` (`src/app/learned-forecast/route.ts`) and overlays the returned hourly temperature, wind and rain for the next seven days (`src/lib/aceweather/learned.ts`). Days containing learned hours get their max, min, rain total and peak wind recomputed. Feels-like temperature shifts with the air temperature, and a gust is never shown below the learned mean wind. Everything else stays as Open-Meteo's: current conditions, humidity, cloud, soil and rain probability. If the endpoint fails, the page simply keeps Open-Meteo's values. Responses are edge-cached for 15 minutes, and coordinates are rounded to about 1 km. The Data sources card names the reference station.
+
 ## Files
 
 | File | Size (12 stations / about 220 UK-wide) | Used by |

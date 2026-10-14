@@ -67,6 +67,7 @@ function isInstallAsset(url) {
 
 function isDataRequest(url) {
   if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) return true;
+  if (url.origin === self.location.origin && url.pathname === "/learned-forecast") return true;
   if (url.hostname === "api.open-meteo.com") return true;
   if (url.hostname === "archive-api.open-meteo.com") return true;
   if (url.hostname === "air-quality-api.open-meteo.com") return true;
