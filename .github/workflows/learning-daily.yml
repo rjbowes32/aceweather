@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: learning-daily
@@ -41,10 +42,31 @@ jobs:
           fi
       - name: Learn
         run: node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}"
+      - name: Health check
+        run: node scripts/learning/health.mjs --out "$OUT"
       - name: Publish
         run: |
           gzip -kf "$OUT/state.json"
           gh release view learning-data >/dev/null 2>&1 || gh release create learning-data --prerelease --title "Learning data" --notes "Daily output of scripts/learning/daily.mjs. fits.json is read by get_learned_forecast via ACEWEATHER_LEARNED_FITS_URL."
-          gh release upload learning-data "$OUT/fits.json" "$OUT/scores.json" "$OUT/state.json.gz" --clobber
+          gh release upload learning-data "$OUT/fits.json" "$OUT/scores.json" "$OUT/state.json.gz" "$OUT/health.json" "$OUT/run.json" --clobber
+      - name: Report health
+        # One open issue labelled learning-health collects problems; it is closed automatically once checks pass.
+        run: |
+          gh label create learning-health --color B60205 --description "Problems found by the daily learning job" 2>/dev/null || true
+          open=$(gh issue list --label learning-health --state open --json number --jq '.[0].number')
+          if node -e "process.exit(require('./$OUT/health.json').ok ? 0 : 1)"; then
+            [ -n "$open" ] && gh issue close "$open" --comment "All checks passed on $(date -u +%F). Closing." || true
+          elif [ -n "$open" ]; then
+            gh issue comment "$open" --body-file "$OUT/health.md"
+          else
+            gh issue create --title "Learning job: health check found problems" --label learning-health --body-file "$OUT/health.md"
+          fi
       - name: Summary
         run: node -e "const f=require('./$OUT/fits.json');console.log(f.stations.length,'stations fitted at',f.generated_at);for(const[v,b]of Object.entries(f.recent_scores))for(const[l,s]of Object.entries(b))console.log(v,'day',l,'learned',s.learned_mae,'standard',s.standard_mae,'stations',s.stations)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Report failure
+        if: failure()
+        run: |
+          gh label create learning-health --color B60205 --description "Problems found by the daily learning job" 2>/dev/null || true
+          body="The daily learning job failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. The forecast keeps using the last fits.json for up to three days, then falls back to on-demand learning."
+          open=$(gh issue list --label learning-health --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then gh issue comment "$open" --body "$body"; else gh issue create --title "Learning job failed" --label learning-health --body "$body"; fi
