@@ -47,7 +47,8 @@ test("search_locations returns candidates plus matching saved locations", async 
 test("every result labels observations, model values, forecasts and calculations", async () => {
   installFetch();
   const expectations = [
-    ["get_current_weather", { place: "Pocklington" }, "model_current"],
+    ["get_current_weather", { place: "Pocklington" }, "mixed"],
+    ["get_nearby_observations", { place: "Pocklington" }, "observation"],
     ["get_weather_history", { place: "Pocklington", period: "last_7d" }, "reanalysis"],
     ["get_weather_history", { place: "Pocklington", period: "last_24h" }, "model_recent"],
     ["get_weather_digest", { place: "Pocklington", period: "today" }, "model_recent"],
@@ -56,6 +57,8 @@ test("every result labels observations, model values, forecasts and calculations
     ["get_extended_forecast", { place: "Pocklington" }, "forecast"],
     ["compare_forecast_models", { place: "Pocklington" }, "forecast"],
     ["get_forecast_confidence", { place: "Pocklington" }, "calculated"],
+    ["get_forecast_verification", { place: "Pocklington" }, "calculated"],
+    ["get_learned_forecast", { place: "Pocklington" }, "forecast"],
     ["get_location_weather", { place: "Pocklington" }, "mixed"],
     ["search_locations", { query: "Pocklington" }, "reference"],
   ];

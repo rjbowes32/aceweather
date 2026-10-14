@@ -19,10 +19,10 @@ test("official SDK performs full stateless handshake, discovery and schema-valid
   const client = new Client({ name: "integration-test", version: "1" });
   try {
     await client.connect(transport);
-    assert.equal(client.getServerVersion().version, "0.3.0");
+    assert.equal(client.getServerVersion().version, "0.4.0");
     assert.equal(transport.sessionId, undefined);
     const { tools } = await client.listTools();
-    assert.equal(tools.length, 14);
+    assert.equal(tools.length, 17);
     for (const [name, args] of [
       ["get_saved_location_groups", {}],
       ["get_location_weather", { saved_location: "cropdynamics/pocklington" }],

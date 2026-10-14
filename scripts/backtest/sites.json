@@ -1,0 +1,17 @@
+[
+  { "name": "Berwick-upon-Tweed", "area": "north-east coast", "latitude": 55.7687, "longitude": -2.0054 },
+  { "name": "Longhirst", "area": "Northumberland coastal plain", "latitude": 55.1774, "longitude": -1.6894 },
+  { "name": "Hexham", "area": "Tyne valley", "latitude": 54.9711, "longitude": -2.1010 },
+  { "name": "Alston", "area": "North Pennines upland", "latitude": 54.8108, "longitude": -2.4386 },
+  { "name": "Carlisle", "area": "Solway and lower Eden", "latitude": 54.8925, "longitude": -2.9329 },
+  { "name": "Penrith", "area": "Eden valley", "latitude": 54.6641, "longitude": -2.7524 },
+  { "name": "Keswick", "area": "Lake District fells", "latitude": 54.6013, "longitude": -3.1347 },
+  { "name": "Seascale", "area": "west Cumbrian coast", "latitude": 54.3960, "longitude": -3.4846 },
+  { "name": "Kendal", "area": "south Cumbria", "latitude": 54.3280, "longitude": -2.7463 },
+  { "name": "Garstang", "area": "Fylde and Lancashire plain", "latitude": 53.9010, "longitude": -2.7740 },
+  { "name": "Settle", "area": "Yorkshire Dales", "latitude": 54.0689, "longitude": -2.2780 },
+  { "name": "Scotch Corner", "area": "Tees lowland", "latitude": 54.44158, "longitude": -1.6658 },
+  { "name": "Boroughbridge", "area": "Vale of York", "latitude": 54.0895, "longitude": -1.4011 },
+  { "name": "Pocklington", "area": "Wolds edge", "latitude": 53.93335, "longitude": -0.78106 },
+  { "name": "Driffield", "area": "Yorkshire Wolds", "latitude": 54.0060, "longitude": -0.4430 }
+]

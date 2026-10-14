@@ -2,6 +2,7 @@
 import { localNow } from "../../src/mcp/dates.ts";
 import { clearCache } from "../../src/mcp/cache.ts";
 import { resetRateLimits } from "../../src/mcp/rate-limit.ts";
+import { observationRoute } from "./observation-fixtures.mjs";
 
 process.env.ACEWEATHER_MCP_LOG = "off";
 process.env.ACEWEATHER_API_BASE = "http://aceweather.test";
@@ -115,6 +116,10 @@ export function installFetch({ missing = new Set(), overrides = [] } = {}) {
     if (url.host === "aceweather.test" && url.pathname === "/api/groups") return json(GROUPS);
     if (url.host === "aceweather.test" && url.pathname === "/api/search") return json(SEARCH[url.searchParams.get("query").toLowerCase()] ?? { results: [] });
     if (url.host === "aceweather.test" && url.pathname === "/api/providers") return json({ meteomaticsEnabled: false });
+    const observation = observationRoute(url);
+    if (observation?.__status) return new Response("", { status: observation.__status });
+    if (typeof observation === "string") return new Response(observation, { status: 200, headers: { "content-type": "text/csv" } });
+    if (observation) return json(observation);
     if (url.host === "archive-api.open-meteo.com") {
       const count = url.searchParams.get("latitude").split(",").length;
       return json(count === 1 ? archiveFixture(url.searchParams, missing) : Array.from({ length: count }, () => archiveFixture(url.searchParams, missing)));
