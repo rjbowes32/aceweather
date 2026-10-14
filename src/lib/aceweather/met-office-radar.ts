@@ -1,53 +1,27 @@
-const RADAR_BUCKET = "https://met-office-radar-obs-data.s3.eu-west-2.amazonaws.com";
-const FRAME_LIMIT = 8;
+/** Browser client for AceWeather's radar routes, which serve ready-to-draw Met Office frames. */
+import type { RADAR_CORNERS } from "./radar-palette";
 
-export type MetOfficeRadarFrame = {
-  key: string;
-  time: number;
-};
+const LIVE_ORIGIN = "https://www.aceweather.app";
 
-function prefixFor(date: Date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `radar/${year}/${month}/${day}/`;
+export type MetOfficeRadarFrame = { stamp: string; time: number };
+export type RadarIndex = { frames: MetOfficeRadarFrame[]; corners: typeof RADAR_CORNERS };
+
+/** Same-origin on the web; the live site when running from a bundled copy (for example the iOS app). */
+function radarOrigin() {
+  if (typeof window === "undefined") return "";
+  return /^https?:$/.test(window.location.protocol) ? "" : LIVE_ORIGIN;
 }
 
-function frameTime(key: string) {
-  const match = key.match(/\/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})_ODIM_/);
-  if (!match) return null;
-  const [, year, month, day, hour, minute] = match;
-  return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
-}
-
-async function listPrefix(prefix: string, signal?: AbortSignal) {
-  const url = `${RADAR_BUCKET}/?list-type=2&prefix=${encodeURIComponent(prefix)}&max-keys=1000`;
-  const response = await fetch(url, { signal, cache: "no-store" });
-  if (!response.ok) throw new Error(`Met Office radar index ${response.status}`);
-  const xml = await response.text();
-  const document = new DOMParser().parseFromString(xml, "application/xml");
-  if (document.querySelector("parsererror")) throw new Error("Met Office radar index was invalid");
-  return Array.from(document.querySelectorAll("Contents > Key"), (node) => node.textContent ?? "")
-    .filter((key) => key.endsWith("_ODIM_ng_radar_rainrate_composite_1km_UK.h5"));
-}
-
-export async function fetchMetOfficeRadarFrames(signal?: AbortSignal): Promise<MetOfficeRadarFrame[]> {
-  const today = new Date();
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-  const keys = (await Promise.all([
-    listPrefix(prefixFor(yesterday), signal),
-    listPrefix(prefixFor(today), signal),
-  ])).flat();
-
-  return keys
-    .map((key) => ({ key, time: frameTime(key) }))
-    .filter((frame): frame is MetOfficeRadarFrame => frame.time != null)
-    .sort((a, b) => a.time - b.time)
-    .slice(-FRAME_LIMIT);
+export async function fetchMetOfficeRadarFrames(signal?: AbortSignal): Promise<RadarIndex> {
+  const response = await fetch(`${radarOrigin()}/radar/frames`, { signal, cache: "no-store" });
+  if (!response.ok) throw new Error(`Radar index ${response.status}`);
+  const body = (await response.json()) as Partial<RadarIndex>;
+  if (!Array.isArray(body.frames) || !Array.isArray(body.corners) || body.corners.length !== 4) throw new Error("Radar index was invalid");
+  return { frames: body.frames.filter((f) => typeof f?.stamp === "string" && Number.isFinite(f?.time)), corners: body.corners };
 }
 
 export function metOfficeRadarUrl(frame: MetOfficeRadarFrame) {
-  return `${RADAR_BUCKET}/${frame.key}`;
+  return `${radarOrigin()}/radar/frame/${frame.stamp}`;
 }
 
 export function formatRadarFrameTime(frame: MetOfficeRadarFrame, timezone = "Europe/London") {
@@ -61,4 +35,14 @@ export function formatRadarFrameTime(frame: MetOfficeRadarFrame, timezone = "Eur
   } catch {
     return new Date(frame.time).toISOString().slice(11, 16);
   }
+}
+
+/** "Just now", "12 min ago", "2 h 5 min ago". */
+export function formatRadarAge(time: number, now = Date.now()) {
+  const minutes = Math.max(0, Math.round((now - time) / 60_000));
+  if (minutes < 2) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} h ${rest} min ago` : `${hours} h ago`;
 }

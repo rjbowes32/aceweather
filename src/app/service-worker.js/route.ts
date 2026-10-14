@@ -72,8 +72,15 @@ function isDataRequest(url) {
   if (url.hostname === "archive-api.open-meteo.com") return true;
   if (url.hostname === "air-quality-api.open-meteo.com") return true;
   if (url.hostname === "geocoding-api.open-meteo.com") return true;
-  if (url.hostname === "met-office-radar-obs-data.s3.eu-west-2.amazonaws.com") return true;
   return false;
+}
+
+function isRadarIndex(url) {
+  return url.origin === self.location.origin && url.pathname === "/radar/frames";
+}
+
+function isRadarFrame(url) {
+  return url.origin === self.location.origin && url.pathname.startsWith("/radar/frame/");
 }
 
 function isTrustCriticalDataRequest(url) {
@@ -84,6 +91,18 @@ function isTrustCriticalDataRequest(url) {
 function isMapTileRequest(url) {
   if (url.hostname === "tiles.openfreemap.org") return true;
   return false;
+}
+
+async function cacheFirstData(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) {
+    cache.put(request, response.clone()).catch(() => {});
+    trimCache(cacheName, DATA_MAX_ENTRIES).catch(() => {});
+  }
+  return response;
 }
 
 async function trimCache(cacheName, maxEntries) {
@@ -204,6 +223,14 @@ self.addEventListener("fetch", (event) => {
   let url;
   try { url = new URL(request.url); } catch { return; }
 
+  if (isRadarIndex(url)) {
+    event.respondWith(networkFirstData(request, DATA_CACHE));
+    return;
+  }
+  if (isRadarFrame(url)) {
+    event.respondWith(cacheFirstData(request, DATA_CACHE));
+    return;
+  }
   if (isTrustCriticalDataRequest(url)) {
     event.respondWith(networkFirstData(request, DATA_CACHE));
     return;
@@ -243,13 +270,12 @@ async function checkRain() {
   const loc = await locRes.json();
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + loc.lat + "&longitude=" + loc.lon
     + "&timezone=" + encodeURIComponent(loc.tz || "auto") + "&forecast_days=2"
-    + "&current=temperature_2m,precipitation&hourly=precipitation,precipitation_probability";
+    + "&current=temperature_2m,precipitation&hourly=precipitation";
   const response = await fetch(url);
   if (!response.ok) return;
   const data = await response.json();
   const times = data.hourly?.time || [];
   const precipitation = data.hourly?.precipitation || [];
-  const probability = data.hourly?.precipitation_probability || [];
   const nowTime = data.current?.time || times[0];
   let nowIndex = times.findIndex((time) => time > nowTime);
   nowIndex = nowIndex === -1 ? times.length - 1 : Math.max(0, nowIndex - 1);
@@ -266,7 +292,6 @@ async function checkRain() {
         atKey: times[i].slice(0, 13),
         atLabel: times[i].slice(11, 16),
         mm: Math.round(mm * 10) / 10,
-        prob: probability[i] ?? null,
         inHours: i - nowIndex,
       };
       break;
@@ -277,7 +302,7 @@ async function checkRain() {
   const notRes = await cache.match("/__awx_rain_notified");
   if (notRes && (await notRes.text()) === key) return;
   await self.registration.showNotification("Rain expected - " + loc.name, {
-    body: hit.mm + " mm around " + hit.atLabel + (hit.prob != null ? " (" + hit.prob + "% chance)" : "") + ", in ~" + hit.inHours + "h.",
+    body: hit.mm + " mm around " + hit.atLabel + ", in ~" + hit.inHours + "h.",
     tag: "awx-rain",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
