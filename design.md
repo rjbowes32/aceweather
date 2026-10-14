@@ -21,7 +21,7 @@ attribution and non-commercial terms; open data is not unlimited free compute.
 ### Implemented baseline
 
 - One responsive Weather implementation: Overview, Now, Rain, Radar, Field,
-  Outlook, Seasonal and Sources. Atlas shares the site theme and font.
+  Outlook, Seasonal and Sources. Atlas was removed on 14 October 2026.
 - Mobile primary navigation: Overview, Now, Rain, Outlook, Field, More.
   More exposes Radar, Seasonal and Sources. Outlook must remain directly visible.
 - Overview follows the supplied reference: pale-blue canvas, white rounded cards,
@@ -46,7 +46,6 @@ attribution and non-commercial terms; open data is not unlimited free compute.
 | Palette, semantic colours, spacing, radii, type scales, control height | `src/app/design-tokens.css` |
 | Shared card, heading, metric, control and focus treatment | `src/app/shared-surfaces.css` |
 | Overview-specific composition and charts | `src/app/weather-dashboard.css` |
-| Atlas composition | `src/app/atlas/atlas.module.css`, consuming shared tokens |
 
 Use the same typography, surface, corner, heading, control and spacing tokens in
 every tab. Different data may need different layouts, not a different design
@@ -89,7 +88,8 @@ visible keyboard focus and a minimum 44px target. Charts have accessible values.
 5. **Drying/dew — pending:** upgrade existing drying signals; ET0 is reference
    demand, not measured crop moisture.
 6. **Farm stations — optional later:** read-only WeeWX adapter; hardware optional.
-7. **Atlas/NDVI — deferred:** do not resume satellite work without a new checkpoint.
+7. **Atlas/NDVI — removed:** Atlas was deleted to keep AceWeather lightweight.
+   Do not reintroduce it without a new checkpoint.
 
 ### Acceptance gate for every checkpoint
 
@@ -165,6 +165,19 @@ visible keyboard focus and a minimum 44px target. Charts have accessible values.
   Overview highlight when a deep link opens another tab; Atlas contract test
   fixture predates the drought recovery fields (fails on master too); Atlas
   with real data not reviewed locally because no snapshot is available in dev.
+
+### Lightweight cleanup — 14 October 2026
+
+- Atlas removed: its page, map, Python endpoint, tests, Weather/Atlas switch and
+  More link. Crop Dynamics, digest and report endpoints are unchanged.
+- Removed the legacy dashboard (`src/components/aceweather`, `aceweather-v2.css`
+  and seven unused stylesheets), which no route imported.
+- Removed `/api/tropical` and `/api/onthisday`; only the legacy dashboard called them.
+- Removed the IndexedDB store and the `idb` package: it migrated old saved
+  places into a database the current app never read. Saved places stay in
+  localStorage. Dropped the unused direct `sharp` dependency.
+- Pruned unused CSS rules (about 22 KB) after checking every live selector was
+  kept, plus unused UI helpers. Lint now has no warnings.
 
 ## Historical reference (not the current specification)
 
@@ -341,7 +354,6 @@ Mobile `More` contains:
 - `Outlook`
 - `Seasonal`
 - `Sources`
-- `Atlas`
 - API/docs links
 
 Do not add more permanent bottom-nav items without re-testing 360px width. Six bottom items is already the upper comfort limit.
@@ -367,7 +379,7 @@ Filtered views show subsets:
 - `Outlook`: 14-day outlook.
 - `Seasonal`: Seasonal context.
 
-## Atlas Surface
+## Shared Surface
 
 Shared visual settings live in `src/app/design-tokens.css`: light/dark palettes,
 card/control radii, spacing, heading/label/value sizes and control height.
@@ -377,27 +389,12 @@ palette follows the pale-blue page / white rounded-card reference; the dark
 palette uses deep-blue surfaces with the same geometry.
 
 Site typography is configured in `src/app/typography.css` using `--site-font`.
-Weather, Atlas, form controls and map UI share this font. Use inherited fonts or
+Weather screens, form controls and map UI share this font. Use inherited fonts or
 the shared aliases; do not introduce component-specific font stacks. Use
 `font-variant-numeric: tabular-nums` for aligned measurements.
 
-Atlas uses the same tokens, typography, responsive breakpoints, card rhythm, and
-"minimal by default, depth on demand" rule as Weather. It is one shared
-responsive implementation rather than separate mobile and desktop screens.
-
-Atlas data rules:
-
-- The UI reads one versioned `/api/atlas` contract (`atlas.v1`).
-- A section must never substitute hard-coded measurements when its live data is
-  unavailable.
-- Snapshot date, provisional state, cached state, and unavailable state must be
-  visibly distinct.
-- Trust-critical Atlas and Crop Dynamics requests use network-first service
-  worker caching with an explicitly labelled cached fallback.
-- Source links and methodology/caveats live under `Details`; the default view
-  contains labels and decision data, not explanatory paragraphs.
-- Map coordinates may remain presentational configuration, but every changing
-  measurement and date comes from the Atlas payload.
+Trust-critical Crop Dynamics requests use network-first service worker caching
+with an explicitly labelled cached fallback.
 
 The card pattern is:
 
@@ -627,7 +624,6 @@ Bottom nav:
   - Field
   - More
 - `More` contains Outlook, Seasonal, Sources, and Docs/API.
-- The floating Weather/Atlas mode switch is hidden on the mobile Weather surface; Atlas is opened from `More` so content has one navigation layer.
 - Keep this model unless a future mobile audit proves there is a better six-item structure.
 
 Overview:

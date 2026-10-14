@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
-import type { Condition, ConditionKey } from "@/lib/aceweather/format";
+import type { ConditionKey } from "@/lib/aceweather/format";
 import { ChevronIcon } from "./icons";
 
 type CssVars = CSSProperties & Record<`--awx-${string}`, string | number>;
@@ -130,17 +130,6 @@ export function HourlyChart({ temp, rain, wind, labels }: { temp: number[]; rain
   );
 }
 
-export function Sky({ condition, isDay, label }: { condition: Condition; isDay: number | boolean; label?: ReactNode }) {
-  const cls = "awx-sky" + (condition.key === "cloud" || condition.key === "fog" ? " is-cloud" : "") + (isDay ? "" : " is-night");
-  return (
-    <div className={cls} aria-hidden="true">
-      <div className="awx-orb" />
-      <div className="awx-horizon" />
-      {label ? <span className="awx-sky-label">{label}</span> : null}
-    </div>
-  );
-}
-
 type SoilDatum = { depth: string; sub: string; temp?: number | null; moistPct: number };
 
 export function SoilRows({ soil }: { soil: SoilDatum[] }) {
@@ -218,25 +207,6 @@ export function OpsMatrix({ days, rows }: { days: OpsDay[]; rows: OpsRow[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-export function SunArc({ elapsed, sunrise, sunset, isDay }: { elapsed: number; sunrise: string; sunset: string; isDay: number | boolean }) {
-  const W = 280, H = 112, cx = W / 2, cy = H - 16, r = W / 2 - 26;
-  const e = Math.max(0, Math.min(1, elapsed));
-  const a = Math.PI * (1 - e);
-  const sx = cx + Math.cos(a) * r, sy = cy - Math.sin(a) * r;
-  const full = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
-  const done = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${sx.toFixed(1)} ${sy.toFixed(1)}`;
-  return (
-    <svg className="awx-sunarc" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Sun path">
-      <path className="awx-sunarc-track" d={full} />
-      {isDay ? <path className="awx-sunarc-done" d={done} /> : null}
-      <line className="awx-sunarc-horizon" x1={cx - r - 10} x2={cx + r + 10} y1={cy} y2={cy} />
-      {isDay ? <circle className="awx-sunarc-dot" cx={sx} cy={sy} r="6" /> : null}
-      <text className="awx-sunarc-t" x={cx - r} y={cy + 16} textAnchor="middle">{sunrise}</text>
-      <text className="awx-sunarc-t" x={cx + r} y={cy + 16} textAnchor="middle">{sunset}</text>
-    </svg>
   );
 }
 

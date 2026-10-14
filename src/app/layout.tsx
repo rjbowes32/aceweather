@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
-import { SiteModeTabs } from "@/components/site-mode-tabs";
 
 import "./aceweather-x.css";
 import "./aceweather-x-cards.css";
@@ -62,7 +61,6 @@ export default function RootLayout({
         <Script id="aw-theme-bootstrap" strategy="beforeInteractive">{themeBootstrap}</Script>
         <PwaBootstrap />
         {children}
-        <SiteModeTabs />
       </body>
     </html>
   );

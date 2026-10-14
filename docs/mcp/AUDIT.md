@@ -1,5 +1,7 @@
 # AceWeather MCP — Phase 1 audit, diagnostics and plan
 
+> **Update, 14 October 2026:** Atlas (`/api/atlas`), `/api/tropical` and `/api/onthisday` have been removed. References below are historical; the planned Atlas MCP tools will not be built.
+
 Audited 8 October 2026 against `master` @ `404ff33` and the live site.
 
 ## 1. What exists

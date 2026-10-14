@@ -1,4 +1,4 @@
-/* Site-wide font setting. Change this stack to update Weather, Atlas and controls. */
+/* Site-wide font setting. Change this stack to update every screen and control. */
 :root {
   --site-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
 

@@ -13,37 +13,9 @@
 .awx-tick-violet { background: var(--awx-violet); } .awx-tick-risk { background: var(--awx-risk); }
 
 /* ---- NOW / HERO ---- */
-.awx-now { display: grid; grid-template-columns: minmax(0, 1fr) 192px; gap: 26px; align-items: stretch; }
-.awx-now-read { display: flex; align-items: flex-start; gap: 8px; }
-.awx-now-read .awx-val { font-size: clamp(74px, 10vw, 112px); font-weight: 200; letter-spacing: -0.045em; line-height: 0.82; }
-.awx-now-read .awx-deg { margin-top: 8px; font-size: 26px; font-weight: 300; color: var(--awx-muted); }
-.awx-now-cond { margin: 14px 0 0; font-size: 15px; color: var(--awx-text); }
-.awx-now-sub { margin-top: 4px; font-size: 13.5px; color: var(--awx-muted); }
-.awx-now-sub b { color: var(--awx-text); font-weight: 600; }
-.awx-now-summary { margin: 14px 0 0; max-width: 38rem; color: var(--awx-muted); font-size: 14px; line-height: 1.55; }
-
-.awx-sky {
-  position: relative; overflow: hidden; border-radius: var(--awx-control-radius); border: 1px solid var(--awx-line);
-  background: linear-gradient(176deg, var(--awx-sky-1), var(--awx-sky-2)); min-height: 158px;
-}
-.awx-sky .awx-orb {
-  position: absolute; right: 26%; top: 26%; width: 86px; height: 86px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 45%, #f3d79a, var(--awx-sun));
-  box-shadow: 0 0 60px 18px var(--awx-glow);
-}
-.awx-sky.is-cloud .awx-orb { opacity: 0.55; filter: blur(1px); }
-.awx-sky.is-night { background: linear-gradient(176deg, #11151c, #06080c); }
-.awx-sky.is-night .awx-orb { background: radial-gradient(circle at 50% 45%, #e8edf5, #aeb8c6); box-shadow: 0 0 40px 10px rgba(174,184,198,0.35); }
-.awx-sky .awx-horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--awx-sky-2) 70%, #000 30%)); }
-.awx-sky .awx-sky-label { position: absolute; left: 14px; bottom: 12px; font-size: 11.5px; color: rgba(255,255,255,0.78); }
-[data-theme="light"] .awx-sky .awx-sky-label { color: rgba(20,23,28,0.66); }
 
 /* ---- METRICS ---- */
-.awx-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
-.awx-metric { background: var(--awx-surface); padding: 13px 14px; display: grid; gap: 6px; }
-.awx-metric .awx-k { font-size: 11.5px; color: var(--awx-faint); }
-.awx-metric .awx-v { font-size: 19px; font-weight: 500; letter-spacing: -0.01em; }
-.awx-metric .awx-v small { font-size: 12px; color: var(--awx-muted); font-weight: 400; margin-left: 3px; }
+
 .awx-v-warn { color: var(--awx-warn); } .awx-v-risk { color: var(--awx-risk); } .awx-v-go { color: var(--awx-go); }
 
 /* ---- TAGS ---- */
@@ -70,11 +42,6 @@
 
 /* ---- CHART CARD / BARS / LINE ---- */
 .awx-chart-card { border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
-.awx-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--awx-line); }
-.awx-chart-head .awx-cap { font-size: 12.5px; color: var(--awx-muted); }
-.awx-range { display: flex; gap: 2px; padding: 3px; border-radius: var(--awx-pill); background: var(--awx-surface-2); }
-.awx-range button { min-width: 44px; min-height: 34px; padding: 0 11px; border-radius: var(--awx-pill); color: var(--awx-faint); font-size: 11.5px; font-weight: 600; }
-.awx-range button[aria-pressed="true"] { background: var(--awx-surface); color: var(--awx-text); box-shadow: var(--awx-shadow); }
 
 .awx-bars { height: 148px; display: grid; align-items: end; gap: 6px; padding: 18px 14px 26px; }
 .awx-bar { position: relative; min-height: 2px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, var(--awx-accent), color-mix(in srgb, var(--awx-accent) 38%, transparent)); }
@@ -298,7 +265,6 @@
 .awx-radar-frame.is-active { border-color: var(--awx-accent-line); background: var(--awx-accent-weak); color: var(--awx-text); box-shadow: inset 0 0 0 1px var(--awx-accent-line); }
 .awx-radar-frame span { font-size: 12px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .awx-radar-frame small { color: var(--awx-faint); font-size: 9.5px; font-weight: 750; letter-spacing: 0.06em; line-height: 1; text-transform: uppercase; }
-.awx-radar-frame.is-forecast small,
 .awx-radar-frame.is-active small { color: var(--awx-accent); }
 .awx-radar-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--awx-line); font-size: 11.5px; color: var(--awx-faint); }
 .awx-radar-scale { display: inline-flex; align-items: center; gap: 5px; }
@@ -357,7 +323,6 @@
 .awx-deltat-track { position: relative; height: 8px; border-radius: var(--awx-pill); background: var(--awx-surface-3); }
 .awx-deltat-band { position: absolute; top: 0; bottom: 0; border-radius: var(--awx-pill); background: color-mix(in srgb, var(--awx-go) 40%, transparent); }
 .awx-deltat-marker { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--awx-text); transform: translateX(-50%); }
-.awx-deltat-cap { font-size: 11px; color: var(--awx-faint); }
 
 .awx-riskstrip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; margin-top: 6px; }
 .awx-risk-cell { display: grid; gap: 5px; justify-items: center; padding: 9px 2px; border-radius: 9px; background: var(--awx-surface-2); }
@@ -376,25 +341,8 @@
 .awx-od-go { --awx-od: var(--awx-go); } .awx-od-warn { --awx-od: var(--awx-warn); } .awx-od-risk { --awx-od: var(--awx-risk); }
 
 /* ---- HOURLY TABLE (rest of today) ---- */
-.awx-htable { border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); overflow: hidden; }
-.awx-htable-head, .awx-htable-row { display: grid; grid-template-columns: 50px repeat(6, 1fr); gap: 6px; padding: 9px 12px; align-items: center; font-variant-numeric: tabular-nums; }
-.awx-htable-head { background: var(--awx-surface-2); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--awx-faint); }
-.awx-htable-scroll { max-height: 360px; overflow-y: auto; }
-.awx-htable-scroll::-webkit-scrollbar { width: 6px; }
-.awx-htable-scroll::-webkit-scrollbar-thumb { background: var(--awx-line-2); border-radius: 999px; }
-.awx-htable-row { font-size: 13px; border-top: 1px solid var(--awx-line); }
-.awx-htable-row .awx-htt-h { color: var(--awx-faint); font-weight: 600; }
-.awx-htable-row .awx-htt-feels { color: var(--awx-muted); }
-.awx-htable-row .awx-htt-wet { color: var(--awx-accent); font-weight: 600; }
-.awx-htable-day { padding: 7px 12px; background: var(--awx-surface-2); font-size: 11px; font-weight: 600; color: var(--awx-faint); border-top: 1px solid var(--awx-line); }
 
 /* ---- SUN ARC ---- */
-.awx-sunarc { width: 100%; max-width: 320px; margin: 2px auto 0; display: block; }
-.awx-sunarc-track { fill: none; stroke: var(--awx-line-2); stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; }
-.awx-sunarc-done { fill: none; stroke: var(--awx-sun); stroke-width: 2.5; stroke-linecap: round; }
-.awx-sunarc-horizon { stroke: var(--awx-line); stroke-width: 1; }
-.awx-sunarc-dot { fill: var(--awx-sun); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--awx-sun) 60%, transparent)); }
-.awx-sunarc-t { fill: var(--awx-faint); font-size: 11px; }
 
 @media (max-width: 900px) {
   .awx-card {
@@ -421,47 +369,17 @@
     border-radius: 50%;
     margin-top: 0;
   }
-  .awx-now {
-    grid-template-columns: minmax(0, 1fr) 136px;
-    gap: 15px;
-  }
-  .awx-now-read .awx-val {
-    font-size: 76px;
-  }
-  .awx-now-read .awx-deg {
-    font-size: 22px;
-  }
-  .awx-now-cond {
-    margin-top: 10px;
-  }
-  .awx-now-summary {
-    margin-top: 10px;
-    font-size: 13.5px;
-  }
-  .awx-sky {
-    min-height: 132px;
-    border-radius: var(--awx-radius);
-  }
-  .awx-sky .awx-orb {
-    right: 18%;
-    top: 20%;
-    width: 72px;
-    height: 72px;
-  }
-  .awx-metrics,
+
   .awx-season-stats,
-  .awx-rows,
-  .awx-chart-card,
-  .awx-decisions,
-  .awx-htable,
-  .awx-hourly,
-  .awx-outlook-lead,
-  .awx-ops {
+.awx-rows,
+.awx-chart-card,
+.awx-decisions,
+.awx-hourly,
+.awx-outlook-lead,
+.awx-ops {
     border-radius: var(--awx-radius-sm);
   }
-  .awx-range button {
-    min-height: 44px;
-  }
+
   .awx-card-foot {
     align-items: center;
   }
@@ -473,9 +391,7 @@
     border-radius: var(--awx-radius-sm);
     background: color-mix(in srgb, var(--awx-surface-2) 88%, transparent);
   }
-  .awx-htable-scroll {
-    max-height: 300px;
-  }
+
   .awx-cal-day {
     border-radius: var(--awx-radius-sm);
   }
@@ -505,29 +421,7 @@
   .awx-card-foot .awx-note {
     font-size: 12px;
   }
-  .awx-htable-head, .awx-htable-row { grid-template-columns: 42px repeat(6, 1fr); gap: 3px; padding-inline: 10px; font-size: 11.5px; }
-  .awx-range button { min-height: 44px; padding-inline: 14px; }
-  .awx-now { grid-template-columns: 1fr; gap: 14px; }
-  .awx-sky { min-height: 104px; }
-  .awx-metrics { grid-template-columns: repeat(2, 1fr); }
-  .awx-now-read .awx-val { font-size: 66px; }
-  .awx-now-read .awx-deg { font-size: 20px; margin-top: 6px; }
-  .awx-now-cond { font-size: 14px; }
-  .awx-now-sub { font-size: 13px; }
-  .awx-now-summary { margin-top: 10px; }
-  .awx-metric { padding: 12px; }
-  .awx-metric .awx-v { font-size: 17px; }
-  .awx-chart-head {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 9px;
-  }
-  .awx-range {
-    width: 100%;
-  }
-  .awx-range button {
-    flex: 1;
-  }
+
   .awx-decision { grid-template-columns: 1fr; }
   .awx-meter-wrap { justify-items: start; }
   .awx-meter { width: 100%; }
