@@ -108,7 +108,9 @@ export function buildModel(raw) {
   const dLabels = (start, n) => Array.from({ length: n }, (_, i) => weekdayShort(d.time[start + i] || ""));
   const dNums = (start, n) => Array.from({ length: n }, (_, i) => String(dayOfMonth(d.time[start + i] || "1")));
   const rain = {
-    sum24: +sum24.toFixed(1), peakProb, past7: +past7.toFixed(1), next7: +next7.toFixed(1),
+    sum24: +sum24.toFixed(1), peakProb,
+    tomorrowChance: (typeof d.rain_chance?.[di + 1] === "number" ? d.rain_chance[di + 1] : null) as number | null,
+    tomorrowRain: (dailyP[di + 1] ?? null) as number | null, past7: +past7.toFixed(1), next7: +next7.toFixed(1),
     ranges: {
       "24h": { cap: "Next 24h · 2-hour totals", total: +sum24.toFixed(1),
         bars: mkBars(buckets12, rainHourLabels, bMax) },
@@ -140,6 +142,9 @@ export function buildModel(raw) {
       dateKey: dk, dayNum: dayOfMonth(dk), weekday: weekdayShort(dk),
       hi: d.temperature_2m_max?.[k], lo: d.temperature_2m_min?.[k],
       rain: dailyP[k], prob: d.precipitation_probability_max?.[k],
+      // AceWeather's calibrated chance of at least 1 mm (days 0-7); null further ahead or if it is unavailable.
+      chance: typeof d.rain_chance?.[k] === "number" ? d.rain_chance[k] : null,
+      further: i > 7,
       rainPct: clamp(((dailyP[k] || 0) / calMax) * 100, 0, 100),
       condition: weatherCondition(d.weather_code?.[k], 1), isToday: i === 0,
       hours: {

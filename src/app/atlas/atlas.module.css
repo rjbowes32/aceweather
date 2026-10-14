@@ -283,6 +283,7 @@
 .positive { color: var(--awx-go); }
 
 .errorState {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;

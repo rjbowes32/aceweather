@@ -138,6 +138,34 @@ visible keyboard focus and a minimum 44px target. Charts have accessible values.
   installed-device production offline/update/safe-area test is still required.
 - Do not describe this browser layout pass as full installed-PWA release approval.
 
+### Rain chance and UI audit checkpoint — 14 October 2026
+
+- One rain-chance definition everywhere: AceWeather's calibrated chance of at
+  least 1 mm in the day, for today to day 7. Open-Meteo's hourly
+  precipitation probability is no longer shown anywhere. If the AceWeather
+  forecast is unavailable the chance reads "—" and Sources says "Open-Meteo only".
+- Outlook day squares: weekday and date, icon, high (large, bold), low (smaller,
+  muted), then chance % and rainfall mm. No captions; each square's accessible
+  name carries the full meaning. Days 8–14 are marked further ahead (dashed, no
+  chance). On narrow desktop cells the mm wraps under the %.
+- Selected-day panel: day heading on its own row, then High, Low, Rain chance,
+  Rainfall and Wind on desktop; three plus two on mobile.
+- Hourly views show rainfall in mm only. All rainfall uses one formatter
+  (0.1 mm steps, no trailing ".0", "0" below 0.1 mm).
+- Hour-by-hour chart: wind is dashed so it does not rely on colour, a small
+  key replaces the caption, and axis labels are readable and unclipped.
+- Sources lists what powers the page, never method, stations or scores.
+- Audit: every Weather tab at 390px in both themes, 360px spot checks and
+  1440px desktop. No page overflow, no unnamed controls and no mobile controls
+  under 44px. Keyboard focus and day selection checked. Refresh failure keeps
+  the last data and shows Offline; AceWeather forecast failure shows "—".
+- Also fixed: Atlas error card overflow at 390px, Weather/Atlas switch and
+  desktop rail buttons raised to 44px, location search given an accessible name.
+- Still open: desktop settings toggles (34px) and brand link (38px); a one-frame
+  Overview highlight when a deep link opens another tab; Atlas contract test
+  fixture predates the drought recovery fields (fails on master too); Atlas
+  with real data not reviewed locally because no snapshot is available in dev.
+
 ## Historical reference (not the current specification)
 
 

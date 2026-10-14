@@ -53,7 +53,7 @@ export async function maybeNotifyRain(model: any, locName: string): Promise<void
   try { last = localStorage.getItem(NOTIFIED_KEY) || ""; } catch { /* */ }
   if (last === key) return;
   const title = `Rain expected · ${locName}`;
-  const body = `${nr.mm} mm around ${nr.atLabel}${nr.prob != null ? ` (${nr.prob}% chance)` : ""}, in ~${nr.inHours}h.`;
+  const body = `${nr.mm} mm around ${nr.atLabel}, in ~${nr.inHours}h.`;
   try {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, { body, tag: "awx-rain", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png" });

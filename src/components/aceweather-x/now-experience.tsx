@@ -3,6 +3,7 @@
 import type { AwModel } from "@/lib/aceweather/derive";
 import {
   formatNextRain,
+  formatRain,
   formatTemperature,
   formatWind,
   temperatureUnitLabel,
@@ -25,7 +26,7 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
   const now = model.now;
   const sun = model.sun;
   const hourly = (model.todayHours || []).slice(0, 10);
-  const rain = formatNextRain(model.nextRain, model.rain.sum24, model.rain.peakProb);
+  const rain = formatNextRain(model.nextRain, model.rain.sum24);
   const windLabel = windUnitLabel(windUnit);
 
   return (
@@ -45,7 +46,7 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
         </div>
         <div className="awx-now-key-metrics">
           <div><span>Wind · gust</span><strong className="awx-tnum">{formatWind(now.wind, windUnit)} · {formatWind(now.gust, windUnit)} <small>{windLabel}</small></strong></div>
-          <div><span>Rain now</span><strong className="awx-tnum">{Math.round(now.precipProb ?? 0)}% · {(now.precip ?? 0).toFixed(1)} <small>mm</small></strong></div>
+          <div><span>Rain now</span><strong className="awx-tnum">{formatRain(now.precip ?? 0)} <small>mm</small></strong></div>
           <div><span>Humidity</span><strong className="awx-tnum">{Math.round(now.rh ?? 0)}%</strong></div>
           <div><span>Pressure</span><strong className="awx-tnum">{Math.round(now.pressure ?? 0)} <small>hPa</small></strong></div>
         </div>
@@ -69,10 +70,10 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
         </button>
         <div className="awx-now-hours" role="list" aria-label="Hourly forecast">
           {hourly.map((hour) => (
-            <div key={`${hour.dateKey}-${hour.label}`} role="listitem" className={(hour.precip ?? 0) > 0 ? "is-wet" : ""}>
+            <div key={`${hour.dateKey}-${hour.label}`} role="listitem" className={formatRain(hour.precip ?? 0) !== "0" ? "is-wet" : ""}>
               <span>{hour.label}</span>
               <strong className="awx-tnum">{formatTemperature(hour.temp, unit)}°</strong>
-              <small>{Math.round(hour.prob ?? 0)}% rain</small>
+              <small>{formatRain(hour.precip ?? 0)} mm</small>
               <small>{formatWind(hour.wind, windUnit)} {windLabel}</small>
             </div>
           ))}
@@ -97,7 +98,7 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
           <div className="awx-now-trend"><LineTrend trend={model.trend} /></div>
           <div className="awx-now-table" role="table" aria-label="Full hourly forecast">
             <div className="awx-now-table-row is-head" role="row">
-              <span role="columnheader">Time</span><span role="columnheader">Temp</span><span role="columnheader">Feels</span><span role="columnheader">Wind</span><span role="columnheader">Gust</span><span role="columnheader">Rain</span>
+              <span role="columnheader">Time</span><span role="columnheader">Temp</span><span role="columnheader">Feels</span><span role="columnheader">Wind</span><span role="columnheader">Gust</span><span role="columnheader">Rain mm</span>
             </div>
             {(model.todayHours || []).map((hour) => (
               <div className="awx-now-table-row" role="row" key={`detail-${hour.dateKey}-${hour.label}`}>
@@ -106,7 +107,7 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
                 <span role="cell" className="awx-tnum">{formatTemperature(hour.feels, unit)}°</span>
                 <span role="cell" className="awx-tnum">{formatWind(hour.wind, windUnit)}</span>
                 <span role="cell" className="awx-tnum">{formatWind(hour.gust, windUnit)}</span>
-                <span role="cell" className={(hour.precip ?? 0) > 0 ? "is-wet" : ""}>{Math.round(hour.prob ?? 0)}% · {(hour.precip ?? 0).toFixed(1)}</span>
+                <span role="cell" className={formatRain(hour.precip ?? 0) !== "0" ? "is-wet" : ""}>{formatRain(hour.precip ?? 0)}</span>
               </div>
             ))}
           </div>

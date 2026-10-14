@@ -41,6 +41,7 @@ export function LocationPickerContent({
           <SearchIcon />
           <input
             type="search"
+            aria-label="Search for a location"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="Town, postcode or field"

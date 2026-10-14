@@ -6,6 +6,8 @@ import type { ResolvedLocation } from "./locations.ts";
 import { inUk } from "./observations.ts";
 import { addError, apply, fit, interpolateFits, type DayErrors, type Fit } from "./learning.ts";
 import { asFit, chooseReference, type FitsFile } from "./learning-store.ts";
+import calibration from "./rain-calibration.json" with { type: "json" };
+import { features, predict } from "./rain-probability.ts";
 import { fetchPreviousRuns, PREVIOUS_RUNS_SOURCE } from "./sources/previous-runs.ts";
 import { FORECAST_SOURCE, withTimezone } from "./sources/forecast.ts";
 import { MODEL_INFO } from "./sources/models.ts";
@@ -39,7 +41,7 @@ export const LEARNED_METHOD = [
   `Temperature and wind: the four models (ECMWF IFS, GFS, ICON, Met Office UM), plus ECMWF's AI model (AIFS) from day ${AI_FROM_LEAD}, weighted by their accuracy at the nearest reference station over the last ${WINDOW_DAYS} days (inverse mean squared error, fitted separately for each lead day 1-7), minus that blend's mean error over the same days.`,
   `Weights and bias are interpolated between neighbouring lead days so the forecast changes smoothly hour by hour; beyond day ${MAX_FIT_LEAD} the day-${MAX_FIT_LEAD} mix is used, because the Met Office and ICON models have no day-7 archive.`,
   `The bias step is applied only when the station is within ${BIAS_MAX_DISTANCE_KM} km and ${BIAS_MAX_HEIGHT_DIFF_M} m of the location; otherwise the weighted blend is used as is.`,
-  `Rainfall: the equal-weight mean of the same models (four, plus AIFS from day ${AI_FROM_LEAD}), with no bias shift.`,
+  `Rainfall: the equal-weight mean of the same models (four, plus AIFS from day ${AI_FROM_LEAD}), with no bias shift. The daily chance of rain is the calibrated chance of at least 1 mm (docs/mcp/RAIN-PROBABILITY.md).`,
   "Reference stations are Met Office stations (NOAA GHCNh archive), airport METARs or COSMOS-UK sites within 80 km and 250 m of height, ranked by distance plus 10 km per 100 m of height difference. Where none has 20 days of history, temperature and wind fall back to AceWeather's standard forecast.",
   "In a year-long backtest at 15 northern England locations the four-model version cut mean absolute error by about 17-20% for temperature, 22-26% for wind and 16-18% for daily rainfall; adding AIFS from day 3 improved days 3-5 by a further 2-4% (docs/mcp/LEARNING-BACKTEST.md).",
 ].join(" ");
@@ -53,7 +55,7 @@ export const learnedDataSchema = z.object({
   reference: referenceSchema.nullable(),
   training: z.array(z.object({ lead_day: z.number(), temperature: leadSchema, wind_speed: leadSchema })),
   daily: z.array(z.object({
-    date: z.string(), hours: z.number(), partial: z.boolean(),
+    date: z.string(), hours: z.number(), partial: z.boolean(), rain_chance_pct: num,
     temp_max_c: num, temp_min_c: num, wind_speed_max: num, precipitation_mm: num,
     standard: z.object({ temp_max_c: num, temp_min_c: num, wind_speed_max: num, precipitation_mm: num }),
   })),
@@ -156,6 +158,46 @@ function liveForecast(location: ResolvedLocation, days: number): Promise<Hourly>
   });
 }
 
+export const RAIN_CHANCE_THRESHOLD_MM = 1;
+type RainCalibration = { leads: Record<string, { models: string[]; thresholds: Record<string, { weights: number[]; climatology: { uk: number } }> }> };
+const RAIN_CAL = calibration as unknown as RainCalibration;
+
+/**
+ * Calibrated chance (0-100) of at least 1 mm on each local date, today to seven days ahead, from each model's
+ * full-day total (docs/mcp/RAIN-PROBABILITY.md). Today uses the day-1 calibration. A date where any of the
+ * lead's models lacks a full day is left out rather than guessed.
+ */
+export function rainChances(live: { time: string[]; get: (variable: string, model: string) => Array<number | null> }, timezone: string, now: number): Map<string, number> {
+  const today = localDate(now, timezone);
+  const totals = new Map<string, Map<string, { sum: number; hours: number }>>();
+  const models = [...new Set(Object.values(RAIN_CAL.leads).flatMap((l) => l.models))];
+  live.time.forEach((t, i) => {
+    // Each hourly value is the total for the hour ending at its timestamp, so it belongs to the date an hour earlier.
+    const date = localDate(Date.parse(`${t}:00Z`) - HOUR, timezone);
+    for (const m of models) {
+      const v = live.get("precipitation", m)[i];
+      if (typeof v !== "number" || !Number.isFinite(v)) continue;
+      const byModel = totals.get(date) ?? new Map();
+      const s = byModel.get(m) ?? { sum: 0, hours: 0 };
+      s.sum += v; s.hours++;
+      byModel.set(m, s);
+      totals.set(date, byModel);
+    }
+  });
+  const out = new Map<string, number>();
+  for (const [date, byModel] of totals) {
+    const lead = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY);
+    if (lead < 0 || lead > 7) continue;
+    const cal = RAIN_CAL.leads[String(Math.max(1, lead))];
+    const t = cal?.thresholds[String(RAIN_CHANCE_THRESHOLD_MM)];
+    if (!cal || !t) continue;
+    const dayTotals = cal.models.map((m) => byModel.get(m));
+    if (dayTotals.some((x) => !x || x.hours < 23)) continue;
+    out.set(date, Math.round(100 * predict(t.weights, features(dayTotals.map((x) => x!.sum), RAIN_CHANCE_THRESHOLD_MM, t.climatology.uk))));
+  }
+  return out;
+}
+
 const localDate = (ms: number, timezone: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 
@@ -254,8 +296,9 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       if (!v.length) return null;
       return how === "sum" ? round(v.reduce((a, b) => a + b, 0)) : round(how === "max" ? Math.max(...v) : Math.min(...v));
     };
+    const chances = rainChances(live, location.timezone, now);
     const daily = [...byDate].map(([date, rows]) => ({
-      date, hours: rows.length, partial: rows.length < 23,
+      date, hours: rows.length, partial: rows.length < 23, rain_chance_pct: chances.get(date) ?? null,
       temp_max_c: agg(rows, "temperature_c", "max"), temp_min_c: agg(rows, "temperature_c", "min"),
       wind_speed_max: agg(rows, "wind_speed", "max"), precipitation_mm: agg(rows, "precipitation_mm", "sum"),
       standard: {
