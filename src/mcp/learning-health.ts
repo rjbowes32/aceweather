@@ -14,6 +14,8 @@ export type Problem = { severity: "error" | "warning"; check: string; message: s
 export const HEALTH_LIMITS = {
   maxFitsAgeHours: 26,
   minStationShare: 0.8,
+  /** Below this share of last week's best, the output is more likely broken than unlucky and is not published. */
+  collapseShare: 0.5,
   maxFailureShare: 0.1,
   maxGaveUp: 5,
   learnedWorseRatio: 1.02,
@@ -24,16 +26,21 @@ export const HEALTH_LIMITS = {
   biasStepShare: 0.2,
 };
 
+/** Problems that stop the workflow publishing: publishing them would replace good learning data with worse. */
+export const BLOCKING_CHECKS = ["fits_missing", "nothing_processed", "stations_collapsed"];
+
 export function checkHealth(fits: FitsFile | null, history: ScoresEntry[], run: RunStats | null, now = Date.now()): Problem[] {
   const problems: Problem[] = [];
   if (!fits) return [{ severity: "error", check: "fits_missing", message: "fits.json was not produced." }];
+  if (!fits.stations.length || run?.processed === 0) problems.push({ severity: "error", check: "nothing_processed", message: `The run processed ${run?.processed ?? "?"} stations and fitted ${fits.stations.length}.` });
   const ageHours = (now - Date.parse(fits.generated_at)) / 3600_000;
   if (!(ageHours <= HEALTH_LIMITS.maxFitsAgeHours)) problems.push({ severity: "error", check: "fits_stale", message: `fits.json is ${Math.round(ageHours)} hours old.` });
 
   const previous = history.filter((h) => h.date < fits.generated_at.slice(0, 10)).slice(-7);
   const best = Math.max(0, ...previous.map((h) => h.stations_fitted));
   if (best > 0 && fits.stations.length < best * HEALTH_LIMITS.minStationShare) {
-    problems.push({ severity: "error", check: "stations_dropped", message: `${fits.stations.length} stations have fits, down from ${best} in the last week.` });
+    const collapsed = fits.stations.length < best * HEALTH_LIMITS.collapseShare;
+    problems.push({ severity: "error", check: collapsed ? "stations_collapsed" : "stations_dropped", message: `${fits.stations.length} stations have fits, down from ${best} in the last week${collapsed ? "; not published" : ""}.` });
   }
 
   if (run) {

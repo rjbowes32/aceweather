@@ -10,18 +10,16 @@
 //   --only-near      limit to stations within --radius km (default 40) of the sites in a JSON list (for local tests)
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { citizenRainOk } from "../../src/mcp/citizen-qc.ts";
 import { distanceKm } from "../../src/mcp/geo.ts";
 import { emptyState, errorDays, exportFits, prune, scoreDay, updateDays } from "../../src/mcp/learning-store.ts";
 import { AI_FROM_LEAD, LEARN_LEADS, modelsFor, RAIN_LEADS, WINDOW_DAYS } from "../../src/mcp/learned.ts";
-import { rainErrorDays, rainPool, scoreRainDay, updateRainDays } from "../../src/mcp/rain-learning.ts";
+import { completeDayTotals, rainErrorDays, rainPool, scoreRainDay, updateRainDays } from "../../src/mcp/rain-learning.ts";
 import { gaugeHistoryUrl, historyRows } from "../../src/mcp/sources/ea-rainfall.ts";
 import { ghcnhYearUrl, parsePsv, parseStationList } from "../../src/mcp/sources/ghcnh.ts";
 import { hourKey, parseCsv } from "../../src/mcp/sources/iem.ts";
 import { EA_STATIONS_URL, parseEaStations, parseSepaList, parseSepaValues, SEPA_LIST_URL, selectGauges, sepaValuesUrl } from "../../src/mcp/sources/rain-gauges.ts";
 import { inUk } from "../../src/mcp/observations.ts";
 import { RETRY, retryDelayMs, shouldRetry } from "../../src/mcp/retry.ts";
-import { dailyTotals } from "../../src/mcp/verification.ts";
 import { netatmoStations } from "./netatmo.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith("--") ? [...acc, [a.slice(2), all[i + 1]?.startsWith("--") || all[i + 1] == null ? "true" : all[i + 1]]] : acc), []));
@@ -194,8 +192,8 @@ async function fillElevations(items) {
 /** Complete UTC-day rainfall totals for an Environment Agency or SEPA gauge. */
 async function gaugeRain(item, startMs, endMs) {
   const iso = (ms) => new Date(ms).toISOString().replace(".000", "");
-  if (item.meta.network === "ea_rain") return dailyTotals(historyRows(await getJson(gaugeHistoryUrl(item.ref, iso(startMs)))), 96);
-  return dailyTotals(parseSepaValues(await getJson(sepaValuesUrl(item.ref, iso(startMs), iso(endMs)))), 24);
+  if (item.meta.network === "ea_rain") return completeDayTotals(historyRows(await getJson(gaugeHistoryUrl(item.ref, iso(startMs)))), 15 * 60_000);
+  return completeDayTotals(parseSepaValues(await getJson(sepaValuesUrl(item.ref, iso(startMs), iso(endMs)))), HOUR);
 }
 
 async function metarObs(icao, startMs, endMs) {
@@ -276,7 +274,8 @@ async function processStation(state, item, bootstrap) {
   await openMeteoBudget(Math.max(1, series / 10) * Math.max(1, (pastDays + 1) / 14));
   const body = await getJson(previousRunsUrl(meta, pastDays, requested), { timeout: bootstrap ? 180_000 : 60_000 });
   const h = body?.hourly ?? {};
-  const forecasts = { time: (h.time ?? []).filter((t) => t < `${today}T00:00`), series: (v, lead, m) => h[`${v}_previous_day${lead}_${m}`] ?? [] };
+  // Up to and including today 00:00: that hour's rain total closes yesterday. Instant values at 00:00 have no observation to meet.
+  const forecasts = { time: (h.time ?? []).filter((t) => t <= `${today}T00:00`), series: (v, lead, m) => h[`${v}_previous_day${lead}_${m}`] ?? [] };
   let written = 0;
   for (const v of variables) written += updateDays(st, v, errorDays(forecasts, v, v === "temperature_2m" ? obs.t : obs.w, LEARN_LEADS, modelsFor));
   if (rain.size) written += updateRainDays(st, rain, rainErrorDays(forecasts, rain, RAIN_LEADS, modelsFor));
@@ -303,14 +302,15 @@ async function processStation(state, item, bootstrap) {
 }
 
 /**
- * Out-of-sample rainfall scores for each gauge-day not yet scored and for the recent days. Runs after every
- * station is updated, because each gauge's fit pools its neighbours. Blocked or odd citizen gauges are left out.
+ * Out-of-sample rainfall scores at official gauges, for each gauge-day not yet scored and for the recent days.
+ * Runs after every station is updated, because each gauge's fit pools its neighbours; scoreRainDay admits a
+ * citizen gauge to the pool only if it passed quality control as of each forecast's issue date.
  */
 function scoreRain(state) {
-  const eligible = Object.values(state.stations).filter((st) => Object.values(st.days).some((rec) => rec.ro != null) && (st.meta.network !== "netatmo" || citizenRainOk(st, today, WINDOW_DAYS)));
+  const gauges = Object.values(state.stations).filter((st) => Object.values(st.days).some((rec) => rec.ro != null));
   let scored = 0;
-  for (const st of eligible) {
-    const pool = rainPool(st, eligible);
+  for (const st of gauges.filter((g) => g.meta.network !== "netatmo")) {
+    const pool = rainPool(st, gauges);
     for (const [day, rec] of Object.entries(st.days)) {
       const age = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / DAY;
       if (rec.ro == null || age > 30 || (age > RECENT_DAYS && Object.values(rec.score ?? {}).some((s) => s.r))) continue;

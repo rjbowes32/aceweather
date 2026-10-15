@@ -60,13 +60,20 @@ export function errorDays(forecasts: Forecasts, variable: Variable, obs: Map<str
   return new Map([...sums].map(([day, byLead]) => [day, Object.fromEntries(Object.entries(byLead).map(([lead, models]) => [lead, Object.fromEntries(Object.entries(models).map(([m, e]) => [m, toE(e)]))]))]));
 }
 
-/** Writes recomputed days into the station, keeping a day only when it has at least `minHours` matched hours. */
+/**
+ * Writes recomputed days into the station. Each model needs at least `minHours` matched hours on a day, so a
+ * model seen for an hour or two cannot count it as a training day and win the weighting on easy hours.
+ */
 export function updateDays(station: StationState, variable: Variable, days: Map<string, VarDay>, minHours = 12): number {
   let written = 0;
   for (const [day, byLead] of days) {
-    const hours = Math.max(0, ...Object.values(byLead).flatMap((models) => Object.values(models).map((e) => e[0])));
-    if (hours < minHours) continue;
-    (station.days[day] ??= {})[VAR_KEY[variable]] = byLead;
+    const kept: VarDay = {};
+    for (const [lead, models] of Object.entries(byLead)) {
+      const covered = Object.entries(models).filter(([, e]) => e[0] >= minHours);
+      if (covered.length) kept[lead] = Object.fromEntries(covered);
+    }
+    if (!Object.keys(kept).length) continue;
+    (station.days[day] ??= {})[VAR_KEY[variable]] = kept;
     written++;
   }
   return written;
@@ -113,7 +120,8 @@ export function scoreDay(station: StationState, variable: Variable, day: string,
   return out;
 }
 
-export type LeadFit = { weights: Record<string, number>; bias: number; days: number };
+/** `model_bias` lets the forecast reweight the bias when a model is missing from a live run. */
+export type LeadFit = { weights: Record<string, number>; bias: number; days: number; model_bias?: Record<string, number> };
 export type FitsStation = { meta: StationMeta; leads: Record<string, { t?: LeadFit; w?: LeadFit; r?: RainFit }> };
 /** `hours` for temperature and wind; `days` and `mean_mae` (the equal-weight model mean) for rainfall. */
 export type RecentScore = { hours?: number; days?: number; learned_mae: number; standard_mae: number; mean_mae?: number; stations: number };
@@ -125,6 +133,8 @@ export type FitsFile = {
 };
 
 const isCitizen = (st: { meta: StationMeta }) => st.meta.network === "netatmo";
+/** A station with no data for this long is not exported, however fresh the file: its fits describe the past. */
+export const STALE_DAYS = 7;
 const hasRain = (st: StationState) => Object.values(st.days).some((rec) => rec.ro != null);
 
 /**
@@ -146,6 +156,7 @@ export function exportFits(state: LearningState, today: string, leads: number[],
         if (!f) continue;
         (entry.leads[lead] ??= {})[VAR_KEY[variable]] = {
           weights: Object.fromEntries(Object.entries(f.weights).map(([m, w]) => [m, round4(w)])), bias: round4(f.blendBias), days: f.trainingDays,
+          model_bias: Object.fromEntries(Object.entries(f.bias).map(([m, b]) => [m, round4(b)])),
         };
       }
     }
@@ -158,7 +169,8 @@ export function exportFits(state: LearningState, today: string, leads: number[],
       }
     }
     for (const [lead, lf] of Object.entries(entry.leads)) if (!Object.keys(lf).length) delete entry.leads[lead];
-    if (Object.keys(entry.leads).length) stations.push(entry);
+    const latest = Object.keys(st.days).reduce((a, d) => (d > a ? d : a), "");
+    if (latest && dayMs(today) - dayMs(latest) <= STALE_DAYS * DAY && Object.keys(entry.leads).length) stations.push(entry);
     if (isCitizen(st)) continue;
     for (const [day, rec] of Object.entries(st.days)) {
       if (dayMs(today) - dayMs(day) > 30 * DAY) continue;
@@ -193,12 +205,15 @@ export type ReferenceSearch = {
 };
 type Location = { latitude: number; longitude: number; elevation_m: number | null };
 
-/** Same ranking as the live search: distance plus 10 km per 100 m of height difference, within radius and height limits. */
-export function chooseReference(fits: FitsFile, location: Location, search: ReferenceSearch): { station: FitsStation; distance_km: number } | null {
+/**
+ * Same ranking as the live search: distance plus 10 km per 100 m of height difference, within radius and height
+ * limits, among stations with a fit for `key` (temperature or wind, chosen separately).
+ */
+export function chooseReference(fits: FitsFile, location: Location, search: ReferenceSearch, key: "t" | "w" = "t"): { station: FitsStation; distance_km: number } | null {
   const pick = (citizen: boolean, radiusKm: number, maxHeightDiffM: number) => {
     let best: { station: FitsStation; distance_km: number; dz: number | null; score: number } | null = null;
     for (const station of fits.stations) {
-      const lead1 = station.leads["1"]?.t;
+      const lead1 = station.leads["1"]?.[key];
       if (!lead1 || lead1.days < search.minDays || isCitizen(station) !== citizen) continue;
       const d = distanceKm(location.latitude, location.longitude, station.meta.latitude, station.meta.longitude);
       if (d > radiusKm) continue;
@@ -228,4 +243,4 @@ export function chooseRainReference(fits: FitsFile, location: Location, radiusKm
 }
 
 /** A stored lead fit in the shape learning.apply() expects. */
-export const asFit = (lf: LeadFit): Fit => ({ ranking: Object.keys(lf.weights), mae: {}, bias: {}, weights: lf.weights, blendBias: lf.bias, trainingDays: lf.days });
+export const asFit = (lf: LeadFit): Fit => ({ ranking: Object.keys(lf.weights), mae: {}, bias: lf.model_bias ?? {}, weights: lf.weights, blendBias: lf.bias, trainingDays: lf.days });

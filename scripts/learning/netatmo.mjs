@@ -19,7 +19,7 @@ const QC_GRACE_DAYS = 45;
  */
 export async function netatmoStations({ out, now, getText, log, max, discoverLimit, official, gauges }) {
   const env = process.env;
-  const info = { enabled: false, tracked: 0, added: 0, observed: 0, requests: 0, error: null };
+  const info = { enabled: false, tracked: 0, added: 0, observed: 0, sensor_errors: 0, requests: 0, error: null };
   const none = { items: [], info, finish: async () => {} };
   if (!env.NETATMO_CLIENT_ID || !env.NETATMO_CLIENT_SECRET || !env.NETATMO_REFRESH_TOKEN || !env.NETATMO_STATE_KEY) return none;
   info.enabled = true;
@@ -79,10 +79,12 @@ export async function netatmoStations({ out, now, getText, log, max, discoverLim
   const items = Object.entries(registry.stations).map(([id, s]) => ({
     meta: { id, name: "Citizen station (Netatmo)", network: "netatmo", latitude: round2(s.latitude), longitude: round2(s.longitude), elevation_m: null },
     // Netatmo data is real time, so the last two complete days are enough (and fit in one 1024-reading request).
+    // Each sensor stands alone: a failed rain request keeps the temperatures, and the other way round.
     observe: async (startMs, endMs) => {
       const from = Math.max(startMs, endMs - 2 * DAY);
-      const t = hourlyTemperature(await measure(s, s.temp_module, "temperature", from, endMs));
-      const rain = s.rain_module ? rainDayTotals(await measure(s, s.rain_module, "rain", from, endMs)) : new Map();
+      const read = async (module, type, parse) => { try { return parse(await measure(s, module, type, from, endMs)); } catch (error) { info.sensor_errors++; log(`  netatmo ${id} ${type}: ${error?.message ?? error}`); return new Map(); } };
+      const t = await read(s.temp_module, "temperature", hourlyTemperature);
+      const rain = s.rain_module ? await read(s.rain_module, "rain", rainDayTotals) : new Map();
       if (t.size || rain.size) { s.last_seen = today; info.observed++; }
       return { t, rain };
     },

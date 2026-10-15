@@ -33,7 +33,8 @@ export function temperatureSpread(st: StationState, today: string, windowDays: n
   const totals: Record<string, { n: number; sum: number; sumSq: number; days: number }> = {};
   for (const [day, rec] of Object.entries(st.days)) {
     const byModel = rec.t?.["1"];
-    if (!byModel || dayMs(today) - dayMs(day) > windowDays * DAY) continue;
+    const age = dayMs(today) - dayMs(day);
+    if (!byModel || age <= 0 || age > windowDays * DAY) continue;
     for (const [m, [n, , sumSq, sum]] of Object.entries(byModel)) {
       const t = (totals[m] ??= { n: 0, sum: 0, sumSq: 0, days: 0 });
       t.n += n; t.sum += sum; t.sumSq += sumSq; t.days++;
@@ -49,11 +50,13 @@ export function citizenTemperatureOk(st: StationState, lead1Bias: number | null,
   return own != null && own <= officialSpread * CITIZEN_QC.maxSpreadRatio;
 }
 
+/** Judged on the days before `today` only, so a historical score can ask what was known at the time. */
 export function citizenRainOk(st: StationState, today: string, windowDays: number): boolean {
   let observed = 0; let forecast = 0; let days = 0; let wet = 0; let dryOnWet = 0;
   for (const [day, rec] of Object.entries(st.days)) {
     const errors = rec.r?.["1"];
-    if (rec.ro == null || !errors || dayMs(today) - dayMs(day) > windowDays * DAY) continue;
+    const age = dayMs(today) - dayMs(day);
+    if (rec.ro == null || !errors || age <= 0 || age > windowDays * DAY) continue;
     const e = Object.entries(errors).filter(([m, v]) => m !== "best_match" && finite(v)).map(([, v]) => v);
     if (e.length < 2) continue;
     const f = rec.ro + e.reduce((a, b) => a + b, 0) / e.length;

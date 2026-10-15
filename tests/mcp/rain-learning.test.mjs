@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { citizenRainOk, citizenTemperatureOk, temperatureSpread } from "../../src/mcp/citizen-qc.ts";
 import { chooseRainReference, chooseReference, emptyState, exportFits } from "../../src/mcp/learning-store.ts";
-import { forecastDayTotals, learnedRain, rainErrorDays, rainFitAsOf, rainLeadsEnabled, scoreRainDay, updateRainDays } from "../../src/mcp/rain-learning.ts";
+import { completeDayTotals, forecastDayTotals, learnedRain, rainErrorDays, rainFitAsOf, rainLeadsEnabled, scoreRainDay, updateRainDays } from "../../src/mcp/rain-learning.ts";
 
 const HOUR = 3600_000;
 const MODELS = ["a", "b"];
@@ -109,4 +109,27 @@ test("a citizen thermometer is used only where it looks like an official one, an
   assert.equal(chooseReference(fits, { latitude: 54, longitude: -1, elevation_m: 100 }, search).station.meta.id, "netatmo:t", "the official station is 56 km away");
   assert.equal(chooseReference(fits, { latitude: 54.3, longitude: -1, elevation_m: 100 }, search).station.meta.id, "metoffice", "22 km from the official station");
   assert.equal(chooseReference(fits, { latitude: 54, longitude: -1, elevation_m: 100 }, { ...search, citizen: undefined }).station.meta.id, "metoffice");
+});
+
+test("observed rain days need every interval once: gaps, duplicates and off-cadence readings do not make a day", () => {
+  const Q = 15 * 60_000;
+  const t0 = Date.parse("2026-10-14T00:00:00Z");
+  const day = (wetLast = 0) => Array.from({ length: 96 }, (_, i) => ({ time: new Date(t0 + (i + 1) * Q).toISOString(), value: i >= 92 ? wetLast : 0 }));
+  assert.deepEqual([...completeDayTotals(day(2), Q)], [["2026-10-14", 8]]);
+  assert.equal(completeDayTotals(day(2).slice(0, 92), Q).size, 0, "the last four wet intervals missing is unknown, not 0 mm");
+  const half = day(0.4).slice(48);
+  assert.equal(completeDayTotals([...half, ...half], Q).size, 0, "48 readings sent twice are not 96 intervals");
+  assert.equal(completeDayTotals([...day(0), { time: new Date(t0 + 7 * 60_000).toISOString(), value: 5 }], Q).get("2026-10-14"), 0, "an off-cadence reading is ignored");
+  const clash = day(0);
+  assert.equal(completeDayTotals([...clash, { ...clash[10], value: 3 }], Q).size, 0, "two values for one interval void the day");
+});
+
+test("a citizen gauge joins a historical pool only if it had passed quality control by the issue date", () => {
+  const official = learnRain(gauge("G1", 54));
+  // The citizen gauge read zero until 1 August, then matched the official gauge: it passes today but not before.
+  const citizen = learnRain(gauge("netatmo:c", 54.05, "netatmo"), observedDays("2026-07-01", 45, (d) => (d < "2026-08-01" ? 0 : truthDay(d))));
+  assert.equal(citizenRainOk(citizen, "2026-07-25", 60), false);
+  const alone = scoreRainDay(official, [official], "2026-07-26", [1], modelsFor, 60, 20);
+  const pooled = scoreRainDay(official, [official, citizen], "2026-07-26", [1], modelsFor, 60, 20);
+  assert.deepEqual(pooled, alone, "later readings cannot change a forecast scored as of 25 July");
 });

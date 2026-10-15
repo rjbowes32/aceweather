@@ -31,6 +31,8 @@ test("the daily job learns rainfall from public gauges and tracks anonymised cit
   const ea = state.stations["ea:038179"];
   const days = Object.values(ea.days).filter((d) => d.ro != null);
   assert.ok(days.length >= 25, `backfilled ${days.length} days from the four-week EA history`);
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  if (new Date().getUTCHours() >= 1) assert.ok(ea.days[yesterday]?.r?.["1"], "yesterday is learned the same day: the forecast hour stamped 00:00 closes it");
 
   const fits = read("fits.json");
   const fit = fits.stations.find((s) => s.meta.id === "ea:038179").leads["1"].r;
@@ -42,6 +44,8 @@ test("the daily job learns rainfall from public gauges and tracks anonymised cit
   const runInfo = read("run.json");
   assert.equal(runInfo.failed, 0, JSON.stringify(runInfo.errors));
   assert.equal(runInfo.netatmo.tracked, 3);
+  assert.equal(runInfo.netatmo.sensor_errors, 1);
+  assert.equal(runInfo.netatmo.observed, 3, "the station whose rain request failed still delivered its temperatures");
   assert.ok(runInfo.open_meteo_units > 0);
   const citizens = Object.values(state.stations).filter((s) => s.meta.network === "netatmo");
   assert.equal(citizens.length, 3);

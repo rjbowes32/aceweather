@@ -5,6 +5,7 @@
  * backtest's best rainfall strategy) times the pooled ratio of observed to forecast rain over the window.
  * The forecast only uses it for lead days where it has beaten the plain mean out of sample (rainLeadsEnabled).
  */
+import { citizenRainOk } from "./citizen-qc.ts";
 import { distanceKm } from "./geo.ts";
 import type { Forecasts, ModelsFor, StationState } from "./learning-store.ts";
 
@@ -34,6 +35,28 @@ function dayMs(d: string): number {
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/**
+ * Observed UTC-day totals from fixed-interval gauge readings (each covering the interval ending at its time).
+ * A day counts only with every interval present once: a missing interval may hide rain, so it makes the day
+ * unknown rather than drier; off-cadence readings are ignored and conflicting duplicates void their day.
+ */
+export function completeDayTotals(readings: Array<{ time: string; value: number | null }>, intervalMs: number): Map<string, number> {
+  const byTime = new Map<number, number | null>();
+  for (const { time, value } of readings) {
+    const ms = Date.parse(time);
+    if (!Number.isFinite(ms) || ms % intervalMs !== 0) continue;
+    const v = finite(value) && value >= 0 ? value : null;
+    byTime.set(ms, byTime.has(ms) && byTime.get(ms) !== v ? null : v);
+  }
+  const days = new Map<string, { total: number; count: number; bad: boolean }>();
+  for (const [ms, v] of byTime) {
+    const d = days.get(dayOf(ms - 1)) ?? { total: 0, count: 0, bad: false };
+    if (v == null) d.bad = true; else { d.total += v; d.count++; }
+    days.set(dayOf(ms - 1), d);
+  }
+  return new Map([...days].filter(([, d]) => !d.bad && d.count === DAY / intervalMs).map(([day, d]) => [day, Math.round(d.total * 10) / 10]));
+}
 
 /** Totals over (D 00:00, D+1 00:00] UTC; each hourly value covers the hour ending at its timestamp. Days need all 24 hours. */
 export function forecastDayTotals(time: string[], values: Array<number | null>): Map<string, number> {
@@ -115,7 +138,10 @@ export function rainPool(station: StationState, eligible: StationState[]): Stati
   return eligible.filter((s) => distanceKm(latitude, longitude, s.meta.latitude, s.meta.longitude) <= RAIN_POOL_KM);
 }
 
-/** Out-of-sample score for one observed day: each lead's pooled fit uses only days before that forecast's issue date. */
+/**
+ * Out-of-sample score for one observed day: each lead's pooled fit uses only days before that forecast's issue
+ * date, and a citizen gauge joins the pool only if it passed quality control on what was known by then.
+ */
 export function scoreRainDay(station: StationState, pool: StationState[], day: string, leads: number[], modelsFor: ModelsFor, windowDays: number, minDays: number): Record<string, RainScore> {
   const rec = station.days[day];
   const out: Record<string, RainScore> = {};
@@ -124,7 +150,9 @@ export function scoreRainDay(station: StationState, pool: StationState[], day: s
     const errors = rec.r[lead];
     const models = modelsFor(lead);
     if (!errors || !finite(errors[STANDARD_MODEL]) || !models.every((m) => finite(errors[m]))) continue;
-    const fit = rainFitAsOf(pool, lead, dayOf(dayMs(day) - lead * DAY), windowDays, models, minDays);
+    const issue = dayOf(dayMs(day) - lead * DAY);
+    const asOf = pool.filter((s) => s.meta.network !== "netatmo" || citizenRainOk(s, issue, windowDays));
+    const fit = rainFitAsOf(asOf, lead, issue, windowDays, models, minDays);
     if (!fit) continue;
     const o = rec.ro;
     const mean = learnedRain(null, models.map((m) => o + errors[m]))!;

@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { observationRoute, trueRain, trueTemperature } from "./observation-fixtures.mjs";
 
 const HOUR = 3600_000;
+let rainRequests = 0;
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const day = (ms) => new Date(ms).toISOString();
 
@@ -37,6 +38,8 @@ function netatmo(url, init) {
     return json({ status: "ok", body: [{ _id: id, place: { location: [lon + 0.0123, lat + 0.0123], altitude: 40 }, module_types: { [`02:${id}`]: "NAModule1", [`05:${id}`]: "NAModule3" }, measures: {} }] });
   }
   if (url.pathname === "/api/getmeasure") {
+    // The first rain request fails, to show a station keeps its temperatures.
+    if (p.get("type") === "rain" && ++rainRequests === 1) return json({ error: { code: 9, message: "Device not found" } }, 403);
     const body = {};
     for (let t = Number(p.get("date_begin")) * 1000; t <= Number(p.get("date_end")) * 1000; t += 5 * 60_000) {
       body[t / 1000] = [p.get("type") === "temperature" ? Math.round((trueTemperature(t) + 0.4) * 10) / 10 : trueRain(t)];

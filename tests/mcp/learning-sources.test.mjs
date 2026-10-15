@@ -65,3 +65,8 @@ test("gauge lists skip closed gauges, and selection keeps tracked gauges and spa
   assert.ok(!chosen.includes("ea:A"), "A is 6 km from C");
   assert.deepEqual([...chosen].sort(), ["ea:C", "ea:D", "sepa:S1"]);
 });
+
+test("isolated Netatmo rain readings, one in each hour, are not a day of rain", () => {
+  const rows = Array.from({ length: 24 }, (_, h) => ({ ms: (t0 + h * 3600 + 1800) * 1000, value: 0.2 }));
+  assert.equal(rainDayTotals(rows).size, 0);
+});

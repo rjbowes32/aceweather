@@ -13,8 +13,8 @@ import { hourKey } from "./iem.ts";
 export const NETATMO_API = "https://api.netatmo.com";
 const HOUR = 3600_000;
 const TEMP_RANGE = [-30, 45] as const;
-/** A rain day needs readings in at least this many of its hours. */
-const MIN_RAIN_HOURS = 22;
+/** Rain readings must be continuous: no gap longer than this between readings, nor at either end of the day. */
+const MAX_RAIN_GAP_MS = 15 * 60_000;
 
 export type PublicStation = { device_id: string; latitude: number; longitude: number; temp_module: string | null; rain_module: string | null };
 export type RegistryStation = { device_id: string; temp_module: string; rain_module: string | null; latitude: number; longitude: number; added: string; last_seen: string | null };
@@ -67,18 +67,30 @@ export function hourlyTemperature(rows: Array<{ ms: number; value: number }>): M
   return new Map([...best].map(([k, [v]]) => [k, v]));
 }
 
-/** UTC-day rain totals; each reading is the rain since the previous one, so it belongs to the interval ending at its time. */
+/**
+ * UTC-day rain totals; each reading is the rain since the previous one, so it belongs to the interval ending at
+ * its time. A day counts only when its readings run without a gap of more than 15 minutes from start to end;
+ * an implausible value or a conflicting duplicate voids the day.
+ */
 export function rainDayTotals(rows: Array<{ ms: number; value: number }>): Map<string, number> {
-  const days = new Map<string, { total: number; hours: Set<number> }>();
+  const byTime = new Map<number, number | null>();
   for (const { ms, value } of rows) {
-    if (value < 0 || value > 100) continue;
-    const day = new Date(ms - 1).toISOString().slice(0, 10);
-    const d = days.get(day) ?? { total: 0, hours: new Set() };
-    d.total += value;
-    d.hours.add(Math.floor((ms - 1) / HOUR));
-    days.set(day, d);
+    const v = value >= 0 && value <= 100 ? value : null;
+    byTime.set(ms, byTime.has(ms) && byTime.get(ms) !== v ? null : v);
   }
-  return new Map([...days].filter(([, d]) => d.hours.size >= MIN_RAIN_HOURS).map(([day, d]) => [day, Math.round(d.total * 10) / 10]));
+  const days = new Map<string, Array<[number, number | null]>>();
+  for (const [ms, v] of [...byTime].sort((a, b) => a[0] - b[0])) {
+    const day = new Date(ms - 1).toISOString().slice(0, 10);
+    days.set(day, [...(days.get(day) ?? []), [ms, v]]);
+  }
+  const out = new Map<string, number>();
+  for (const [day, readings] of days) {
+    const start = Date.parse(`${day}T00:00:00Z`);
+    const edges = [start, ...readings.map(([ms]) => ms), start + 24 * HOUR];
+    if (readings.some(([, v]) => v == null) || edges.some((ms, i) => i > 0 && ms - edges[i - 1] > MAX_RAIN_GAP_MS)) continue;
+    out.set(day, Math.round(readings.reduce((a, [, v]) => a + (v as number), 0) * 10) / 10);
+  }
+  return out;
 }
 
 const keyOf = (secret: string) => createHash("sha256").update(secret).digest();

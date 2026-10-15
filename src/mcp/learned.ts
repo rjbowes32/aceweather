@@ -58,6 +58,8 @@ export const learnedDataSchema = z.object({
   fits_generated_at: z.string().nullable(),
   learned_applied: z.object({ temperature: z.boolean(), wind_speed: z.boolean(), rainfall: z.boolean(), bias_correction: z.boolean() }),
   reference: referenceSchema.nullable(),
+  /** Set when the temperature reference has no wind record and a different station supplies the wind fits. */
+  wind_reference: referenceSchema.nullable(),
   /** The gauge whose pooled rainfall scaling is applied; null when rainfall is the plain model mean. */
   rain_reference: referenceSchema.nullable(),
   training: z.array(z.object({ lead_day: z.number(), temperature: leadSchema, wind_speed: leadSchema, rainfall: z.object({ scale: z.number(), training_days: z.number(), gauges: z.number() }).nullable() })),
@@ -201,8 +203,9 @@ export function rainChances(live: { time: string[]; get: (variable: string, mode
     const cal = RAIN_CAL.leads[String(Math.max(1, lead))];
     const t = cal?.thresholds[String(RAIN_CHANCE_THRESHOLD_MM)];
     if (!cal || !t) continue;
+    // Every hour of the day from every model: a missing hour may be the wet one, so the chance is unknown, not lower.
     const dayTotals = cal.models.map((m) => byModel.get(m));
-    if (dayTotals.some((x) => !x || x.hours < 23)) continue;
+    if (dayTotals.some((x) => !x || x.hours !== localDayHours(date, timezone))) continue;
     out.set(date, Math.round(100 * predict(t.weights, features(dayTotals.map((x) => x!.sum), RAIN_CHANCE_THRESHOLD_MM, t.climatology.uk))));
   }
   return out;
@@ -210,6 +213,19 @@ export function rainChances(live: { time: string[]; get: (variable: string, mode
 
 const localDate = (ms: number, timezone: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+
+const dayHoursCache = new Map<string, number>();
+/** Hours in a local date: 24, or 23 and 25 on the days the clocks change. Each hour counts on the date it starts. */
+export function localDayHours(date: string, timezone: string): number {
+  const key = `${date}|${timezone}`;
+  if (!dayHoursCache.has(key)) {
+    const start = Date.parse(`${date}T00:00:00Z`);
+    let n = 0;
+    for (let k = -15; k < 39; k++) if (localDate(start + k * HOUR, timezone) === date) n++;
+    dayHoursCache.set(key, n);
+  }
+  return dayHoursCache.get(key)!;
+}
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -222,6 +238,7 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
     const warnings: string[] = [];
     const today = Math.floor(now / DAY) * DAY;
     let reference: LearnedData["reference"] = null;
+    let windReference: LearnedData["reference"] = null;
     let fits: Fits = new Map();
     let learningSource: LearnedData["learning_source"] = "none";
     let fitsGeneratedAt: string | null = null;
@@ -235,9 +252,16 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       if (daily && pick) {
         const m = pick.station.meta;
         reference = { id: m.id, name: m.name, network: m.network, latitude: m.latitude, longitude: m.longitude, elevation_m: m.elevation_m, distance_km: round(pick.distance_km) ?? 0, measures: pick.station.leads["1"]?.w ? ["temperature", "wind_speed"] : ["temperature"] };
+        // A thermometer-only station (a COSMOS-UK or citizen site) should not switch wind learning off when an anemometer is in range.
+        const windPick = pick.station.leads["1"]?.w ? pick : chooseReference(daily, location, { radiusKm: SEARCH.radiusKm, maxHeightDiffM: SEARCH.maxHeightDiffM, minDays: MIN_TRAIN_DAYS }, "w");
+        if (windPick && windPick !== pick) {
+          const w = windPick.station.meta;
+          windReference = { id: w.id, name: w.name, network: w.network, latitude: w.latitude, longitude: w.longitude, elevation_m: w.elevation_m, distance_km: round(windPick.distance_km) ?? 0, measures: ["wind_speed"] };
+        }
         fits = new Map(LEARN_LEADS.map((l) => {
           const lf = pick.station.leads[String(l)];
-          return [l, { temperature: lf?.t ? asFit(lf.t) : null, wind: lf?.w ? asFit(lf.w) : null }];
+          const wf = windPick?.station.leads[String(l)]?.w;
+          return [l, { temperature: lf?.t ? asFit(lf.t) : null, wind: wf ? asFit(wf) : null }];
         }));
         learningSource = "daily";
         fitsGeneratedAt = daily.generated_at;
@@ -245,6 +269,7 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
           { name: "AceWeather daily learning job", classification: "calculated", retrieved_at: retrievedAt, issued_at: daily.generated_at, notes: `Model weights and bias per station from the last ${daily.window_days} days of archived forecasts (Open-Meteo Previous Runs) against station observations, refreshed daily.` },
           { ...(NETWORK_SOURCE[m.network] ?? { name: m.network }), classification: "observation", retrieved_at: retrievedAt },
         );
+        if (windReference) learningSources.push({ ...(NETWORK_SOURCE[windReference.network] ?? { name: windReference.network }), classification: "observation", retrieved_at: retrievedAt, notes: `Wind learned at ${windReference.name}.` });
       } else {
         const air: AirObs | null = await airObservations(location, today - WINDOW_DAYS * DAY, today, SEARCH).catch(() => null);
         if (air) {
@@ -270,9 +295,14 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
     } else {
       warnings.push("Learning needs UK station history; outside the UK temperature and wind use AceWeather's standard forecast.");
     }
-    const heightDiff = reference && reference.elevation_m != null && location.elevation_m != null ? Math.abs(reference.elevation_m - location.elevation_m) : null;
-    const biasOk = Boolean(reference && reference.distance_km <= BIAS_MAX_DISTANCE_KM && (heightDiff == null || heightDiff <= BIAS_MAX_HEIGHT_DIFF_M));
-    if (reference && !biasOk) warnings.push(`The reference station is ${reference.distance_km} km away${heightDiff != null ? ` and ${Math.round(heightDiff)} m different in height` : ""}, so model weights are applied but not its bias correction.`);
+    const biasAllowed = (ref: NonNullable<LearnedData["reference"]>, label: string) => {
+      const heightDiff = ref.elevation_m != null && location.elevation_m != null ? Math.abs(ref.elevation_m - location.elevation_m) : null;
+      const ok = ref.distance_km <= BIAS_MAX_DISTANCE_KM && (heightDiff == null || heightDiff <= BIAS_MAX_HEIGHT_DIFF_M);
+      if (!ok) warnings.push(`The ${label} is ${ref.distance_km} km away${heightDiff != null ? ` and ${Math.round(heightDiff)} m different in height` : ""}, so model weights are applied but not its bias correction.`);
+      return ok;
+    };
+    const biasOk = reference ? biasAllowed(reference, "reference station") : false;
+    const windBiasOk = windReference ? biasAllowed(windReference, "wind reference station") : biasOk;
 
     const live = await liveForecast(location, options.days);
     const endMs = Math.floor(now / HOUR) * HOUR + options.days * DAY;
@@ -286,16 +316,16 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       const models = modelsFor(lead);
       const standard = (variable: string) => live.get(variable, "best_match")[i];
       const f = fitForPosition(fits, position);
-      const strategy = biasOk ? "weighted_bias" : "weighted";
-      const blend = (fitted: Fit, variable: string) => {
+      const blend = (fitted: Fit, variable: string, withBias: boolean) => {
         const names = Object.keys(fitted.weights);
-        return apply(strategy, fitted, Object.fromEntries(names.map((m) => [m, live.get(variable, m)[i]])), standard(variable), names);
+        return apply(withBias ? "weighted_bias" : "weighted", fitted, Object.fromEntries(names.map((m) => [m, live.get(variable, m)[i]])), standard(variable), names);
       };
-      const temp = f.temperature ? blend(f.temperature, "temperature_2m") : standard("temperature_2m");
-      const windRaw = f.wind ? blend(f.wind, "wind_speed_10m") : standard("wind_speed_10m");
+      const temp = f.temperature ? blend(f.temperature, "temperature_2m", biasOk) : standard("temperature_2m");
+      const windRaw = f.wind ? blend(f.wind, "wind_speed_10m", windBiasOk) : standard("wind_speed_10m");
       if (f.temperature) usedFit.temperature = true;
       if (f.wind) usedFit.wind = true;
-      const rain = learnedRain(rainFits.get(Math.min(MAX_FIT_LEAD, lead)) ?? null, models.map((m) => live.get("precipitation", m)[i])) ?? standard("precipitation");
+      // Only lead days whose own scores passed the gate are scaled; day 7 is never scored, so it stays the plain mean.
+      const rain = learnedRain(rainFits.get(lead) ?? null, models.map((m) => live.get("precipitation", m)[i])) ?? standard("precipitation");
       hourly.push({
         time: t, lead_day: lead,
         temperature_c: finite(temp) ? round(temp) : null,
@@ -308,9 +338,14 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
     });
 
     const byDate = new Map<string, typeof hourly>();
+    // Rain stamped at midnight fell in the last hour of the day before.
+    const rainByDate = new Map<string, typeof hourly>();
     for (const row of hourly) {
-      const date = localDate(Date.parse(`${row.time}:00Z`), location.timezone);
+      const ms = Date.parse(`${row.time}:00Z`);
+      const date = localDate(ms, location.timezone);
       byDate.set(date, [...(byDate.get(date) ?? []), row]);
+      const rainDate = localDate(ms - HOUR, location.timezone);
+      rainByDate.set(rainDate, [...(rainByDate.get(rainDate) ?? []), row]);
     }
     const agg = (rows: typeof hourly, key: keyof (typeof hourly)[number], how: "max" | "min" | "sum") => {
       const v = rows.map((r) => r[key]).filter(finite);
@@ -319,18 +354,18 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
     };
     const chances = rainChances(live, location.timezone, now);
     const daily = [...byDate].map(([date, rows]) => ({
-      date, hours: rows.length, partial: rows.length < 23, rain_chance_pct: chances.get(date) ?? null,
+      date, hours: rows.length, partial: rows.length < localDayHours(date, location.timezone), rain_chance_pct: chances.get(date) ?? null,
       temp_max_c: agg(rows, "temperature_c", "max"), temp_min_c: agg(rows, "temperature_c", "min"),
-      wind_speed_max: agg(rows, "wind_speed", "max"), precipitation_mm: agg(rows, "precipitation_mm", "sum"),
+      wind_speed_max: agg(rows, "wind_speed", "max"), precipitation_mm: agg(rainByDate.get(date) ?? [], "precipitation_mm", "sum"),
       standard: {
         temp_max_c: agg(rows, "standard_temperature_c", "max"), temp_min_c: agg(rows, "standard_temperature_c", "min"),
-        wind_speed_max: agg(rows, "standard_wind_speed", "max"), precipitation_mm: agg(rows, "standard_precipitation_mm", "sum"),
+        wind_speed_max: agg(rows, "standard_wind_speed", "max"), precipitation_mm: agg(rainByDate.get(date) ?? [], "standard_precipitation_mm", "sum"),
       },
     }));
-    const lead = (fitted: Fit | null | undefined, leadDay: number) => fitted ? {
+    const lead = (fitted: Fit | null | undefined, leadDay: number, withBias: boolean) => fitted ? {
       lead_day: leadDay, training_days: fitted.trainingDays,
       weights: Object.fromEntries(Object.entries(fitted.weights).map(([m, w]) => [m, Math.round(w * 1000) / 1000])),
-      bias: biasOk ? round(fitted.blendBias, 2) : null,
+      bias: withBias ? round(fitted.blendBias, 2) : null,
     } : null;
     const sources: Source[] = [
       { ...FORECAST_SOURCE, model: `multi-model: ${LEARN_MODELS.map((m) => MODEL_INFO[m as keyof typeof MODEL_INFO].name).join(", ")}, plus ECMWF AIFS from day ${AI_FROM_LEAD}; standard forecast is best_match`, classification: "forecast", retrieved_at: retrievedAt },
@@ -340,12 +375,13 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       data: {
         learning_source: learningSource,
         fits_generated_at: fitsGeneratedAt,
-        learned_applied: { temperature: usedFit.temperature, wind_speed: usedFit.wind, rainfall: true, bias_correction: biasOk && (usedFit.temperature || usedFit.wind) },
+        learned_applied: { temperature: usedFit.temperature, wind_speed: usedFit.wind, rainfall: true, bias_correction: (biasOk && usedFit.temperature) || (windBiasOk && usedFit.wind) },
         reference,
+        wind_reference: windReference,
         rain_reference: rainReference,
         training: LEARN_LEADS.map((l) => {
-          const r = rainFits.get(Math.min(MAX_FIT_LEAD, l));
-          return { lead_day: l, temperature: lead(fits.get(l)?.temperature, l), wind_speed: lead(fits.get(l)?.wind, l), rainfall: r ? { scale: r.scale, training_days: r.days, gauges: r.gauges } : null };
+          const r = rainFits.get(l);
+          return { lead_day: l, temperature: lead(fits.get(l)?.temperature, l, biasOk), wind_speed: lead(fits.get(l)?.wind, l, windBiasOk), rainfall: r ? { scale: r.scale, training_days: r.days, gauges: r.gauges } : null };
         }),
         daily,
         ...(options.hourly ? { hourly } : {}),
