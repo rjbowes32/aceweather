@@ -8,10 +8,10 @@ import type { StationState } from "./learning-store.ts";
 export const CITIZEN_QC = {
   /** Temperature: the lead-1 blend bias at the station stays within this many °C... */
   maxBiasC: 2.5,
-  /** ...and its own out-of-sample learned error is at most this multiple of the official stations' median, */
-  maxMaeRatio: 1.3,
-  /** over at least this many scored days in the last 30. */
-  minScoredDays: 10,
+  /** ...and its day-to-day scatter around the models is at most this multiple of the official stations' median, */
+  maxSpreadRatio: 1.3,
+  /** judged as soon as there are this many days, the same as a fit needs. */
+  minDays: 20,
   /** Rainfall: observed over forecast (model mean, day 1) within this range over the window, */
   rainRatio: [0.5, 2] as const,
   minRainDays: 20,
@@ -25,21 +25,28 @@ const DAY = 86_400_000;
 const dayMs = (d: string) => Date.parse(`${d}T00:00:00Z`);
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-/** Mean absolute error of the learned forecast over the scored days in the last `days`, from the daily scores. */
-export function recentMae(st: StationState, key: "t" | "w", lead: number, today: string, days = 30): { mae: number; days: number } | null {
-  let hours = 0; let sum = 0; let n = 0;
+/**
+ * Day-1 temperature error scatter (°C): the standard deviation of the best model's hourly error once its mean is
+ * removed, over the window. Sun on the sensor or a heated wall shows as scatter that a bias step cannot remove.
+ */
+export function temperatureSpread(st: StationState, today: string, windowDays: number): number | null {
+  const totals: Record<string, { n: number; sum: number; sumSq: number; days: number }> = {};
   for (const [day, rec] of Object.entries(st.days)) {
-    const s = rec.score?.[lead]?.[key];
-    if (!s || dayMs(today) - dayMs(day) > days * DAY) continue;
-    hours += s[0]; sum += s[1]; n++;
+    const byModel = rec.t?.["1"];
+    if (!byModel || dayMs(today) - dayMs(day) > windowDays * DAY) continue;
+    for (const [m, [n, , sumSq, sum]] of Object.entries(byModel)) {
+      const t = (totals[m] ??= { n: 0, sum: 0, sumSq: 0, days: 0 });
+      t.n += n; t.sum += sum; t.sumSq += sumSq; t.days++;
+    }
   }
-  return hours ? { mae: sum / hours, days: n } : null;
+  const spreads = Object.values(totals).filter((t) => t.days >= CITIZEN_QC.minDays).map((t) => Math.sqrt(Math.max(0, t.sumSq / t.n - (t.sum / t.n) ** 2)));
+  return spreads.length ? Math.min(...spreads) : null;
 }
 
-export function citizenTemperatureOk(st: StationState, lead1Bias: number | null, officialMae: number | null, today: string): boolean {
-  if (lead1Bias == null || Math.abs(lead1Bias) > CITIZEN_QC.maxBiasC || officialMae == null) return false;
-  const own = recentMae(st, "t", 1, today);
-  return own != null && own.days >= CITIZEN_QC.minScoredDays && own.mae <= officialMae * CITIZEN_QC.maxMaeRatio;
+export function citizenTemperatureOk(st: StationState, lead1Bias: number | null, officialSpread: number | null, today: string, windowDays: number): boolean {
+  if (lead1Bias == null || Math.abs(lead1Bias) > CITIZEN_QC.maxBiasC || officialSpread == null) return false;
+  const own = temperatureSpread(st, today, windowDays);
+  return own != null && own <= officialSpread * CITIZEN_QC.maxSpreadRatio;
 }
 
 export function citizenRainOk(st: StationState, today: string, windowDays: number): boolean {

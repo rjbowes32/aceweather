@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { citizenRainOk, citizenTemperatureOk } from "../../src/mcp/citizen-qc.ts";
+import { citizenRainOk, citizenTemperatureOk, temperatureSpread } from "../../src/mcp/citizen-qc.ts";
 import { chooseRainReference, chooseReference, emptyState, exportFits } from "../../src/mcp/learning-store.ts";
 import { forecastDayTotals, learnedRain, rainErrorDays, rainFitAsOf, rainLeadsEnabled, scoreRainDay, updateRainDays } from "../../src/mcp/rain-learning.ts";
 
@@ -88,14 +88,17 @@ test("the fits file pools nearby gauges, skips a blocked citizen gauge and score
 });
 
 test("a citizen thermometer is used only where it looks like an official one, and only where no official station is close", () => {
-  const scored = (mae) => {
+  /** Day-1 error sums with a mean error of 0.5 °C and a scatter of `sd` around it, for `days` days. */
+  const station = (sd, days = 25) => {
     const st = { meta: { id: "netatmo:t", name: "Citizen", network: "netatmo", latitude: 54, longitude: -1, elevation_m: 100 }, days: {} };
-    for (let d = 1; d <= 12; d++) st.days[`2026-08-${String(d).padStart(2, "0")}`] = { score: { 1: { t: [24, 24 * mae, 30] } } };
+    for (let d = 1; d <= days; d++) st.days[new Date(Date.parse("2026-08-15T00:00:00Z") - d * 86_400_000).toISOString().slice(0, 10)] = { t: { 1: { a: [24, 24 * sd, 24 * (sd * sd + 0.25), 24 * 0.5] } } };
     return st;
   };
-  assert.equal(citizenTemperatureOk(scored(0.9), 0.4, 0.8, "2026-08-15"), true);
-  assert.equal(citizenTemperatureOk(scored(1.2), 0.4, 0.8, "2026-08-15"), false, "error 1.5 times the official median");
-  assert.equal(citizenTemperatureOk(scored(0.9), 3.1, 0.8, "2026-08-15"), false, "a 3 °C bias points at the siting");
+  assert.ok(Math.abs(temperatureSpread(station(1.1), "2026-08-15", 60) - 1.1) < 1e-9, "the 0.5 °C bias is not scatter");
+  assert.equal(citizenTemperatureOk(station(1.1), 0.5, 1.0, "2026-08-15", 60), true);
+  assert.equal(citizenTemperatureOk(station(1.5), 0.5, 1.0, "2026-08-15", 60), false, "scatter 1.5 times the official median");
+  assert.equal(citizenTemperatureOk(station(1.1), 3.1, 1.0, "2026-08-15", 60), false, "a 3 °C bias points at the siting");
+  assert.equal(citizenTemperatureOk(station(1.1, 15), 0.5, 1.0, "2026-08-15", 60), false, "judged only after 20 days");
 
   const lf = { t: { weights: { a: 0.5, b: 0.5 }, bias: 0.3, days: 40 } };
   const fits = { stations: [

@@ -16,7 +16,7 @@ test("the daily job learns rainfall from public gauges and tracks anonymised cit
     ...process.env, NETATMO_CLIENT_ID: "id", NETATMO_CLIENT_SECRET: "secret", NETATMO_REFRESH_TOKEN: "refresh-1", NETATMO_STATE_KEY: KEY,
     NETATMO_MOCK_STATE: join(out, "netatmo-mock-token"),
   };
-  const job = () => run(process.execPath, ["--import", "./tests/mcp/learning-job-fetch.mjs", "scripts/learning/daily.mjs", "--out", out, "--max-netatmo", "3"], { env });
+  const job = () => run(process.execPath, ["--import", "./tests/mcp/learning-job-fetch.mjs", "scripts/learning/daily.mjs", "--out", out, "--max-netatmo", "3", "--max-bootstrap", "1"], { env });
   const first = await job();
   assert.match(first.stdout, /rain gauges, 3 citizen/);
   const read = (name) => JSON.parse(readFileSync(join(out, name), "utf8"));
@@ -26,6 +26,8 @@ test("the daily job learns rainfall from public gauges and tracks anonymised cit
   const ids = gauges.map((g) => g.meta.id);
   for (const id of ["ea:038179", "ea:046222", "sepa:S1", "sepa:S2"]) assert.ok(ids.includes(id), id);
   assert.equal(ids.filter((id) => ["ea:059793", "ea:05973"].includes(id)).length, 1, "two co-located EA gauges count once");
+  assert.equal(Object.values(state.stations).filter((s) => s.meta.network === "metar" && s.bootstrapped_at).length, 1, "the backfill cap holds for reference stations...");
+  assert.ok(gauges.every((g) => g.bootstrapped_at), "...while every rain gauge is backfilled in the same run");
   const ea = state.stations["ea:038179"];
   const days = Object.values(ea.days).filter((d) => d.ro != null);
   assert.ok(days.length >= 25, `backfilled ${days.length} days from the four-week EA history`);
@@ -33,6 +35,7 @@ test("the daily job learns rainfall from public gauges and tracks anonymised cit
   const fits = read("fits.json");
   const fit = fits.stations.find((s) => s.meta.id === "ea:038179").leads["1"].r;
   assert.ok(Math.abs(fit.scale - 1 / 0.75) < 0.01, `scale ${fit.scale}: the four models forecast 0.75 of the gauge rain on average`);
+  assert.equal(fits.stations.find((s) => s.meta.id === "ea:038179").leads["7"]?.r, undefined, "day 7 has no Met Office or ICON archive to learn rain from");
   const rain = fits.recent_scores.rainfall["1"];
   assert.ok(rain.days > 0 && rain.learned_mae < rain.mean_mae, JSON.stringify(rain));
 

@@ -3,8 +3,9 @@
 //
 // Usage: node scripts/learning/daily.mjs [--out DIR] [--max-bootstrap N] [--max-gauges N] [--max-netatmo N] [--only-near SITES.json] [--radius KM]
 //   --out            where state.json, fits.json and scores.json live (default .cache/learning)
-//   --max-bootstrap  new stations to backfill this run (each costs a 62-day archived-forecast request; default 60)
-//   --max-gauges     public rain gauges to learn rainfall from (default 400)
+//   --max-bootstrap  new reference stations to backfill this run (each costs a 62-day archived-forecast request; default 60);
+//                    new rain gauges are cheaper and are backfilled as far as the Open-Meteo allowance goes
+//   --max-gauges     public rain gauges to learn rainfall from (default 500)
 //   --max-netatmo    citizen stations to track when Netatmo credentials are set (default 150)
 //   --only-near      limit to stations within --radius km (default 40) of the sites in a JSON list (for local tests)
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,7 +13,7 @@ import { join } from "node:path";
 import { citizenRainOk } from "../../src/mcp/citizen-qc.ts";
 import { distanceKm } from "../../src/mcp/geo.ts";
 import { emptyState, errorDays, exportFits, prune, scoreDay, updateDays } from "../../src/mcp/learning-store.ts";
-import { AI_FROM_LEAD, LEARN_LEADS, modelsFor, WINDOW_DAYS } from "../../src/mcp/learned.ts";
+import { AI_FROM_LEAD, LEARN_LEADS, modelsFor, RAIN_LEADS, WINDOW_DAYS } from "../../src/mcp/learned.ts";
 import { rainErrorDays, rainPool, scoreRainDay, updateRainDays } from "../../src/mcp/rain-learning.ts";
 import { gaugeHistoryUrl, historyRows } from "../../src/mcp/sources/ea-rainfall.ts";
 import { ghcnhYearUrl, parsePsv, parseStationList } from "../../src/mcp/sources/ghcnh.ts";
@@ -26,7 +27,7 @@ import { netatmoStations } from "./netatmo.mjs";
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith("--") ? [...acc, [a.slice(2), all[i + 1]?.startsWith("--") || all[i + 1] == null ? "true" : all[i + 1]]] : acc), []));
 const OUT = args.out ?? ".cache/learning";
 const MAX_BOOTSTRAP = Number(args["max-bootstrap"] ?? 60);
-const MAX_GAUGES = Number(args["max-gauges"] ?? 400);
+const MAX_GAUGES = Number(args["max-gauges"] ?? 500);
 const MAX_NETATMO = Number(args["max-netatmo"] ?? 150);
 const GAUGE_SPACING_KM = 12;
 const RAIN_NETWORKS = new Set(["ea_rain", "sepa_rain"]);
@@ -42,6 +43,7 @@ const DAY = 24 * HOUR;
 const ESOH = "https://api.meteogate.eu/eu-eumetnet-surface-observations/collections/observations";
 const UK_BBOX = [-8.7, 49.8, 2.0, 61.0];
 const ALL_MODELS = [...new Set(LEARN_LEADS.flatMap(modelsFor))];
+const leadsOf = (variable) => (variable === "precipitation" ? RAIN_LEADS : LEARN_LEADS);
 mkdirSync(OUT, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -225,7 +227,7 @@ async function ghcnhObs(id, startMs, endMs) {
 }
 
 function previousRunsUrl(meta, pastDays, variables) {
-  const hourly = variables.flatMap((v) => LEARN_LEADS.map((l) => `${v}_previous_day${l}`)).join(",");
+  const hourly = variables.flatMap((v) => leadsOf(v).map((l) => `${v}_previous_day${l}`)).join(",");
   const elevation = meta.elevation_m != null ? `&elevation=${Math.round(meta.elevation_m)}` : "";
   return `https://previous-runs-api.open-meteo.com/v1/forecast?latitude=${meta.latitude.toFixed(4)}&longitude=${meta.longitude.toFixed(4)}${elevation}&hourly=${hourly}&models=best_match,${ALL_MODELS.join(",")}&past_days=${pastDays}&forecast_days=1&timezone=UTC&wind_speed_unit=kmh`;
 }
@@ -270,13 +272,14 @@ async function processStation(state, item, bootstrap) {
 
   const variables = obs.t.size < 12 ? [] : obs.w.size >= 12 ? ["temperature_2m", "wind_speed_10m"] : ["temperature_2m"];
   const requested = rain.size ? [...variables, "precipitation"] : variables;
-  await openMeteoBudget(Math.max(1, (requested.length * LEARN_LEADS.length * (ALL_MODELS.length + 1)) / 10) * Math.max(1, (pastDays + 1) / 14));
+  const series = requested.reduce((n, v) => n + leadsOf(v).length, 0) * (ALL_MODELS.length + 1);
+  await openMeteoBudget(Math.max(1, series / 10) * Math.max(1, (pastDays + 1) / 14));
   const body = await getJson(previousRunsUrl(meta, pastDays, requested), { timeout: bootstrap ? 180_000 : 60_000 });
   const h = body?.hourly ?? {};
   const forecasts = { time: (h.time ?? []).filter((t) => t < `${today}T00:00`), series: (v, lead, m) => h[`${v}_previous_day${lead}_${m}`] ?? [] };
   let written = 0;
   for (const v of variables) written += updateDays(st, v, errorDays(forecasts, v, v === "temperature_2m" ? obs.t : obs.w, LEARN_LEADS, modelsFor));
-  if (rain.size) written += updateRainDays(st, rain, rainErrorDays(forecasts, rain, LEARN_LEADS, modelsFor));
+  if (rain.size) written += updateRainDays(st, rain, rainErrorDays(forecasts, rain, RAIN_LEADS, modelsFor));
 
   // Out-of-sample scores for fully observed days: the recent days on a normal run, the whole window on a backfill.
   for (let k = 1; k <= pastDays - 1; k++) {
@@ -311,7 +314,7 @@ function scoreRain(state) {
     for (const [day, rec] of Object.entries(st.days)) {
       const age = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / DAY;
       if (rec.ro == null || age > 30 || (age > RECENT_DAYS && Object.values(rec.score ?? {}).some((s) => s.r))) continue;
-      for (const [lead, r] of Object.entries(scoreRainDay(st, pool, day, LEARN_LEADS, modelsFor, WINDOW_DAYS, MIN_TRAIN_DAYS))) { ((rec.score ??= {})[lead] ??= {}).r = r; scored++; }
+      for (const [lead, r] of Object.entries(scoreRainDay(st, pool, day, RAIN_LEADS, modelsFor, WINDOW_DAYS, MIN_TRAIN_DAYS))) { ((rec.score ??= {})[lead] ??= {}).r = r; scored++; }
     }
   }
   return scored;
@@ -340,7 +343,8 @@ async function main() {
   const fresh = items.filter((it) => !known(it));
   // Stations with a NOAA backfill first: they become useful immediately; the rest build history from daily MeteoGate data.
   fresh.sort((a, b) => Number(Boolean(b.meta.ghcnh_id) || b.meta.network !== "metoffice") - Number(Boolean(a.meta.ghcnh_id) || a.meta.network !== "metoffice"));
-  const toBootstrap = fresh.slice(0, MAX_BOOTSTRAP);
+  const isGauge = (it) => RAIN_NETWORKS.has(it.meta.network);
+  const toBootstrap = [...fresh.filter((it) => !isGauge(it)).slice(0, MAX_BOOTSTRAP), ...fresh.filter(isGauge)];
   const count = (...networks) => items.filter((i) => networks.includes(i.meta.network)).length;
   log(`${items.length} stations (${count("metoffice")} Met Office, ${count("metar")} airport, ${count("cosmos_uk")} COSMOS-UK, ${count("ea_rain", "sepa_rain")} rain gauges, ${count("netatmo")} citizen); ${existing.length} to update, ${toBootstrap.length} of ${fresh.length} new to backfill`);
   const results = [];
@@ -361,6 +365,14 @@ async function main() {
     for (const [k, v] of item.esoh.w) st.obs[k] = [st.obs[k]?.[0] ?? null, v];
     prune(st, today, KEEP_DAYS);
     state.stations[item.meta.id] = st;
+  }
+  // Stations no longer discovered (a dropped citizen station, a gauge out of the selection) age out like any other and go once empty.
+  const seen = new Set(items.map((it) => it.meta.id));
+  for (const [id, st] of Object.entries(state.stations)) {
+    if (seen.has(id)) continue;
+    prune(st, today, KEEP_DAYS);
+    const resting = st.no_data_at && now - Date.parse(st.no_data_at) < 30 * DAY;
+    if (!Object.keys(st.days).length && !Object.keys(st.obs ?? {}).length && !resting) delete state.stations[id];
   }
   const rainScored = scoreRain(state);
   state.updated_at = new Date(now).toISOString();

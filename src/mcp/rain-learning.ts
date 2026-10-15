@@ -24,7 +24,13 @@ export type RainFit = { scale: number; days: number; gauges: number };
 export type RainScore = [number, number, number, number];
 
 const DAY = 86_400_000;
-const dayMs = (d: string) => Date.parse(`${d}T00:00:00Z`);
+const dayMsCache = new Map<string, number>();
+/** Scoring calls this millions of times over a few hundred distinct dates, so it is memoised. */
+function dayMs(d: string): number {
+  let ms = dayMsCache.get(d);
+  if (ms === undefined) dayMsCache.set(d, (ms = Date.parse(`${d}T00:00:00Z`)));
+  return ms;
+}
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -76,7 +82,8 @@ export function rainFitAsOf(stations: StationState[], lead: number, beforeDay: s
   const days = new Set<string>();
   const gauges = new Set<string>();
   for (const st of stations) {
-    for (const [day, rec] of Object.entries(st.days)) {
+    for (const day in st.days) {
+      const rec = st.days[day];
       const errors = rec.r?.[lead];
       if (rec.ro == null || !errors) continue;
       const age = dayMs(beforeDay) - dayMs(day);

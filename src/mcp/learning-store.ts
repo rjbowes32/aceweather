@@ -3,7 +3,7 @@
  * of each model's archived forecast against what the station measured. Fits are rebuilt from the last
  * WINDOW days of that record, so nothing needs raw observation history beyond a few days.
  */
-import { citizenRainOk, citizenTemperatureOk, recentMae } from "./citizen-qc.ts";
+import { citizenRainOk, citizenTemperatureOk, temperatureSpread } from "./citizen-qc.ts";
 import { distanceKm } from "./geo.ts";
 import { addError, apply, fit, type DayErrors, type Fit } from "./learning.ts";
 import { rainFitAsOf, rainPool, type RainDay, type RainFit, type RainScore } from "./rain-learning.ts";
@@ -134,8 +134,9 @@ const hasRain = (st: StationState) => Object.values(st.days).some((rec) => rec.r
 export function exportFits(state: LearningState, today: string, leads: number[], modelsFor: ModelsFor, windowDays: number, minDays: number, aiFromLead: number, generatedAt = new Date().toISOString()): FitsFile {
   const stations: FitsStation[] = [];
   const all = Object.values(state.stations);
-  const officialMae = median(all.filter((st) => !isCitizen(st)).map((st) => recentMae(st, "t", 1, today)).filter((m) => m != null && m.days >= 10).map((m) => m!.mae));
-  const rainEligible = all.filter((st) => hasRain(st) && (!isCitizen(st) || citizenRainOk(st, today, windowDays)));
+  const officialSpread = median(all.filter((st) => !isCitizen(st)).map((st) => temperatureSpread(st, today, windowDays)).filter((s): s is number => s != null));
+  const rainList = all.filter((st) => hasRain(st) && (!isCitizen(st) || citizenRainOk(st, today, windowDays)));
+  const rainEligible = new Set(rainList);
   const pooled: Record<string, Record<string, { n: number; learned: number; standard: number; mean: number; stations: Set<string> }>> = { t: {}, w: {}, r: {} };
   for (const st of all) {
     const entry: FitsStation = { meta: st.meta, leads: {} };
@@ -148,9 +149,9 @@ export function exportFits(state: LearningState, today: string, leads: number[],
         };
       }
     }
-    if (isCitizen(st) && !citizenTemperatureOk(st, entry.leads["1"]?.t?.bias ?? null, officialMae, today)) for (const lf of Object.values(entry.leads)) { delete lf.t; delete lf.w; }
-    if (rainEligible.includes(st)) {
-      const pool = rainPool(st, rainEligible);
+    if (isCitizen(st) && !citizenTemperatureOk(st, entry.leads["1"]?.t?.bias ?? null, officialSpread, today, windowDays)) for (const lf of Object.values(entry.leads)) { delete lf.t; delete lf.w; }
+    if (rainEligible.has(st)) {
+      const pool = rainPool(st, rainList);
       for (const lead of leads) {
         const rf = rainFitAsOf(pool, lead, today, windowDays, modelsFor(lead), minDays);
         if (rf) (entry.leads[lead] ??= {}).r = rf;

@@ -30,6 +30,8 @@ export const MAX_FIT_LEAD = 6;
 export const modelsFor = (lead: number) => (lead >= AI_FROM_LEAD ? [...LEARN_MODELS, AI_MODEL] : LEARN_MODELS);
 const ALL_MODELS = [...LEARN_MODELS, AI_MODEL];
 export const LEARN_LEADS = [1, 2, 3, 4, 5, 6, 7];
+/** A rainfall fit needs every model of the lead, and day 7 has no Met Office or ICON archive, so rain learns days 1-6 only. */
+export const RAIN_LEADS = LEARN_LEADS.filter((l) => l <= MAX_FIT_LEAD);
 export const WINDOW_DAYS = 60;
 export const MIN_TRAIN_DAYS = 20;
 /** The blend's recent bias is a property of the station; only apply it to a location that resembles the station. */
