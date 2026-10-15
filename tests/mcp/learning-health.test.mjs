@@ -30,6 +30,13 @@ test("stale output, lost coverage, failures and retries are reported", () => {
   assert.deepEqual(checks(failed), ["job_failures"]);
   assert.match(failed[0].message, /0-20000-0-03382 \(HTTP 500\)/);
   assert.deepEqual(checks(checkHealth(fits(), history, run({ gave_up: 9 }), NOW)), ["upstream_retries"]);
+  assert.deepEqual(checks(checkHealth(fits(), history, run({ netatmo: { enabled: true, error: "token refresh failed" } }), NOW)), ["netatmo_unavailable"]);
+  assert.deepEqual(checks(checkHealth(fits(), history, run({ netatmo: { enabled: false, error: null } }), NOW)), [], "Netatmo not configured is fine");
+});
+
+test("rainfall scores (in days, against the model mean) do not trip the learned-worse check", () => {
+  const rain = fits({ recent_scores: { rainfall: { 1: { days: 3000, learned_mae: 1.6, standard_mae: 1.5, mean_mae: 1.5, stations: 300 } } } });
+  assert.deepEqual(checkHealth(rain, history, run(), NOW), []);
 });
 
 test("a learned forecast that stops beating the standard one, and lead-to-lead bias jumps, are warnings", () => {

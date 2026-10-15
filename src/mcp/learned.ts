@@ -5,8 +5,9 @@ import { num, type Source } from "./envelope.ts";
 import type { ResolvedLocation } from "./locations.ts";
 import { inUk } from "./observations.ts";
 import { addError, apply, fit, interpolateFits, type DayErrors, type Fit } from "./learning.ts";
-import { asFit, chooseReference, type FitsFile } from "./learning-store.ts";
+import { asFit, chooseRainReference, chooseReference, type FitsFile } from "./learning-store.ts";
 import calibration from "./rain-calibration.json" with { type: "json" };
+import { learnedRain, RAIN_POOL_KM, rainLeadsEnabled, type RainFit } from "./rain-learning.ts";
 import { features, predict } from "./rain-probability.ts";
 import { fetchPreviousRuns, PREVIOUS_RUNS_SOURCE } from "./sources/previous-runs.ts";
 import { FORECAST_SOURCE, withTimezone } from "./sources/forecast.ts";
@@ -36,13 +37,15 @@ const BIAS_MAX_DISTANCE_KM = 40;
 const BIAS_MAX_HEIGHT_DIFF_M = 150;
 /** Same reference search as the backtest: up to 80 km, never more than 250 m above or below the location. */
 const SEARCH = { radiusKm: 80, maxHeightDiffM: 250, networks: ["ghcnh", "metar"] as Array<"metar" | "ghcnh">, minHours: 20 * 24 };
+/** A quality-controlled citizen station within 15 km and 100 m is used only where no official station is close enough for bias correction. */
+const CITIZEN_SEARCH = { radiusKm: 15, maxHeightDiffM: 100, officialKm: BIAS_MAX_DISTANCE_KM, officialHeightM: BIAS_MAX_HEIGHT_DIFF_M };
 
 export const LEARNED_METHOD = [
   `Temperature and wind: the four models (ECMWF IFS, GFS, ICON, Met Office UM), plus ECMWF's AI model (AIFS) from day ${AI_FROM_LEAD}, weighted by their accuracy at the nearest reference station over the last ${WINDOW_DAYS} days (inverse mean squared error, fitted separately for each lead day 1-7), minus that blend's mean error over the same days.`,
   `Weights and bias are interpolated between neighbouring lead days so the forecast changes smoothly hour by hour; beyond day ${MAX_FIT_LEAD} the day-${MAX_FIT_LEAD} mix is used, because the Met Office and ICON models have no day-7 archive.`,
   `The bias step is applied only when the station is within ${BIAS_MAX_DISTANCE_KM} km and ${BIAS_MAX_HEIGHT_DIFF_M} m of the location; otherwise the weighted blend is used as is.`,
-  `Rainfall: the equal-weight mean of the same models (four, plus AIFS from day ${AI_FROM_LEAD}), with no bias shift. The daily chance of rain is the calibrated chance of at least 1 mm (docs/mcp/RAIN-PROBABILITY.md).`,
-  "Reference stations are Met Office stations (NOAA GHCNh archive), airport METARs or COSMOS-UK sites within 80 km and 250 m of height, ranked by distance plus 10 km per 100 m of height difference. Where none has 20 days of history, temperature and wind fall back to AceWeather's standard forecast.",
+  `Rainfall: the equal-weight mean of the same models (four, plus AIFS from day ${AI_FROM_LEAD}). Where public rain gauges (Environment Agency, SEPA) lie within ${RAIN_POOL_KM} km, that mean is scaled by the ratio of observed to forecast rain at the gauges around them over the last ${WINDOW_DAYS} days, but only for lead days where this scaling has beaten the plain mean at gauges across the country over the last 30 days. The daily chance of rain is the calibrated chance of at least 1 mm (docs/mcp/RAIN-PROBABILITY.md).`,
+  "Reference stations are Met Office stations (NOAA GHCNh archive), airport METARs or COSMOS-UK sites within 80 km and 250 m of height, ranked by distance plus 10 km per 100 m of height difference. Where no official station is within 40 km and 150 m, a quality-controlled Netatmo citizen station within 15 km and 100 m is used instead. Where none has 20 days of history, temperature and wind fall back to AceWeather's standard forecast.",
   "In a year-long backtest at 15 northern England locations the four-model version cut mean absolute error by about 17-20% for temperature, 22-26% for wind and 16-18% for daily rainfall; adding AIFS from day 3 improved days 3-5 by a further 2-4% (docs/mcp/LEARNING-BACKTEST.md).",
 ].join(" ");
 
@@ -53,7 +56,9 @@ export const learnedDataSchema = z.object({
   fits_generated_at: z.string().nullable(),
   learned_applied: z.object({ temperature: z.boolean(), wind_speed: z.boolean(), rainfall: z.boolean(), bias_correction: z.boolean() }),
   reference: referenceSchema.nullable(),
-  training: z.array(z.object({ lead_day: z.number(), temperature: leadSchema, wind_speed: leadSchema })),
+  /** The gauge whose pooled rainfall scaling is applied; null when rainfall is the plain model mean. */
+  rain_reference: referenceSchema.nullable(),
+  training: z.array(z.object({ lead_day: z.number(), temperature: leadSchema, wind_speed: leadSchema, rainfall: z.object({ scale: z.number(), training_days: z.number(), gauges: z.number() }).nullable() })),
   daily: z.array(z.object({
     date: z.string(), hours: z.number(), partial: z.boolean(), rain_chance_pct: num,
     temp_max_c: num, temp_min_c: num, wind_speed_max: num, precipitation_mm: num,
@@ -110,6 +115,9 @@ const NETWORK_SOURCE: Record<string, Omit<Source, "retrieved_at" | "classificati
   metoffice: { name: "Met Office stations via MeteoGate E-SOH and NOAA GHCNh", url: "https://api.meteogate.eu/eu-eumetnet-surface-observations" },
   metar: { name: "Airport METARs (Iowa Environmental Mesonet archive)", url: "https://mesonet.agron.iastate.edu/request/download.phtml" },
   cosmos_uk: { name: "COSMOS-UK (UK Centre for Ecology & Hydrology)", url: "https://cosmos-api.ceh.ac.uk" },
+  ea_rain: { name: "Environment Agency rain gauges", url: "https://environment.data.gov.uk/flood-monitoring/doc/rainfall" },
+  sepa_rain: { name: "SEPA rain gauges", url: "https://timeseries.sepa.org.uk" },
+  netatmo: { name: "Netatmo citizen weather stations (quality-controlled, learning only)", url: "https://weathermap.netatmo.com" },
 };
 
 /** Per-lead fits from the last WINDOW_DAYS complete UTC days at the reference station. */
@@ -215,11 +223,13 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
     let fits: Fits = new Map();
     let learningSource: LearnedData["learning_source"] = "none";
     let fitsGeneratedAt: string | null = null;
+    let rainFits = new Map<number, RainFit>();
+    let rainReference: LearnedData["rain_reference"] = null;
     const learningSources: Source[] = [];
     const retrievedAt = new Date(now).toISOString();
     if (inUk(location, 0)) {
       const daily = await loadDailyFits(now);
-      const pick = daily ? chooseReference(daily, location, { radiusKm: SEARCH.radiusKm, maxHeightDiffM: SEARCH.maxHeightDiffM, minDays: MIN_TRAIN_DAYS }) : null;
+      const pick = daily ? chooseReference(daily, location, { radiusKm: SEARCH.radiusKm, maxHeightDiffM: SEARCH.maxHeightDiffM, minDays: MIN_TRAIN_DAYS, citizen: CITIZEN_SEARCH }) : null;
       if (daily && pick) {
         const m = pick.station.meta;
         reference = { id: m.id, name: m.name, network: m.network, latitude: m.latitude, longitude: m.longitude, elevation_m: m.elevation_m, distance_km: round(pick.distance_km) ?? 0, measures: pick.station.leads["1"]?.w ? ["temperature", "wind_speed"] : ["temperature"] };
@@ -243,6 +253,16 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
           learningSources.push({ ...PREVIOUS_RUNS_SOURCE, classification: "forecast", retrieved_at: retrievedAt, notes: "Archived forecasts used to learn each model's recent accuracy at the reference station." }, { ...air.source, classification: "observation", retrieved_at: retrievedAt });
         } else {
           warnings.push("No reference station with enough recent history; temperature and wind use AceWeather's standard forecast.");
+        }
+      }
+      const rainPick = daily ? chooseRainReference(daily, location, RAIN_POOL_KM) : null;
+      if (daily && rainPick) {
+        const enabled = rainLeadsEnabled(daily.recent_scores.rainfall);
+        rainFits = new Map(LEARN_LEADS.filter((l) => enabled.has(l) && rainPick.station.leads[String(l)]?.r).map((l) => [l, rainPick.station.leads[String(l)].r!]));
+        const m = rainPick.station.meta;
+        if (rainFits.size) {
+          rainReference = { id: m.id, name: m.name, network: m.network, latitude: m.latitude, longitude: m.longitude, elevation_m: m.elevation_m, distance_km: round(rainPick.distance_km) ?? 0, measures: ["rainfall"] };
+          learningSources.push({ ...(NETWORK_SOURCE[m.network] ?? { name: m.network }), classification: "observation", retrieved_at: retrievedAt, notes: `Rainfall scaling pooled over gauges within ${RAIN_POOL_KM} km of ${m.name}.` });
         }
       }
     } else {
@@ -273,8 +293,7 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
       const windRaw = f.wind ? blend(f.wind, "wind_speed_10m") : standard("wind_speed_10m");
       if (f.temperature) usedFit.temperature = true;
       if (f.wind) usedFit.wind = true;
-      const rains = models.map((m) => live.get("precipitation", m)[i]).filter(finite);
-      const rain = rains.length >= 2 ? rains.reduce((a, b) => a + b, 0) / rains.length : standard("precipitation");
+      const rain = learnedRain(rainFits.get(Math.min(MAX_FIT_LEAD, lead)) ?? null, models.map((m) => live.get("precipitation", m)[i])) ?? standard("precipitation");
       hourly.push({
         time: t, lead_day: lead,
         temperature_c: finite(temp) ? round(temp) : null,
@@ -321,7 +340,11 @@ export function learnedForecast(location: ResolvedLocation, options: { days: num
         fits_generated_at: fitsGeneratedAt,
         learned_applied: { temperature: usedFit.temperature, wind_speed: usedFit.wind, rainfall: true, bias_correction: biasOk && (usedFit.temperature || usedFit.wind) },
         reference,
-        training: LEARN_LEADS.map((l) => ({ lead_day: l, temperature: lead(fits.get(l)?.temperature, l), wind_speed: lead(fits.get(l)?.wind, l) })),
+        rain_reference: rainReference,
+        training: LEARN_LEADS.map((l) => {
+          const r = rainFits.get(Math.min(MAX_FIT_LEAD, l));
+          return { lead_day: l, temperature: lead(fits.get(l)?.temperature, l), wind_speed: lead(fits.get(l)?.wind, l), rainfall: r ? { scale: r.scale, training_days: r.days, gauges: r.gauges } : null };
+        }),
         daily,
         ...(options.hourly ? { hourly } : {}),
         method: LEARNED_METHOD,

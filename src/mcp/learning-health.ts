@@ -4,7 +4,10 @@
  */
 import type { FitsFile } from "./learning-store.ts";
 
-export type RunStats = { date: string; processed: number; updated: number; skipped: number; failed: number; requests: number; gave_up: number; errors: Array<{ id: string; error: string }> };
+export type RunStats = {
+  date: string; processed: number; updated: number; skipped: number; failed: number; requests: number; gave_up: number; errors: Array<{ id: string; error: string }>;
+  netatmo?: { enabled: boolean; error: string | null };
+};
 export type ScoresEntry = { date: string; stations_fitted: number; recent_scores: FitsFile["recent_scores"] };
 export type Problem = { severity: "error" | "warning"; check: string; message: string };
 
@@ -38,11 +41,13 @@ export function checkHealth(fits: FitsFile | null, history: ScoresEntry[], run: 
       problems.push({ severity: "error", check: "job_failures", message: `${run.failed} of ${run.processed} stations failed: ${run.errors.slice(0, 3).map((e) => `${e.id} (${e.error})`).join("; ")}.` });
     }
     if (run.gave_up > HEALTH_LIMITS.maxGaveUp) problems.push({ severity: "warning", check: "upstream_retries", message: `${run.gave_up} requests failed after retries out of ${run.requests}.` });
+    if (run.netatmo?.enabled && run.netatmo.error) problems.push({ severity: "warning", check: "netatmo_unavailable", message: `Citizen stations were not updated: ${run.netatmo.error}.` });
   }
 
+  // Rainfall (scored in days) has its own gate: the forecast uses it only while it beats the model mean.
   for (const [variable, byLead] of Object.entries(fits.recent_scores ?? {})) {
     for (const [lead, s] of Object.entries(byLead)) {
-      if (s.hours >= HEALTH_LIMITS.minScoredHours && s.learned_mae > s.standard_mae * HEALTH_LIMITS.learnedWorseRatio) {
+      if ((s.hours ?? 0) >= HEALTH_LIMITS.minScoredHours &&s.learned_mae > s.standard_mae * HEALTH_LIMITS.learnedWorseRatio) {
         problems.push({ severity: "warning", check: "learned_worse", message: `Over the last 30 days the learned ${variable} forecast at day ${lead} was worse than the standard one (${s.learned_mae} vs ${s.standard_mae}, ${s.stations} stations).` });
       }
     }

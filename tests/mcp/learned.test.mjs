@@ -169,3 +169,40 @@ test("the learned forecast has no jump at lead-day boundaries, including day 6 t
   const halfway = fitForPosition(fits, 2.5).temperature;
   assert.ok(Math.abs(halfway.weights.ecmwf_aifs025_single - 0.1) < 1e-9, "the AI model ramps in between days 2 and 3");
 });
+
+test("gauge-learned rainfall scales the model mean only for lead days where it beat the mean", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const rainLeads = Object.fromEntries([1, 2, 3, 4, 5, 6].map((l) => [l, { r: { scale: 0.8, days: 55, gauges: 4 } }]));
+  const scores = (better) => Object.fromEntries([1, 2, 3, 4, 5, 6].map((l) => [l, { days: 2000, learned_mae: l <= 3 && better ? 1.2 : 1.5, standard_mae: 1.6, mean_mae: 1.5, stations: 300 }]));
+  const fits = (better) => JSON.stringify({ version: 1, generated_at: new Date().toISOString(), window_days: 60, ai_from_lead: 3, recent_scores: { rainfall: scores(better) }, stations: [
+    { meta: { id: "ea:046222", name: "EA rain gauge 046222", network: "ea_rain", latitude: 53.92, longitude: -0.8, elevation_m: null }, leads: rainLeads },
+  ] });
+  const file = join(mkdtempSync(join(tmpdir(), "aceweather-fits-")), "fits.json");
+  process.env.ACEWEATHER_LEARNED_FITS_FILE = file;
+  try {
+    writeFileSync(file, fits(true));
+    installFetch();
+    const { data, error } = await call("get_learned_forecast", { place: "Pocklington", detail: "full" });
+    assert.equal(error, null, JSON.stringify(error));
+    const d = data.data;
+    assert.equal(d.rain_reference.id, "ea:046222");
+    assert.deepEqual(d.training.map((t) => t.rainfall?.scale ?? null), [0.8, 0.8, 0.8, null, null, null, null], "days 4-7 did not beat the mean");
+    const rainy = d.hourly.filter((r) => trueRain(ms(r.time)) > 0);
+    assert.ok(rainy.length > 0);
+    for (const r of rainy) {
+      const mean = r.lead_day >= 3 ? (1 + 1.3 + 0.7 + 0 + 1.1) / 5 : (1 + 1.3 + 0.7 + 0) / 4;
+      const factor = r.lead_day <= 3 ? mean * 0.8 : mean;
+      assert.ok(Math.abs(r.precipitation_mm - r.standard_precipitation_mm * factor) < 0.06, `lead ${r.lead_day}`);
+    }
+    assert.ok(data.sources.some((s) => /Environment Agency rain gauges/.test(s.name)));
+
+    writeFileSync(file, fits(false));
+    installFetch();
+    const off = await call("get_learned_forecast", { place: "Pocklington", days: 2 });
+    assert.equal(off.data.data.rain_reference, null, "without a clear win the plain mean stays");
+  } finally {
+    delete process.env.ACEWEATHER_LEARNED_FITS_FILE;
+  }
+});
