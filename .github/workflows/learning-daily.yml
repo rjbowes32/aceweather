@@ -54,7 +54,7 @@ jobs:
       - name: Learn
         run: |
           if [ "$DRY_RUN" = "true" ]; then
-            node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}" --only-near scripts/backtest/sites.json --radius 25
+            node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}" --only-near scripts/backtest/sites-uk.json --radius 25
           else
             node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}"
           fi

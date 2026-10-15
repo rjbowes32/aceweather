@@ -57,7 +57,7 @@ node scripts/learning/daily.mjs --only-near scripts/backtest/sites.json --radius
 
 That is a local test on about 30 northern stations. With no options it covers the whole UK, backfilling up to 60 new stations per run, so the first full coverage takes about four daily runs, and about seven more for the 400 rain gauges. `--max-gauges` and `--max-netatmo` change the limits.
 
-A test run on GitHub: run the workflow by hand with **dry_run** ticked. It learns near the backtest sites only, uploads `fits.json`, `run.json` and `health.json` as a workflow artifact, publishes nothing and never touches Netatmo. Point the forecast at the local output with `ACEWEATHER_LEARNED_FITS_FILE=.cache/learning/fits.json`.
+A test run on GitHub: run the workflow by hand with **dry_run** ticked. It learns near the 40 UK backtest sites only, uploads `fits.json`, `run.json` and `health.json` as a workflow artifact, publishes nothing and never touches Netatmo. Point the forecast at the local output with `ACEWEATHER_LEARNED_FITS_FILE=.cache/learning/fits.json`.
 
 To enable it in production:
 
