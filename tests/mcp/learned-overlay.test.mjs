@@ -34,7 +34,7 @@ test("learned hours replace temperature, wind and rain, and their days are re-ag
   assert.equal(out.hourly.relative_humidity_2m[i], 80, "other variables are untouched");
   assert.deepEqual(out.daily.temperature_2m_max, [10, 14.8, 10]);
   assert.deepEqual(out.daily.temperature_2m_min, [10, 9, 10]);
-  assert.deepEqual(out.daily.precipitation_sum, [12, 4, 12]);
+  assert.deepEqual(out.daily.precipitation_sum, [11.5, 4.5, 12], "rain stamped at midnight closes the day before: 14th gets the learned 0 mm, 15th the base 0.5 mm at 16th 00:00");
   assert.deepEqual(out.daily.wind_speed_10m_max, [20, 30, 20]);
   assert.equal(raw.hourly.temperature_2m[i], 10, "the original forecast is not mutated");
   assert.equal(out.current, raw.current, "current conditions are unchanged");
@@ -81,4 +81,14 @@ test("the endpoint returns local-time learned hours and rejects bad input", asyn
   assert.deepEqual(Object.keys(body.daily[0] ?? { date: 0, rain_chance_pct: 0 }).sort(), ["date", "rain_chance_pct"], "no method detail in the public daily rows");
   const bad = await GET(new Request("http://localhost/learned-forecast?lat=abc"));
   assert.equal(bad.status, 400);
+});
+
+test("when the clocks go back, the repeated local hour keeps both learned values in order", () => {
+  const raw = forecast();
+  const time = [...hours("2026-10-25", 2), "2026-10-25T01:00", ...hours("2026-10-25").slice(2)];
+  raw.hourly = { time, temperature_2m: time.map(() => 10), precipitation: time.map(() => 0) };
+  raw.daily = { time: ["2026-10-25"], temperature_2m_max: [10], temperature_2m_min: [10], precipitation_sum: [0] };
+  const learned = [{ time: "2026-10-25T01:00", temperature_c: 9.9, wind_speed_kmh: null, precipitation_mm: null }, { time: "2026-10-25T01:00", temperature_c: 11.2, wind_speed_kmh: null, precipitation_mm: null }];
+  const { forecast: out } = applyLearned(raw, overlay({ temperature: true, wind_speed: false, rainfall: false, bias_correction: true }, learned));
+  assert.deepEqual(out.hourly.temperature_2m.slice(0, 4), [10, 9.9, 11.2, 10]);
 });

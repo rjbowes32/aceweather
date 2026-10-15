@@ -4,13 +4,18 @@
  */
 import type { FitsFile } from "./learning-store.ts";
 
-export type RunStats = { date: string; processed: number; updated: number; skipped: number; failed: number; requests: number; gave_up: number; errors: Array<{ id: string; error: string }> };
+export type RunStats = {
+  date: string; processed: number; updated: number; skipped: number; failed: number; requests: number; gave_up: number; errors: Array<{ id: string; error: string }>;
+  netatmo?: { enabled: boolean; error: string | null };
+};
 export type ScoresEntry = { date: string; stations_fitted: number; recent_scores: FitsFile["recent_scores"] };
 export type Problem = { severity: "error" | "warning"; check: string; message: string };
 
 export const HEALTH_LIMITS = {
   maxFitsAgeHours: 26,
   minStationShare: 0.8,
+  /** Below this share of last week's best, the output is more likely broken than unlucky and is not published. */
+  collapseShare: 0.5,
   maxFailureShare: 0.1,
   maxGaveUp: 5,
   learnedWorseRatio: 1.02,
@@ -21,16 +26,21 @@ export const HEALTH_LIMITS = {
   biasStepShare: 0.2,
 };
 
+/** Problems that stop the workflow publishing: publishing them would replace good learning data with worse. */
+export const BLOCKING_CHECKS = ["fits_missing", "nothing_processed", "stations_collapsed"];
+
 export function checkHealth(fits: FitsFile | null, history: ScoresEntry[], run: RunStats | null, now = Date.now()): Problem[] {
   const problems: Problem[] = [];
   if (!fits) return [{ severity: "error", check: "fits_missing", message: "fits.json was not produced." }];
+  if (!fits.stations.length || run?.processed === 0) problems.push({ severity: "error", check: "nothing_processed", message: `The run processed ${run?.processed ?? "?"} stations and fitted ${fits.stations.length}.` });
   const ageHours = (now - Date.parse(fits.generated_at)) / 3600_000;
   if (!(ageHours <= HEALTH_LIMITS.maxFitsAgeHours)) problems.push({ severity: "error", check: "fits_stale", message: `fits.json is ${Math.round(ageHours)} hours old.` });
 
   const previous = history.filter((h) => h.date < fits.generated_at.slice(0, 10)).slice(-7);
   const best = Math.max(0, ...previous.map((h) => h.stations_fitted));
   if (best > 0 && fits.stations.length < best * HEALTH_LIMITS.minStationShare) {
-    problems.push({ severity: "error", check: "stations_dropped", message: `${fits.stations.length} stations have fits, down from ${best} in the last week.` });
+    const collapsed = fits.stations.length < best * HEALTH_LIMITS.collapseShare;
+    problems.push({ severity: "error", check: collapsed ? "stations_collapsed" : "stations_dropped", message: `${fits.stations.length} stations have fits, down from ${best} in the last week${collapsed ? "; not published" : ""}.` });
   }
 
   if (run) {
@@ -38,11 +48,13 @@ export function checkHealth(fits: FitsFile | null, history: ScoresEntry[], run: 
       problems.push({ severity: "error", check: "job_failures", message: `${run.failed} of ${run.processed} stations failed: ${run.errors.slice(0, 3).map((e) => `${e.id} (${e.error})`).join("; ")}.` });
     }
     if (run.gave_up > HEALTH_LIMITS.maxGaveUp) problems.push({ severity: "warning", check: "upstream_retries", message: `${run.gave_up} requests failed after retries out of ${run.requests}.` });
+    if (run.netatmo?.enabled && run.netatmo.error) problems.push({ severity: "warning", check: "netatmo_unavailable", message: `Citizen stations were not updated: ${run.netatmo.error}.` });
   }
 
+  // Rainfall (scored in days) has its own gate: the forecast uses it only while it beats the model mean.
   for (const [variable, byLead] of Object.entries(fits.recent_scores ?? {})) {
     for (const [lead, s] of Object.entries(byLead)) {
-      if (s.hours >= HEALTH_LIMITS.minScoredHours && s.learned_mae > s.standard_mae * HEALTH_LIMITS.learnedWorseRatio) {
+      if ((s.hours ?? 0) >= HEALTH_LIMITS.minScoredHours &&s.learned_mae > s.standard_mae * HEALTH_LIMITS.learnedWorseRatio) {
         problems.push({ severity: "warning", check: "learned_worse", message: `Over the last 30 days the learned ${variable} forecast at day ${lead} was worse than the standard one (${s.learned_mae} vs ${s.standard_mae}, ${s.stations} stations).` });
       }
     }

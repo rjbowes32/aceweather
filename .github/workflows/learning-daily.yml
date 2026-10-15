@@ -10,6 +10,10 @@ on:
       max_bootstrap:
         description: "New stations to backfill this run"
         default: "60"
+      dry_run:
+        description: "Test run near the backtest sites: publishes nothing and leaves Netatmo alone"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,10 +26,17 @@ concurrency:
 jobs:
   learn:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Long enough to wait out Open-Meteo's hourly allowance once.
+    timeout-minutes: 180
     env:
       GH_TOKEN: ${{ github.token }}
       OUT: .cache/learning
+      DRY_RUN: ${{ inputs.dry_run == true }}
+      # Citizen stations (docs/mcp/LEARNING-DAILY.md). Never in a dry run: the refresh token rotates.
+      NETATMO_CLIENT_ID: ${{ inputs.dry_run != true && secrets.NETATMO_CLIENT_ID || '' }}
+      NETATMO_CLIENT_SECRET: ${{ inputs.dry_run != true && secrets.NETATMO_CLIENT_SECRET || '' }}
+      NETATMO_REFRESH_TOKEN: ${{ inputs.dry_run != true && secrets.NETATMO_REFRESH_TOKEN || '' }}
+      NETATMO_STATE_KEY: ${{ inputs.dry_run != true && secrets.NETATMO_STATE_KEY || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,23 +45,48 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Fetch previous state
+        # Starting from empty is only right before the first publish. Once the release holds a state, any failure to
+        # download or read it stops the run, rather than learning from nothing and overwriting the history.
         run: |
           mkdir -p "$OUT"
           if gh release view learning-data >/dev/null 2>&1; then
-            gh release download learning-data --pattern 'state.json.gz' --pattern 'scores.json' --dir "$OUT" --clobber || true
-            [ -f "$OUT/state.json.gz" ] && gunzip -f "$OUT/state.json.gz" || true
+            assets=$(gh release view learning-data --json assets --jq '.assets[].name')
+            for f in state.json.gz scores.json netatmo.enc; do
+              if grep -qx "$f" <<<"$assets"; then gh release download learning-data --pattern "$f" --dir "$OUT" --clobber; fi
+            done
+            if [ -f "$OUT/state.json.gz" ]; then
+              gunzip -f "$OUT/state.json.gz"
+              node -e "const s=JSON.parse(require('fs').readFileSync('$OUT/state.json','utf8'));if(!Object.keys(s.stations??{}).length)throw new Error('restored state has no stations')"
+            fi
           fi
       - name: Learn
-        run: node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}"
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}" --only-near scripts/backtest/sites-uk.json --radius 25
+          else
+            node scripts/learning/daily.mjs --out "$OUT" --max-bootstrap "${{ inputs.max_bootstrap || '60' }}"
+          fi
       - name: Health check
         run: node scripts/learning/health.mjs --out "$OUT"
-      - name: Publish
+      - name: Dry-run output
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: learning-dry-run
+          path: |
+            .cache/learning/fits.json
+            .cache/learning/run.json
+            .cache/learning/scores.json
+            .cache/learning/health.json
+      - name: Save Netatmo registry
+        # Even after a failure: the refresh token in it may have rotated, and the old one no longer works.
+        if: always() && env.DRY_RUN != 'true' && hashFiles('.cache/learning/netatmo.enc') != ''
         run: |
-          gzip -kf "$OUT/state.json"
           gh release view learning-data >/dev/null 2>&1 || gh release create learning-data --prerelease --title "Learning data" --notes "Daily output of scripts/learning/daily.mjs. fits.json is read by get_learned_forecast via ACEWEATHER_LEARNED_FITS_URL."
-          gh release upload learning-data "$OUT/fits.json" "$OUT/scores.json" "$OUT/state.json.gz" "$OUT/health.json" "$OUT/run.json" --clobber
+          gh release upload learning-data "$OUT/netatmo.enc" --clobber
       - name: Report health
         # One open issue labelled learning-health collects problems; it is closed automatically once checks pass.
+        if: env.DRY_RUN != 'true'
         run: |
           gh label create learning-health --color B60205 --description "Problems found by the daily learning job" 2>/dev/null || true
           open=$(gh issue list --label learning-health --state open --json number --jq '.[0].number')
@@ -61,10 +97,18 @@ jobs:
           else
             gh issue create --title "Learning job: health check found problems" --label learning-health --body-file "$OUT/health.md"
           fi
+      - name: Publish
+        # Not when the output is empty or collapsed (health.json `publish`): the last good release stays in place.
+        if: env.DRY_RUN != 'true'
+        run: |
+          node -e "if(!require('./$OUT/health.json').publish){console.error('Health check blocks publishing; see the learning-health issue.');process.exit(1)}"
+          gzip -kf "$OUT/state.json"
+          gh release view learning-data >/dev/null 2>&1 || gh release create learning-data --prerelease --title "Learning data" --notes "Daily output of scripts/learning/daily.mjs. fits.json is read by get_learned_forecast via ACEWEATHER_LEARNED_FITS_URL."
+          gh release upload learning-data "$OUT/fits.json" "$OUT/scores.json" "$OUT/state.json.gz" "$OUT/health.json" "$OUT/run.json" --clobber
       - name: Summary
         run: node -e "const f=require('./$OUT/fits.json');console.log(f.stations.length,'stations fitted at',f.generated_at);for(const[v,b]of Object.entries(f.recent_scores))for(const[l,s]of Object.entries(b))console.log(v,'day',l,'learned',s.learned_mae,'standard',s.standard_mae,'stations',s.stations)" >> "$GITHUB_STEP_SUMMARY"
       - name: Report failure
-        if: failure()
+        if: failure() && env.DRY_RUN != 'true'
         run: |
           gh label create learning-health --color B60205 --description "Problems found by the daily learning job" 2>/dev/null || true
           body="The daily learning job failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. The forecast keeps using the last fits.json for up to three days, then falls back to on-demand learning."

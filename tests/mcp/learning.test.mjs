@@ -59,3 +59,12 @@ test("interpolated fits move smoothly between lead days and renormalise across d
   assert.equal(interpolateFits(null, b, 0.4), b);
   assert.equal(interpolateFits(a, null, 0.4), a);
 });
+
+test("with a model missing, the bias removed is the reweighted blend's, not the full blend's", () => {
+  // Models a and b forecast 2 °C too warm and too cold; equal weights, so the full blend has no bias.
+  const f = { ranking: ["a", "b"], mae: {}, bias: { a: 2, b: -2 }, weights: { a: 0.5, b: 0.5 }, blendBias: 0, trainingDays: 30 };
+  assert.equal(apply("weighted_bias", f, { a: 12, b: 8 }, null, ["a", "b"]), 10);
+  assert.equal(apply("weighted_bias", f, { a: 12, b: null }, null, ["a", "b"]), 10, "a alone is 12, minus its own 2 °C bias");
+  const noModelBias = { ...f, bias: {} };
+  assert.equal(apply("weighted_bias", noModelBias, { a: 12, b: null }, null, ["a", "b"]), 12, "without per-model biases the blend bias is the best available");
+});

@@ -91,11 +91,17 @@ export function fetchEaRainfall(location: ResolvedLocation, radiusKm: number, no
 export function gaugeHistory(id: string, sinceMs: number): Promise<Array<{ time: string; value: number }>> {
   const since = iso(Math.floor(sinceMs / INTERVAL_MS) * INTERVAL_MS);
   return cached(`ea:history:${id}:${since}`, 3600_000, async () => {
-    const body = await fetchJson(LABEL, `${BASE}/id/stations/${encodeURIComponent(id)}/readings?parameter=rainfall&_sorted&_limit=10000&since=${since}`);
-    const rows = ((body?.items ?? []) as any[])
-      .map((r) => ({ time: String(r.dateTime ?? ""), value: num(r.value), measure: String(r.measure ?? "") }))
-      .filter((r): r is { time: string; value: number; measure: string } => Boolean(r.time) && r.value != null);
-    const measure = rows[0]?.measure;
-    return rows.filter((r) => r.measure === measure).map(({ time, value }) => ({ time, value })).sort((a, b) => (a.time < b.time ? -1 : 1));
+    return historyRows(await fetchJson(LABEL, gaugeHistoryUrl(id, since)));
   });
+}
+
+export const gaugeHistoryUrl = (id: string, since: string) => `${BASE}/id/stations/${encodeURIComponent(id)}/readings?parameter=rainfall&_sorted&_limit=10000&since=${since}`;
+
+/** Readings of the station's first rainfall measure, oldest first. */
+export function historyRows(body: any): Array<{ time: string; value: number }> {
+  const rows = ((body?.items ?? []) as any[])
+    .map((r) => ({ time: String(r.dateTime ?? ""), value: num(r.value), measure: String(r.measure ?? "") }))
+    .filter((r): r is { time: string; value: number; measure: string } => Boolean(r.time) && r.value != null);
+  const measure = rows[0]?.measure;
+  return rows.filter((r) => r.measure === measure).map(({ time, value }) => ({ time, value })).sort((a, b) => (a.time < b.time ? -1 : 1));
 }

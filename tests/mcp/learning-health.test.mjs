@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { checkHealth, healthMarkdown } from "../../src/mcp/learning-health.ts";
+import { BLOCKING_CHECKS, checkHealth, healthMarkdown } from "../../src/mcp/learning-health.ts";
 
 const NOW = Date.parse("2026-10-15T06:00:00Z");
 const station = (name, tBiases = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4]) => ({
@@ -30,6 +30,22 @@ test("stale output, lost coverage, failures and retries are reported", () => {
   assert.deepEqual(checks(failed), ["job_failures"]);
   assert.match(failed[0].message, /0-20000-0-03382 \(HTTP 500\)/);
   assert.deepEqual(checks(checkHealth(fits(), history, run({ gave_up: 9 }), NOW)), ["upstream_retries"]);
+  assert.deepEqual(checks(checkHealth(fits(), history, run({ netatmo: { enabled: true, error: "token refresh failed" } }), NOW)), ["netatmo_unavailable"]);
+  assert.deepEqual(checks(checkHealth(fits(), history, run({ netatmo: { enabled: false, error: null } }), NOW)), [], "Netatmo not configured is fine");
+});
+
+test("empty or collapsed output is a blocking error, even with no history to compare against", () => {
+  const empty = checkHealth(fits({ stations: [] }), [], run({ processed: 0, updated: 0 }), NOW);
+  assert.deepEqual(empty.map((p) => p.check), ["nothing_processed"]);
+  const collapsed = checkHealth(fits({ stations: fits().stations.slice(0, 40) }), history, run(), NOW);
+  assert.deepEqual(collapsed.map((p) => p.check), ["stations_collapsed"]);
+  assert.ok([...empty, ...collapsed].every((p) => BLOCKING_CHECKS.includes(p.check)));
+  assert.ok(!BLOCKING_CHECKS.includes("stations_dropped"), "a moderate drop is reported but still published");
+});
+
+test("rainfall scores (in days, against the model mean) do not trip the learned-worse check", () => {
+  const rain = fits({ recent_scores: { rainfall: { 1: { days: 3000, learned_mae: 1.6, standard_mae: 1.5, mean_mae: 1.5, stations: 300 } } } });
+  assert.deepEqual(checkHealth(rain, history, run(), NOW), []);
 });
 
 test("a learned forecast that stops beating the standard one, and lead-to-lead bias jumps, are warnings", () => {

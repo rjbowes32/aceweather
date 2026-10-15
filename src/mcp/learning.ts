@@ -82,7 +82,10 @@ export function apply(strategy: Strategy, f: Fit | null, forecasts: Record<Model
   const total = weighted.reduce((s, m) => s + f.weights[m], 0);
   const blend = weighted.reduce((s, m) => s + (f.weights[m] / total) * (forecasts[m] as number), 0);
   if (strategy === "weighted" || floorZero) return floorZero ? Math.max(0, blend) : blend;
-  return blend - f.blendBias;
+  // With a model missing, the blend is reweighted, so its bias must be too (when per-model biases are known).
+  const missing = Object.keys(f.weights).some((m) => !weighted.includes(m));
+  const reweighted = missing && weighted.every((m) => typeof f.bias[m] === "number");
+  return blend - (reweighted ? weighted.reduce((s, m) => s + (f.weights[m] / total) * f.bias[m], 0) : f.blendBias);
 }
 
 export function addError(target: DayErrors | undefined, error: number): DayErrors {
@@ -112,7 +115,8 @@ export function interpolateFits(a: Fit | null, b: Fit | null, frac: number): Fit
   const weights = Object.fromEntries(models.map((m) => [m, raw[m] / total]));
   return {
     ranking: [...models].sort((x, y) => weights[y] - weights[x]),
-    mae: {}, bias: {}, weights,
+    mae: {}, weights,
+    bias: Object.fromEntries(models.filter((m) => m in a.bias || m in b.bias).map((m) => [m, a.bias[m] == null ? b.bias[m] : b.bias[m] == null ? a.bias[m] : (1 - frac) * a.bias[m] + frac * b.bias[m]])),
     blendBias: (1 - frac) * a.blendBias + frac * b.blendBias,
     trainingDays: Math.min(a.trainingDays, b.trainingDays),
   };
