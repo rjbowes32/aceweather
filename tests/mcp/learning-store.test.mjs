@@ -78,3 +78,35 @@ test("the fits file carries per-lead weights, pooled recent scores, and a neares
   assert.equal(pick.station.meta.id, "S1", "the 500 m station is excluded by the height limit");
   assert.equal(chooseReference(fits, { latitude: 51, longitude: -1, elevation_m: 60 }, { radiusKm: 80, maxHeightDiffM: 250, minDays: 20 }), null);
 });
+
+test("a model seen for only an hour a day cannot count it as a training day", () => {
+  const st = station();
+  const days = new Map([["2026-08-01", { 1: { a: [1, 0, 0, 0], b: [24, 24, 24, 24] } }]]);
+  updateDays(st, "temperature_2m", days);
+  assert.deepEqual(Object.keys(st.days["2026-08-01"].t["1"]), ["b"]);
+  updateDays(st, "temperature_2m", new Map([["2026-08-02", { 1: { a: [1, 0, 0, 0] } }]]));
+  assert.equal(st.days["2026-08-02"], undefined, "a day with no well-covered model is not stored");
+});
+
+test("fits carry per-model biases, stale stations are not exported, and wind can come from another station", () => {
+  const f = forecasts("2026-07-01", 45);
+  const obs = observed(f);
+  const state = emptyState();
+  const fresh = station();
+  const silent = { meta: { ...station().meta, id: "S2" }, days: {} };
+  for (const st of [fresh, silent]) { updateDays(st, "temperature_2m", errorDays(f, "temperature_2m", obs, [1], modelsFor)); state.stations[st.meta.id] = st; }
+  for (const day of Object.keys(silent.days)) if (day > "2026-08-01") delete silent.days[day];
+  const fits = exportFits(state, "2026-08-15", [1], modelsFor, 60, 20, 3, "2026-08-15T06:00:00Z");
+  assert.deepEqual(fits.stations.map((s) => s.meta.id), ["S1"], "S2 has had no data for 14 days");
+  assert.ok(Math.abs(fits.stations[0].leads["1"].t.model_bias.b - 2) < 1e-3);
+
+  const lf = { weights: { a: 1 }, bias: 0, days: 40 };
+  const wind = { stations: [
+    { meta: { ...station().meta, id: "thermometer", latitude: 54.01 }, leads: { 1: { t: lf } } },
+    { meta: { ...station().meta, id: "anemometer", latitude: 54.2 }, leads: { 1: { t: lf, w: lf } } },
+  ] };
+  const at = { latitude: 54, longitude: -1, elevation_m: 50 };
+  const search = { radiusKm: 80, maxHeightDiffM: 250, minDays: 20 };
+  assert.equal(chooseReference(wind, at, search).station.meta.id, "thermometer");
+  assert.equal(chooseReference(wind, at, search, "w").station.meta.id, "anemometer");
+});

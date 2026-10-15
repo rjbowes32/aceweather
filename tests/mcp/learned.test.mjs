@@ -169,3 +169,71 @@ test("the learned forecast has no jump at lead-day boundaries, including day 6 t
   const halfway = fitForPosition(fits, 2.5).temperature;
   assert.ok(Math.abs(halfway.weights.ecmwf_aifs025_single - 0.1) < 1e-9, "the AI model ramps in between days 2 and 3");
 });
+
+test("gauge-learned rainfall scales the model mean only for lead days where it beat the mean", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const rainLeads = Object.fromEntries([1, 2, 3, 4, 5, 6].map((l) => [l, { r: { scale: 0.8, days: 55, gauges: 4 } }]));
+  const passes = (l) => l <= 3 || l === 6;
+  const scores = (better) => Object.fromEntries([1, 2, 3, 4, 5, 6].map((l) => [l, { days: 2000, learned_mae: passes(l) && better ? 1.2 : 1.5, standard_mae: 1.6, mean_mae: 1.5, stations: 300 }]));
+  const fits = (better) => JSON.stringify({ version: 1, generated_at: new Date().toISOString(), window_days: 60, ai_from_lead: 3, recent_scores: { rainfall: scores(better) }, stations: [
+    { meta: { id: "ea:046222", name: "EA rain gauge 046222", network: "ea_rain", latitude: 53.92, longitude: -0.8, elevation_m: null }, leads: rainLeads },
+  ] });
+  const file = join(mkdtempSync(join(tmpdir(), "aceweather-fits-")), "fits.json");
+  process.env.ACEWEATHER_LEARNED_FITS_FILE = file;
+  try {
+    writeFileSync(file, fits(true));
+    installFetch();
+    const { data, error } = await call("get_learned_forecast", { place: "Pocklington", detail: "full" });
+    assert.equal(error, null, JSON.stringify(error));
+    const d = data.data;
+    assert.equal(d.rain_reference.id, "ea:046222");
+    assert.deepEqual(d.training.map((t) => t.rainfall?.scale ?? null), [0.8, 0.8, 0.8, null, null, 0.8, null], "days 4-5 did not beat the mean, and day 7 is never scored");
+    const rainy = d.hourly.filter((r) => trueRain(ms(r.time)) > 0);
+    assert.ok(rainy.length > 0);
+    for (const r of rainy) {
+      const mean = r.lead_day >= 3 ? (1 + 1.3 + 0.7 + 0 + 1.1) / 5 : (1 + 1.3 + 0.7 + 0) / 4;
+      const factor = passes(r.lead_day) ? mean * 0.8 : mean;
+      assert.ok(Math.abs(r.precipitation_mm - r.standard_precipitation_mm * factor) < 0.06, `lead ${r.lead_day}`);
+    }
+    assert.ok(data.sources.some((s) => /Environment Agency rain gauges/.test(s.name)));
+
+    writeFileSync(file, fits(false));
+    installFetch();
+    const off = await call("get_learned_forecast", { place: "Pocklington", days: 2 });
+    assert.equal(off.data.data.rain_reference, null, "without a clear win the plain mean stays");
+  } finally {
+    delete process.env.ACEWEATHER_LEARNED_FITS_FILE;
+  }
+});
+
+test("a thermometer-only reference does not switch wind learning off when an anemometer is in range", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const four = { ecmwf_ifs025: 0.25, gfs_seamless: 0.25, icon_seamless: 0.25, ukmo_seamless: 0.25 };
+  const five = { ...Object.fromEntries(Object.keys(four).map((m) => [m, 0.2])), ecmwf_aifs025_single: 0.2 };
+  const leads = (withWind) => Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map((l) => {
+    const weights = l < 3 ? four : five;
+    return [l, { t: { weights, bias: l < 3 ? 0.375 : 0.36, days: 50 }, ...(withWind ? { w: { weights, bias: l < 3 ? 1.75 : 1.8, days: 50 } } : {}) }];
+  }));
+  const file = join(mkdtempSync(join(tmpdir(), "aceweather-fits-")), "fits.json");
+  writeFileSync(file, JSON.stringify({ version: 1, generated_at: new Date().toISOString(), window_days: 60, ai_from_lead: 3, recent_scores: {}, stations: [
+    { meta: { id: "cosmos:NEAR", name: "Near thermometer", network: "cosmos_uk", latitude: 53.93, longitude: -0.79, elevation_m: 30 }, leads: leads(false) },
+    { meta: { id: "0-20000-0-03382", name: "Leconfield", network: "metoffice", latitude: 53.875, longitude: -0.442, elevation_m: 7 }, leads: leads(true) },
+  ] }));
+  process.env.ACEWEATHER_LEARNED_FITS_FILE = file;
+  try {
+    installFetch();
+    const { data, error } = await call("get_learned_forecast", { place: "Pocklington", detail: "full", days: 3 });
+    assert.equal(error, null, JSON.stringify(error));
+    const d = data.data;
+    assert.deepEqual([d.reference.id, d.wind_reference.id], ["cosmos:NEAR", "0-20000-0-03382"]);
+    assert.equal(d.learned_applied.wind_speed, true);
+    const windErr = d.hourly.map((r) => r.wind_speed - trueWindKmh(ms(r.time)));
+    assert.ok(meanAbs(windErr) < 0.3, `wind from Leconfield's fit reproduces the truth (${meanAbs(windErr)})`);
+  } finally {
+    delete process.env.ACEWEATHER_LEARNED_FITS_FILE;
+  }
+});

@@ -34,6 +34,8 @@ export async function fetchLearned(loc: AwLocation, signal?: AbortSignal): Promi
 
 type Num = number | null;
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+/** Rain stamped at local midnight fell in the last hour of the day before. */
+const rainDay = (t: string) => (t.slice(11, 13) === "00" ? new Date(Date.parse(`${t.slice(0, 10)}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10) : t.slice(0, 10));
 
 /** Returns a new forecast with the learned hours applied, and the days containing them re-aggregated. */
 /** The daily chance of rain shown in the app: only AceWeather's calibrated chance, never Open-Meteo's hourly maximum. */
@@ -53,8 +55,10 @@ export function applyLearned(raw: ForecastResponse, overlay: LearnedOverlay | nu
 function applyLearnedValues(raw: ForecastResponse, overlay: LearnedOverlay | null): { forecast: ForecastResponse; meta: LearnedMeta | null } {
   if (!overlay || !overlay.hourly.length || (!overlay.applied.temperature && !overlay.applied.wind_speed && !overlay.applied.rainfall)) return { forecast: raw, meta: null };
   const times = (raw.hourly.time ?? []) as string[];
-  const index = new Map<string, number>();
-  times.forEach((t, i) => { if (!index.has(t)) index.set(t, i); });
+  // When the clocks go back a local hour happens twice: the nth learned copy of a label goes to the nth slot.
+  const slots = new Map<string, number[]>();
+  times.forEach((t, i) => slots.set(t, [...(slots.get(t) ?? []), i]));
+  const seen = new Map<string, number>();
   const copy = (key: string) => (Array.isArray(raw.hourly[key]) ? [...(raw.hourly[key] as Num[])] : null);
   const temp = copy("temperature_2m");
   const apparent = copy("apparent_temperature");
@@ -64,7 +68,9 @@ function applyLearnedValues(raw: ForecastResponse, overlay: LearnedOverlay | nul
   const touchedDays = new Set<string>();
   let hours = 0;
   for (const h of overlay.hourly) {
-    const i = index.get(h.time);
+    const n = seen.get(h.time) ?? 0;
+    seen.set(h.time, n + 1);
+    const i = slots.get(h.time)?.[n];
     if (i == null) continue;
     let changed = false;
     if (overlay.applied.temperature && isNum(h.temperature_c) && temp) {
@@ -80,6 +86,7 @@ function applyLearnedValues(raw: ForecastResponse, overlay: LearnedOverlay | nul
     }
     if (overlay.applied.rainfall && isNum(h.precipitation_mm) && rain) {
       rain[i] = h.precipitation_mm;
+      touchedDays.add(rainDay(h.time));
       changed = true;
     }
     if (changed) { hours++; touchedDays.add(h.time.slice(0, 10)); }
@@ -94,8 +101,9 @@ function applyLearnedValues(raw: ForecastResponse, overlay: LearnedOverlay | nul
   dTime.forEach((day, k) => {
     if (!touchedDays.has(day)) return;
     const idx = times.map((t, i) => (t.startsWith(day) ? i : -1)).filter((i) => i >= 0);
-    const values = (arr: Num[] | null) => (arr ? idx.map((i) => arr[i]).filter(isNum) : []);
-    const t = values(temp); const w = values(wind); const p = values(rain);
+    const rainIdx = times.map((t, i) => (rainDay(t) === day ? i : -1)).filter((i) => i >= 0);
+    const values = (arr: Num[] | null, at = idx) => (arr ? at.map((i) => arr[i]).filter(isNum) : []);
+    const t = values(temp); const w = values(wind); const p = values(rain, rainIdx);
     if (tMax && t.length) tMax[k] = Math.round(Math.max(...t) * 10) / 10;
     if (tMin && t.length) tMin[k] = Math.round(Math.min(...t) * 10) / 10;
     if (wMax && w.length) wMax[k] = Math.round(Math.max(...w) * 10) / 10;

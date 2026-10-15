@@ -13,7 +13,9 @@ Added 13 October 2026, MCP server 0.4.0. Until now every AceWeather value was a 
 
 For learning (not current conditions), the learned forecast also reads Met Office synoptic and climate stations from NOAA's GHCNh hourly archive: about 145 UK stations reporting near-hourly, 0.1 °C precision, about three days behind real time. This fills gaps the airports leave, for example Tulloch Bridge for Fort William, Trawsgoed for Aberystwyth and Glenanne for Armagh. See [LEARNING-BACKTEST-UK.md](LEARNING-BACKTEST-UK.md).
 
-Sources looked at and not used yet: the WMO WIS2 Global Cache (same Met Office SYNOP data as BUFR, backup route if E-SOH fails), the Met Office radar rain-rate grid on AWS (CC BY-SA), SEPA 15-minute rainfall for Scotland (needs registration for web products), Met Éireann observations (CC BY 4.0) and CWOP citizen stations (needs a persistent APRS-IS connection or 30 MB hourly files, so not suited to serverless fetches). Weather Underground and Netatmo do not allow redistribution. Met Office WOW is being retired during 2026.
+The daily learning job also learns rainfall from Environment Agency and SEPA rain gauges, and can learn from quality-controlled Netatmo citizen stations in gaps of the official networks. Neither appears in current conditions; Netatmo readings are used for learning only and never republished. See [LEARNING-DAILY.md](LEARNING-DAILY.md).
+
+Sources looked at and not used yet: the WMO WIS2 Global Cache (same Met Office SYNOP data as BUFR, backup route if E-SOH fails), the Met Office radar rain-rate grid on AWS (CC BY-SA), Met Éireann observations (CC BY 4.0), Natural Resources Wales rain gauges (needs an API key) and CWOP citizen stations (needs a persistent APRS-IS connection or 30 MB hourly files, so not suited to serverless fetches). Weather Underground does not allow redistribution. Met Office WOW is being retired during 2026.
 
 ## How a request works
 
