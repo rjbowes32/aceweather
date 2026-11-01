@@ -639,7 +639,7 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked. Allow in browser settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
   const placeSubtitle = geoFollow ? (location.region || "GPS location") : [location.region, "Chosen place · GPS off"].filter(Boolean).join(" · ");
 
   const settingsControls = (
@@ -699,7 +699,7 @@ export function AceWeatherApp() {
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
             <strong>{location.name}</strong>
-            <PhonePlaceLine full={geoFollow ? (location.region || "GPS active") : [location.region, "Chosen place"].filter(Boolean).join(" · ")} short={geoFollow ? "GPS active" : "Chosen place · GPS off"} />
+            <PhonePlaceLine full={geoFollow ? (location.region || "GPS active") : (location.region ? `${location.region} · GPS off` : "Chosen place · GPS off")} short={geoFollow ? "GPS active" : "Chosen place · GPS off"} />
           </button>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
