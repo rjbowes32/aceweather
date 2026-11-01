@@ -87,7 +87,7 @@ function useLevelColumnEnds(feedRef: React.RefObject<HTMLElement | null>, sideRe
         if (!a || !b || !desktop.matches || getComputedStyle(side).display === "none") return;
         const diff = a.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom;
         const grow = diff > 0 ? b : a;
-        if (Math.abs(diff) >= 1) grow.style.minHeight = `${grow.getBoundingClientRect().height + Math.abs(diff)}px`;
+        if (Math.abs(diff) >= 1 && Math.abs(diff) < 24) grow.style.minHeight = `${grow.getBoundingClientRect().height + Math.abs(diff)}px`;
       });
     };
     const ro = new ResizeObserver(level);
@@ -98,6 +98,27 @@ function useLevelColumnEnds(feedRef: React.RefObject<HTMLElement | null>, sideRe
   }, [feedRef, sideRef, key]);
 }
 
+/** Phone header line: the full text if it fits on one line, otherwise the short form. */
+function PhonePlaceLine({ full, short }: { full: string; short: string }) {
+  const boxRef = useRef<HTMLElement>(null);
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const box = boxRef.current, probe = probeRef.current;
+    if (!box || !probe || typeof ResizeObserver === "undefined") return undefined;
+    const check = () => setFits(probe.getBoundingClientRect().width <= box.getBoundingClientRect().width + 0.5);
+    const ro = new ResizeObserver(check);
+    ro.observe(box);
+    check();
+    return () => ro.disconnect();
+  }, [full]);
+  return (
+    <small ref={boxRef} className="awx-place-line">
+      {fits ? full : short}
+      <span ref={probeRef} className="awx-place-probe" aria-hidden="true">{full}</span>
+    </small>
+  );
+}
 const LONDON_HM = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 /** Observation time as 24-hour Europe/London HH:MM, no zone label. */
 function londonTime(at: number | null | undefined, fallback: string): string {
@@ -618,7 +639,7 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked. Allow in browser settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
   const placeSubtitle = geoFollow ? (location.region || "GPS location") : [location.region, "Chosen place · GPS off"].filter(Boolean).join(" · ");
 
   const settingsControls = (
@@ -678,7 +699,7 @@ export function AceWeatherApp() {
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
             <strong>{location.name}</strong>
-            <small>{geoFollow ? (location.region || "GPS active") : "Chosen place · GPS off"}</small>
+            <PhonePlaceLine full={geoFollow ? (location.region || "GPS active") : [location.region, "Chosen place"].filter(Boolean).join(" · ")} short={geoFollow ? "GPS active" : "Chosen place · GPS off"} />
           </button>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>

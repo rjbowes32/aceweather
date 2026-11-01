@@ -36,10 +36,12 @@ export type NextRainLike = {
   prob?: number | null;
 } | null | undefined;
 
+export const NO_RAIN_HEADLINE = "No meaningful rain next 24h";
+
 export function formatNextRain(nextRain: NextRainLike, fallbackTotal = 0): { headline: string; detail: string } {
   if (!nextRain) {
     return {
-      headline: "No meaningful rain next 24h",
+      headline: NO_RAIN_HEADLINE,
       detail: fallbackTotal < 0.2 ? "Under 0.2 mm, dry for work" : `${fallbackTotal} mm forecast`,
     };
   }

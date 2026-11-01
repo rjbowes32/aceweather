@@ -57,7 +57,7 @@
 
 /* r2 (Dev UX review of d5da946) */
 /* Stat tiles: one left alignment, matched heights, note line always reserved. */
-.awx .weather-detail { min-height: 168px; }
+@media (min-width: 701px) { .awx .weather-detail { min-height: 168px; } }
 .awx .weather-detail > strong,
 .awx .weather-detail-note { text-align: left; }
 .awx .weather-detail-note { min-height: 1.4em; }
@@ -98,3 +98,9 @@
 .awx .awx-radar-card, .awx .awx-radar-fallback { padding-top: var(--awx-card-padding, 16px); }
 
 /* TODO (de-vibe step): fold ui-tidy.css into design-tokens.css / shared-surfaces.css so there is one source. */
+
+/* Blocked GPS: plain ghost button, not the active blue fill. */
+.awx .awx-location-gps.is-blocked { background: transparent; color: var(--awx-text); border: var(--awx-card-border); }
+/* Phone header place line: one line; the probe measures the full text off screen. */
+.awx .awx-place-line { position: relative; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.awx .awx-place-probe { position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; pointer-events: none; }

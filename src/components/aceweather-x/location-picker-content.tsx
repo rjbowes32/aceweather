@@ -33,7 +33,7 @@ export function LocationPickerContent({
 }: LocationPickerContentProps) {
   return (
     <div className="awx-location-picker">
-      <button className="awx-btn awx-btn-ghost awx-location-gps" type="button" onClick={onLocate} disabled={gpsButtonLabel === "Locating..."}>
+      <button className={"awx-btn awx-btn-ghost awx-location-gps" + (gpsButtonLabel.startsWith("Location blocked") ? " is-blocked" : "")} type="button" onClick={onLocate} disabled={gpsButtonLabel === "Locating..."}>
         <GpsIcon /><span>{gpsButtonLabel}</span>
       </button>
       <form className="awx-location-form" onSubmit={onSubmit}>
