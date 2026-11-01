@@ -456,3 +456,9 @@
 .weather-current-icon.awx-wicon { width: 42px; height: 42px; }
 .weather-dashboard .weather-current-icon.awx-wicon > svg { width: 42px; height: 42px; }
 @media (max-width: 700px) { .weather-current-icon.awx-wicon { display: none; } }
+/* r3: stacked badges on the right edge (hour strip, Outlook lead); calendar shows one badge, frost wins. Solid ring. */
+.awx-wicon-badges { flex-direction: column; right: -4px; bottom: -2px; }
+.awx-cal-day .awx-cal-icon.awx-wicon { --awx-badge-ring: var(--awx-surface-2); }
+.awx-cal-day .awx-cal-icon .awx-wicon-badges { right: 0; bottom: 0; }
+.awx-cal-day .awx-badge-frost ~ .awx-badge-gust { display: none; }
+.weather-dashboard .weather-hour-icon, .weather-dashboard .weather-hour-icon > svg { width: 30px; height: 30px; }
