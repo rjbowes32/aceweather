@@ -155,3 +155,15 @@
   .awx .awx-rail .awx-segmented button { border-radius: 9px; min-height: 36px; padding: 0 4px; }
   .awx:has(.awx-feed[data-view="outlook"]) > .awx-side .awx-btn { width: auto; padding: 0 14px; white-space: nowrap; justify-content: flex-start; }
 }
+
+/* r8 */
+.awx .awx-rail .awx-segmented button { min-height: 44px; }
+.awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 12%, var(--awx-surface)); }
+html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 8%, var(--awx-surface)); }
+.awx .awx-tips-icon { display: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+@media (min-width: 901px) and (max-width: 1080px) {
+  .awx .awx-rail .awx-docs-rail { display: none; }
+  .awx .awx-rail .awx-tips-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-inline: auto; padding: 0; text-decoration: none; }
+  .awx .awx-rail .awx-tips-btn span { display: none; }
+  .awx .awx-rail .awx-tips-icon { display: block; }
+}

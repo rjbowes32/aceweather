@@ -660,7 +660,7 @@ export function AceWeatherApp() {
       <button type="button" className={"awx-btn awx-btn-ghost awx-bell" + (rainAlerts ? " is-on" : "")} onClick={toggleRainAlerts}>
         <BellIcon /><span>{rainAlerts ? "Rain alerts on" : "Rain alerts"}</span>
       </button>
-      <button type="button" className="awx-link-btn" onClick={() => { showSetupHint(); setSettingsOpen(false); setView("all"); }}>Show set-up tips</button>
+      <button type="button" className="awx-link-btn awx-tips-btn" aria-label="Show set-up tips" onClick={() => { showSetupHint(); setSettingsOpen(false); setView("all"); }}><svg className="awx-tips-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg><span>Show set-up tips</span></button>
     </>
   );
 
