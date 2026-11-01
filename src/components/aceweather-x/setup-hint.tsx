@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { CloseIcon } from "./icons";
 import { SETUP_HINT_DISMISS_KEY, isIosSafari, setupHintState, type LocationPermission } from "@/lib/aceweather/setup-hint";
 
+const RESET_EVENT = "aceweather:setup-hint-reset";
+
+/** Clears the saved dismiss and shows the tips again. */
+export function showSetupHint() {
+  try { localStorage.removeItem(SETUP_HINT_DISMISS_KEY); } catch { /* private mode */ }
+  window.dispatchEvent(new Event(RESET_EVENT));
+}
+
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
 function isStandalone() {
@@ -32,11 +40,14 @@ export function SetupHint({ onAllowLocation, geoFollow }: { onAllowLocation: () 
     const onInstalled = () => { setInstallEvent(null); setStandalone(true); };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
+    const onReset = () => setDismissed(false);
+    window.addEventListener(RESET_EVENT, onReset);
     setReady(true);
     return () => {
       status?.removeEventListener("change", sync);
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener(RESET_EVENT, onReset);
     };
   }, []);
 
@@ -61,17 +72,17 @@ export function SetupHint({ onAllowLocation, geoFollow }: { onAllowLocation: () 
     <section className="awx-card awx-setup-hint" aria-label="Get set up">
       <div className="awx-setup-hint-head">
         <strong>Get set up</strong>
-        <button className="awx-icon-btn" type="button" onClick={dismiss} aria-label="Dismiss tip"><CloseIcon /></button>
+        <button className="awx-icon-btn" type="button" onClick={dismiss} aria-label="Hide set-up tips"><CloseIcon /></button>
       </div>
       <ul>
         {state.location === "allow" ? (
-          <li><span>Allow location so GPS works automatically.</span><button className="awx-btn" type="button" onClick={onAllowLocation}>Allow</button></li>
+          <li><span>Turn on location to use your GPS position.</span><button className="awx-btn" type="button" onClick={onAllowLocation}>Allow</button></li>
         ) : null}
         {state.location === "blocked" ? (
-          <li><span>Location is off. Turn it on for this site in your browser settings.</span></li>
+          <li><span>Location is blocked. Turn it on in your browser&apos;s site settings.</span></li>
         ) : null}
         {state.install === "button" ? (
-          <li><span>Install AceWeather on your home screen.</span><button className="awx-btn" type="button" onClick={install}>Install</button></li>
+          <li><span>Add AceWeather to your home screen.</span><button className="awx-btn" type="button" onClick={install}>Install</button></li>
         ) : null}
         {state.install === "ios" ? (
           <li><span>Add to your home screen: tap Share, then Add to Home Screen.</span></li>

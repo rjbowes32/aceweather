@@ -13,7 +13,7 @@ import { NowExperience } from "./now-experience";
 import { OverviewExperience } from "./overview-experience";
 import { LocationPickerContent } from "./location-picker-content";
 import { FieldExperience } from "./field-experience";
-import { SetupHint } from "./setup-hint";
+import { SetupHint, showSetupHint } from "./setup-hint";
 
 const RADAR_LOAD_TIMEOUT_MS = 12_000;
 type RadarModule = typeof import("./radar-card");
@@ -660,6 +660,7 @@ export function AceWeatherApp() {
       <button type="button" className={"awx-btn awx-btn-ghost awx-bell" + (rainAlerts ? " is-on" : "")} onClick={toggleRainAlerts}>
         <BellIcon /><span>{rainAlerts ? "Rain alerts on" : "Rain alerts"}</span>
       </button>
+      <button type="button" className="awx-link-btn" onClick={() => { showSetupHint(); setSettingsOpen(false); setView("all"); }}>Show set-up tips</button>
     </>
   );
 
@@ -720,9 +721,9 @@ export function AceWeatherApp() {
             </button>
           </div>
         </div>
-        <SetupHint onAllowLocation={locateMe} geoFollow={geoFollow} />
         {model && view === "all" ? (
           <OverviewExperience
+            hint={<SetupHint onAllowLocation={locateMe} geoFollow={geoFollow} />}
             model={model}
             unit={unit}
             windUnit={windUnit}

@@ -1,14 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { buildModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { ConditionIcon, NavIcon, ShareIcon } from "./icons";
 
-type Props = { model: ReturnType<typeof buildModel>; unit: TemperatureUnit; windUnit: WindUnit; statusText: string; freshness: string; onShare: () => void; shareLabel: string; onSelectView: (view: string) => void };
+type Props = { model: ReturnType<typeof buildModel>; unit: TemperatureUnit; windUnit: WindUnit; statusText: string; freshness: string; onShare: () => void; shareLabel: string; onSelectView: (view: string) => void; hint?: ReactNode };
 function Meter({ value }: { value: number }) {
   return <div className="weather-meter" aria-hidden="true"><div><span>0%</span><span>50%</span><span>100%</span></div><div className="weather-track"><i style={{width: Math.max(0, Math.min(100, value)) + "%"}} /></div></div>;
 }
-export function OverviewExperience({model, unit, windUnit, statusText, freshness, onShare, shareLabel, onSelectView}: Props) {
+export function OverviewExperience({model, unit, windUnit, statusText, freshness, onShare, shareLabel, onSelectView, hint}: Props) {
   const [metric, setMetric] = useState("rain");
   const hours = model.todayHours.slice(0,8);
   const values = hours.map(h => metric === "rain" ? h.precip : Number(formatTemperature(h.temp,unit)));
@@ -26,6 +26,7 @@ export function OverviewExperience({model, unit, windUnit, statusText, freshness
     {name:"Rain tomorrow",value:model.rain.tomorrowChance == null ? "—" : Math.round(model.rain.tomorrowChance),unit:model.rain.tomorrowChance == null ? "" : "%",icon:"umbrella",note:model.rain.tomorrowRain == null ? "" : formatRain(model.rain.tomorrowRain) + " mm",meter:model.rain.tomorrowChance ?? 0},
   ];
   return <section className="weather-dashboard" aria-label="Weather overview">
+    {hint}
     <header className="weather-intro"><div className="weather-current"><ConditionIcon k={model.now.condition.key}/><strong>{formatTemperature(model.now.temp,unit)}°</strong><div><h2>{model.now.condition.label}</h2><span>{statusText} · {freshness}</span></div></div><button className="weather-share" onClick={onShare} aria-label={shareLabel}><ShareIcon/></button></header>
     <section className="weather-surface weather-hours" aria-labelledby="weather-hours-title">
       <header className="weather-section-head"><h2 id="weather-hours-title">Upcoming hours</h2><div><select aria-label="Hourly chart measurement" value={metric} onChange={e=>setMetric(e.target.value)}><option value="rain">Rainfall · mm</option><option value="temp">Temperature · °{unit.toUpperCase()}</option></select><button onClick={()=>onSelectView("outlook")}>Next days ›</button></div></header>
