@@ -112,3 +112,12 @@
   .awx .awx-now-hours { flex: 1 1 auto; grid-template-rows: repeat(2, minmax(0, 1fr)); align-content: stretch; }
   .awx .awx-now-hours > div { padding-inline: 2px; align-content: center; }
 }
+
+/* Setup hint: shares the one card style; text in full colour, no grey. */
+.awx .awx-setup-hint { border: var(--awx-card-border); border-radius: var(--awx-radius); box-shadow: var(--awx-card-shadow); background: var(--awx-surface); color: var(--awx-text); padding: var(--awx-space-md) var(--awx-card-padding); margin-bottom: var(--awx-card-gap); }
+.awx .awx-setup-hint-head { display: flex; align-items: center; justify-content: space-between; gap: var(--awx-space-sm); }
+.awx .awx-setup-hint-head strong { font-size: var(--awx-type-heading); }
+.awx .awx-setup-hint ul { list-style: none; margin: var(--awx-space-sm) 0 0; padding: 0; display: grid; gap: var(--awx-space-sm); }
+.awx .awx-setup-hint li { display: flex; align-items: center; justify-content: space-between; gap: var(--awx-space-md); font-size: 15px; color: var(--awx-text); }
+.awx .awx-setup-hint .awx-btn { min-height: var(--awx-control-height); min-width: 88px; border: 1px solid var(--awx-accent-line); border-radius: var(--awx-control-radius); background: var(--awx-accent-weak); color: var(--awx-text); flex: none; }
+@media (max-width: 899px) { .awx .awx-setup-hint { margin: var(--awx-space-sm) 16px var(--awx-space-md); padding: 12px 18px 16px; } }

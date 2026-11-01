@@ -13,6 +13,7 @@ import { NowExperience } from "./now-experience";
 import { OverviewExperience } from "./overview-experience";
 import { LocationPickerContent } from "./location-picker-content";
 import { FieldExperience } from "./field-experience";
+import { SetupHint } from "./setup-hint";
 
 const RADAR_LOAD_TIMEOUT_MS = 12_000;
 type RadarModule = typeof import("./radar-card");
@@ -719,6 +720,7 @@ export function AceWeatherApp() {
             </button>
           </div>
         </div>
+        <SetupHint onAllowLocation={locateMe} geoFollow={geoFollow} />
         {model && view === "all" ? (
           <OverviewExperience
             model={model}
