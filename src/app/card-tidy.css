@@ -81,9 +81,19 @@
 .awx .awx-cal-day.is-further .awx-date b,
 .awx .awx-cal-day.is-further .awx-cal-hi { color: var(--awx-text); }
 
-/* r3: rolling 14-day grid from today (7 x 2), each day a square tile in the standard card style. */
+/* r4: Outlook view gets the full main width; Location and Today panels sit below it. */
+@media (min-width: 901px) {
+  .awx:has(.awx-feed[data-view="outlook"]) { grid-template-columns: minmax(76px, 232px) minmax(0, 980px); }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side {
+    grid-column: 2; position: static; height: auto; overflow: visible; border-left: 0; padding: 0 24px 40px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start;
+  }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side > * { margin: 0; }
+}
+
+/* Rolling 14-day grid from today (7 x 2), each day a square tile in the standard card style. */
 .awx .awx-outlook-days { container-type: inline-size; }
-.awx .awx-cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 0; }
+.awx .awx-cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; padding: 0; }
 .awx .awx-cal-day,
 .awx .awx-cal-day:hover,
 .awx .awx-cal-day[aria-pressed="true"],
@@ -91,25 +101,19 @@
   --awx-cal-fill: var(--awx-surface); --awx-badge-ring: var(--awx-surface);
   background: var(--awx-surface); border: var(--awx-card-border); border-radius: 12px; box-shadow: var(--awx-card-shadow);
   aspect-ratio: 1 / 1; min-height: 0; height: auto; overflow: hidden;
-  display: grid; grid-template-rows: auto 1fr auto; gap: 2px; padding: 6px 7px;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 4px; padding: 10px;
 }
 .awx .awx-cal-day::before { display: none; }
 .awx .awx-cal-day.is-today { border-color: var(--awx-accent); }
 .awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 8%, var(--awx-surface)); }
-.awx .awx-cal-day .awx-date { flex-wrap: nowrap; white-space: nowrap; min-width: 0; font-size: 11px; }
-.awx .awx-cal-day .awx-date b { overflow: hidden; }
-.awx .awx-cal-day .awx-cal-icon.awx-wicon { width: 16px; height: 16px; --awx-badge: 10px; }
-.awx .awx-cal-temps { display: flex; align-items: baseline; gap: 4px; align-self: center; }
-.awx .awx-cal-hi { font-size: 17px; }
-.awx .awx-cal-temps .awx-lo { font-size: 12px; }
-.awx .awx-cal-rainrow { flex-wrap: nowrap; margin: 0; padding: 0; font-size: 10.5px; gap: 3px; justify-content: space-between; }
-/* Too narrow for 7 readable squares (phone, small laptops): one scrolling row of squares. */
-@container (max-width: 500px) {
+.awx .awx-cal-day .awx-date { flex-wrap: nowrap; white-space: nowrap; min-width: 0; gap: 4px; font-size: 12px; letter-spacing: 0; }
+.awx .awx-cal-day .awx-cal-icon.awx-wicon { width: 20px; height: 20px; --awx-badge: 12px; }
+.awx .awx-cal-temps { display: flex; align-items: baseline; gap: 5px; align-self: center; }
+.awx .awx-cal-hi { font-size: 18px; }
+.awx .awx-cal-temps .awx-lo { font-size: 13px; }
+.awx .awx-cal-rainrow { flex-wrap: nowrap; margin: 0; padding: 0; font-size: 12px; letter-spacing: 0; gap: 4px; justify-content: space-between; }
+/* Below 7 x 88px tiles: one scrolling row of squares (phone, narrow windows). */
+@container (max-width: 663px) {
   .awx .awx-cal { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 6px; }
-  .awx .awx-cal-day { flex: 0 0 96px; width: 96px; scroll-snap-align: start; }
+  .awx .awx-cal-day { flex: 0 0 100px; width: 100px; scroll-snap-align: start; }
 }
-@media (max-width: 700px) { .awx .awx-cal-day { flex: 0 0 96px; width: 96px; min-height: 0; } }
-.awx .awx-cal-day { padding: 6px; }
-.awx .awx-cal-day .awx-date { gap: 2px; letter-spacing: -0.01em; }
-.awx .awx-cal-rainrow { font-size: 10px; letter-spacing: -0.01em; }
-.awx .awx-cal-day .awx-date { font-size: 10.5px; }

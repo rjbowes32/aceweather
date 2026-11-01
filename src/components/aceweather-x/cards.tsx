@@ -117,7 +117,7 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
         {model.calendar.map((c, i) => {
           const label = `${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°` +
             (c.icon ? `, ${weatherIconText(c.icon).toLowerCase()}` : "") +
-            (c.further ? ", further ahead and less certain" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
+            (c.further ? ", further ahead and less certain" : "") + (c.chance == null && c.rain == null ? "" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
           return (
             <button key={c.dateKey} type="button"
               ref={sel === i ? selectedDayRef : null}
@@ -127,7 +127,7 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
               onClick={() => setSel(i)}>
               <div className="awx-date"><b>{c.weekday} {c.dayNum}</b>{c.icon ? <WeatherIcon className="awx-cal-icon" icon={c.icon} /> : <ConditionIcon className="awx-cal-icon" k={c.condition.key} />}</div>
               <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
-              {c.further ? null : (
+              {c.chance == null && c.rain == null ? null : (
                 <div className="awx-cal-rainrow awx-tnum">
                   {c.chance == null ? <span aria-hidden="true" /> : <b>{outlookChanceText(c.chance)}</b>}
                   <span className={formatRain(c.rain ?? 0) === "0" ? "is-dry" : ""}>{outlookRainText(c.rain)}</span>
