@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
-import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
+import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix, SprayHourStrip } from "./ui";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const tC = formatTemperature;
@@ -155,18 +155,29 @@ function Decision({ title, sub, score, tone, label }: { title: string; sub: stri
   );
 }
 
+type SprayingNow = AwModel["agronomy"]["spraying"];
+
+/** "Now until 11:00", "Tomorrow 05:00–11:00 · gusts up to 18 mph", or "None in 48 h". */
+function sprayWindowText(s: SprayingNow, windUnit: WindUnit) {
+  const w = s.nextWindow;
+  if (!w) return "None in 48 h";
+  const when = w.startsNow && s.verdictTone !== "risk" ? `Now until ${w.end}` : `${w.day ? w.day[0].toUpperCase() + w.day.slice(1) + " " : ""}${w.start}–${w.end}`;
+  return w.gusty && w.gustMax != null ? `${when} · gusts up to ${wSpd(w.gustMax, windUnit)} ${WU(windUnit)}` : when;
+}
+
 export function SprayCard({ model, windUnit }: { model: AwModel; windUnit: WindUnit }) {
   const s = model.agronomy.spraying;
   const dry = model.agronomy.drying;
   const invTone = s.inversion.risk === "Low" ? "go" : s.inversion.risk === "High" ? "risk" : "warn";
   return (
     <Card section="field" tick="go" kicker="Spraying"
-      detail="Delta-T is the wet-bulb depression (dry-bulb − wet-bulb). 2–8 °C is the ideal spraying band: below it drift rises and droplets dry slowly; above ~10 they evaporate before reaching target. Inversions (calm, clear nights) trap spray near the ground — avoid. Drying uses FAO ET₀. Heuristic guidance — always follow the product label.">
+      detail="Delta-T is the wet-bulb depression (dry-bulb − wet-bulb). 2–8 °C is ideal; 8–10 take care; above 10 droplets evaporate before reaching target, so hold. Low Delta-T (humid air) is fine in UK conditions. Hold for rain or a 35%+ chance of it, average wind under 3 or over 15 km/h, gusts from 40 km/h, or below 5 °C / above 28 °C; gusts from 29 km/h are a caution. Inversions (calm, clear nights) trap spray near the ground — avoid. Drying uses FAO ET₀. Heuristic guidance — always follow the product label.">
       <Verdict label={s.verdict} tone={s.verdictTone} reason={s.verdictReason} />
       <DeltaTBand value={s.deltaT} label={s.deltaTLabel} tone={s.deltaTTone} />
+      <SprayHourStrip hours={s.timeline} />
       <div className="awx-rows">
         <div className="awx-row-item"><span className="awx-k">Wind · gust</span><span className="awx-v awx-tnum">{wSpd(s.windNow, windUnit)} · {wSpd(s.gustNow, windUnit)} {WU(windUnit)}</span></div>
-        <div className="awx-row-item"><span className="awx-k">Next spray window</span><span className="awx-v">{s.nextWindow ? `${s.nextWindow.start}–${s.nextWindow.end} (${s.nextWindow.hours}h)` : "—"}</span></div>
+        <div className="awx-row-item"><span className="awx-k">Next spray window</span><span className="awx-v">{sprayWindowText(s, windUnit)}</span></div>
         <div className="awx-row-item"><span className="awx-k">Rain-fast</span><span className="awx-v">{s.rainFast == null ? "Dry 48h+" : s.rainFast === 0 ? "Raining now" : `${s.rainFast}h until rain`}</span></div>
         <div className="awx-row-item"><span className="awx-k">Inversion risk</span><span className={"awx-v awx-v-" + invTone}>{s.inversion.risk}{s.inversion.window ? ` · ${s.inversion.window}` : ""}</span></div>
         <div className="awx-row-item"><span className="awx-k">Drying today</span><span className={"awx-v awx-v-" + (dry.today ? dry.today.tone : "muted")}>{dry.today ? `${dry.today.label} · ${dry.today.et} mm ET₀` : "—"}</span></div>

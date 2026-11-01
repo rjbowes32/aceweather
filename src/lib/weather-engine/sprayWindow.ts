@@ -1,0 +1,222 @@
+// The spray window: one rule for each hour (go, caution or hold), the verdict
+// now, the next window and the inversion outlook.
+import type { WeatherRow } from "./weatherRows.ts";
+import { toNum, clamp, round, isoDay, dayAfter, hourOf, timeLabel, weekdayShort, longestTrueBlock, maxRows } from "./weatherRows.ts";
+
+function wetBulbC(temperature: unknown, humidity: unknown) {
+  const temp = toNum(temperature, null);
+  const rhValue = toNum(humidity, null);
+  if (temp === null || rhValue === null) return null;
+  const rh = clamp(rhValue, 1, 100);
+  return (
+    temp * Math.atan(0.151977 * Math.sqrt(rh + 8.313659))
+    + Math.atan(temp + rh)
+    - Math.atan(rh - 1.676331)
+    + 0.00391838 * (rh ** 1.5) * Math.atan(0.023101 * rh)
+    - 4.686035
+  );
+}
+
+function deltaT(row: WeatherRow) {
+  const wb = wetBulbC(row?.temperature, row?.humidity);
+  const temp = toNum(row?.temperature, null);
+  return temp === null || wb === null ? null : temp - wb;
+}
+
+// Night follows the sun (Rob, 29 Oct 2026): an hour is dark when its middle
+// falls before that day's sunrise or after its sunset, so winter evenings
+// from about 16:30 count and summer mornings from about 05:00 do not. A row
+// with no sun times for its day keeps the old fixed hours (before 08:00,
+// from 19:00).
+function isDark(row: WeatherRow) {
+  if (typeof row?.dark === "boolean") return row.dark;
+  const hour = hourOf(row?.time);
+  return hour < 8 || hour >= 19;
+}
+
+/** Each hour marked dark or not from its day's sunrise and sunset. */
+export function markDarkHours(rows: WeatherRow[], dailyRows: WeatherRow[]): WeatherRow[] {
+  const sun = new Map(dailyRows.map((day) => [isoDay(day?.time), { rise: String(day?.sunrise || ""), set: String(day?.sunset || "") }]));
+  return rows.map((row) => {
+    const times = sun.get(isoDay(row?.time));
+    if (!times?.rise.includes("T") || !times.set.includes("T")) return row;
+    const middle = `${String(row?.time || "").slice(0, 14)}30`;
+    return { ...row, dark: middle < times.rise || middle >= times.set };
+  });
+}
+
+function isNightInversionRow(row: WeatherRow) {
+  // Unknown wind is not calm: the spray check holds it as "Wind unknown".
+  const wind = toNum(row?.windSpeed, null);
+  const cloud = toNum(row?.cloudCover, 50);
+  return isDark(row) && wind !== null && wind < 6.5 && cloud < 40;
+}
+
+// Spray rules (Rob, 28 Oct 2026). Average wind decides, as UK guidance
+// does: the Code of Practice talks about wind at boom height (Force 2 ideal,
+// Force 3 with care). Forecast wind is at 10 m, roughly a third above boom
+// height, so 2–9 mph here is on the careful side. Gusts are a caution, not a
+// block, until they are strong enough to hold. Low Delta-T (humid air) does
+// not block: that rule is Australian. Speeds are km/h, as the forecast gives.
+const SPRAY = {
+  windMin: 3,
+  windMax: 15,
+  gustCaution: 29,
+  gustHold: 40,
+  deltaTCaution: 8,
+  deltaTMax: 10,
+  tempMin: 5,
+  tempMax: 28,
+  rainMax: 0.1,
+  rainChanceMax: 35,
+};
+
+type SprayCheck = { tone: "go" | "warn" | "risk"; reason: string; gusty: boolean };
+
+/** One hour judged against the spray rules: go, caution (warn) or hold (risk). */
+function sprayCheck(row: WeatherRow): SprayCheck {
+  const hold = (reason: string): SprayCheck => ({ tone: "risk", reason, gusty: false });
+  const temp = toNum(row?.temperature, null);
+  const wind = toNum(row?.windSpeed, null);
+  const gust = toNum(row?.windGusts, null);
+  const dt = deltaT(row);
+  if (toNum(row?.precipitation, 0) >= SPRAY.rainMax) return hold("Rain on the canopy");
+  if (toNum(row?.precipProbability, 0) >= SPRAY.rainChanceMax) return hold("Rain likely");
+  if (isNightInversionRow(row)) return hold("Temperature inversion risk");
+  if (wind === null) return hold("Wind unknown");
+  if (wind > SPRAY.windMax) return hold("Too windy for drift control");
+  if (wind < SPRAY.windMin) return hold("Too calm; drift and inversion risk");
+  if (gust !== null && gust >= SPRAY.gustHold) return hold("Gusts too strong");
+  if (temp === null) return hold("Temperature unknown");
+  if (temp < SPRAY.tempMin) return hold("Too cold");
+  if (temp > SPRAY.tempMax) return hold("Too hot");
+  if (dt === null) return hold("Humidity unknown");
+  if (dt > SPRAY.deltaTMax) return hold("Delta-T above 10; droplets dry too fast");
+  if (gust !== null && gust >= SPRAY.gustCaution) return { tone: "warn", reason: "Gusty", gusty: true };
+  if (dt > SPRAY.deltaTCaution) return { tone: "warn", reason: "Delta-T 8–10; droplets may dry quickly", gusty: false };
+  return { tone: "go", reason: "Conditions are in the spray band", gusty: false };
+}
+
+export function isSprayable(row: WeatherRow) {
+  return sprayCheck(row).tone !== "risk";
+}
+
+export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, nowRow: WeatherRow) {
+  const next48 = futureRows.slice(0, 48);
+  const sprayFlags = next48.map(isSprayable);
+  const openHoursNext24 = sprayFlags.slice(0, 24).filter(Boolean).length;
+  const longestBlockHours = longestTrueBlock(sprayFlags.slice(0, 24));
+
+  const firstWindowIndex = sprayFlags.findIndex(Boolean);
+  let nextWindow = null;
+  if (firstWindowIndex >= 0) {
+    let length = 0;
+    for (let i = firstWindowIndex; i < sprayFlags.length && sprayFlags[i]; i += 1) length += 1;
+    // The window ends when the first held hour starts, or an hour after the
+    // last hour forecast when it runs to the end.
+    const endIndex = firstWindowIndex + length;
+    const endLabel = endIndex < next48.length
+      ? timeLabel(next48[endIndex]?.time)
+      : `${String((hourOf(next48[endIndex - 1]?.time) + 1) % 24).padStart(2, "0")}:00`;
+    const windowRows = next48.slice(firstWindowIndex, firstWindowIndex + length);
+    const startDay = isoDay(next48[firstWindowIndex]?.time);
+    const nowDay = isoDay(nowRow?.time || current?.time);
+    nextWindow = {
+      // Strongest gust inside the window, for the "gusts up to" caution.
+      gustMax: maxRows(windowRows, (row) => row?.windGusts),
+      gusty: windowRows.some((row) => sprayCheck(row).gusty),
+      start: timeLabel(next48[firstWindowIndex]?.time),
+      end: endLabel,
+      hours: length,
+      startsNow: firstWindowIndex === 0,
+      today: startDay === nowDay,
+      // "", "tomorrow" or the weekday: "Next window tomorrow 05:00–11:00".
+      day: startDay === nowDay ? "" : startDay === dayAfter(nowDay) ? "tomorrow" : weekdayShort(next48[firstWindowIndex]?.time),
+    };
+  }
+
+  const windNow = toNum(current?.wind_speed_10m, toNum(nowRow?.windSpeed, null));
+  const gustNow = toNum(current?.wind_gusts_10m, toNum(nowRow?.windGusts, null));
+  const rainNow = toNum(current?.precipitation, toNum(nowRow?.precipitation, 0));
+  const nowDeltaT = deltaT({
+    temperature: current?.temperature_2m ?? nowRow?.temperature,
+    humidity: current?.relative_humidity_2m ?? nowRow?.humidity,
+  });
+  const dtRounded = round(nowDeltaT, 1);
+
+  // The verdict is the same rule as the hour bar, applied to conditions now.
+  const nowCheck = sprayCheck({
+    ...nowRow,
+    temperature: current?.temperature_2m ?? nowRow?.temperature,
+    humidity: current?.relative_humidity_2m ?? nowRow?.humidity,
+    windSpeed: windNow,
+    windGusts: gustNow,
+    precipitation: rainNow,
+  });
+  const verdict = nowCheck.tone === "go" ? "Go" : nowCheck.tone === "warn" ? "Caution" : "Hold";
+  const verdictTone = nowCheck.tone;
+  const verdictReason = nowCheck.reason;
+
+  let rainFast = null;
+  for (let i = 0; i < next48.length; i += 1) {
+    if (toNum(next48[i]?.precipitation, 0) > 0.2) {
+      rainFast = i;
+      break;
+    }
+  }
+
+  let inversionStart = -1;
+  for (let i = 0; i < Math.min(next48.length, 20); i += 1) {
+    if (isNightInversionRow(next48[i])) {
+      inversionStart = i;
+      break;
+    }
+  }
+  let inversionLength = 0;
+  if (inversionStart >= 0) {
+    for (let i = inversionStart; i < Math.min(next48.length, inversionStart + 26) && isNightInversionRow(next48[i]); i += 1) {
+      inversionLength += 1;
+    }
+  }
+  const inversion = inversionStart >= 0
+    ? {
+        risk: toNum(next48[inversionStart]?.windSpeed, 0) < 5 ? "High" : "Likely",
+        tone: toNum(next48[inversionStart]?.windSpeed, 0) < 5 ? "risk" : "warn",
+        window: `${timeLabel(next48[inversionStart]?.time)}-${timeLabel(next48[Math.min(next48.length - 1, inversionStart + inversionLength)]?.time)}`,
+      }
+    : { risk: "Low", tone: "go", window: null };
+
+  const deltaTLabel = dtRounded === null ? "Unknown" : dtRounded < 2 ? "Low" : dtRounded <= 8 ? "Ideal" : dtRounded <= 10 ? "Marginal" : "Too high";
+  const deltaTTone = dtRounded === null ? "muted" : dtRounded <= 8 ? "go" : dtRounded <= 10 ? "warn" : "risk";
+  const sprayScore = Math.round((openHoursNext24 / 24) * 100);
+  const sprayLabel = sprayScore >= 60 ? "Go" : sprayScore >= 35 ? "Watch" : "Limited";
+  const sprayTone = sprayScore >= 60 ? "go" : sprayScore >= 35 ? "warn" : "risk";
+
+  return {
+    spray: {
+      score: sprayScore,
+      open: openHoursNext24,
+      longest: longestBlockHours,
+      label: sprayLabel,
+      tone: sprayTone,
+      sub: longestBlockHours > 0 ? `${longestBlockHours}h block available` : "No clear block in the next 24h",
+    },
+    spraying: {
+      deltaT: dtRounded,
+      deltaTLabel,
+      deltaTTone,
+      verdict,
+      verdictTone,
+      verdictReason,
+      gusty: nowCheck.gusty,
+      windNow: round(windNow, 0),
+      gustNow: round(gustNow, 0),
+      nextWindow,
+      rainFast,
+      inversion,
+      openHoursNext24,
+      longestBlockHours,
+      timeline: next48.map((row) => ({ time: row?.time, label: timeLabel(row?.time), tone: sprayCheck(row).tone, gust: toNum(row?.windGusts, null) })),
+    },
+  };
+}

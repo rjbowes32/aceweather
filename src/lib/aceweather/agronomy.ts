@@ -1,30 +1,18 @@
 // @ts-nocheck
 /* Agronomy models computed from the Open-Meteo hourly forecast.
-   Spraying (Delta-T, inversion, rain-fast, drying) + disease (Hutton late blight,
+   Spraying comes from the shared weather engine; drying + disease (Hutton late blight,
    Septoria, leaf-wetness). All heuristic decision support, not validated advice. */
 
-import { weekdayShort, dayOfMonth } from "./format";
-
-/** Stull (2011) wet-bulb approximation from temperature (°C) and RH (%). */
-function wetBulb(T, RH) {
-  if (T == null || RH == null) return null;
-  const rh = Math.max(1, Math.min(100, RH));
-  return (
-    T * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) +
-    Math.atan(T + rh) - Math.atan(rh - 1.676331) +
-    0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035
-  );
-}
+import { weekdayShort, dayOfMonth } from "./format.ts";
+import { buildSpraying, isSprayable, openMeteoHourlyRows } from "../weather-engine/index.ts";
 
 const hourNum = (t) => Number(String(t).slice(11, 13));
-const isNightHour = (hr) => hr < 8 || hr >= 19;
 
 export function buildAgronomy(h, d, ni, di, cur) {
   const time = h.time || [];
   const N = time.length;
   const T = h.temperature_2m, RH = h.relative_humidity_2m, P = h.precipitation;
   const W = h.wind_speed_10m, G = h.wind_gusts_10m, CL = h.cloud_cover, ET = h.et0_fao_evapotranspiration || [];
-  const deltaTAt = (i) => { const wb = wetBulb(T[i], RH[i]); return wb == null ? null : T[i] - wb; };
   const todayKey = (time[ni] || "").slice(0, 10);
 
   // group hour indices by date
@@ -36,47 +24,11 @@ export function buildAgronomy(h, d, ni, di, cur) {
   const dates = [...byDate.keys()].sort();
 
   // ---------- SPRAYING ----------
-  const sprayOk = (i) => {
-    const dt = deltaTAt(i);
-    const inv = isNightHour(hourNum(time[i])) && W[i] < 6.5 && (CL[i] ?? 50) < 40;
-    return (P[i] || 0) < 0.1 && W[i] >= 3 && W[i] <= 15 && (G[i] ?? 0) < 20 && dt != null && dt >= 2 && dt <= 10 && !inv;
-  };
-  let ws = -1;
-  for (let i = ni; i < Math.min(N, ni + 48); i++) { if (sprayOk(i)) { ws = i; break; } }
-  let wlen = 0;
-  if (ws >= 0) { for (let i = ws; i < Math.min(N, ni + 48) && sprayOk(i); i++) wlen++; }
-  const nextWindow = ws >= 0
-    ? { start: time[ws].slice(11, 16), end: time[Math.min(N - 1, ws + wlen)].slice(11, 16), hours: wlen, today: time[ws].slice(0, 10) === todayKey }
-    : null;
-
-  const dtNow = deltaTAt(ni);
-  const wN = cur.wind_speed_10m ?? W[ni], gN = cur.wind_gusts_10m ?? G[ni], pN = cur.precipitation ?? P[ni];
-  const invNow = isNightHour(hourNum(time[ni])) && wN < 6.5 && (CL[ni] ?? 50) < 40;
-  let verdict = "Caution", vt = "warn", reason = "Borderline conditions";
-  if ((pN || 0) >= 0.1) { verdict = "Hold"; vt = "risk"; reason = "Rain on the canopy"; }
-  else if (invNow) { verdict = "Hold"; vt = "risk"; reason = "Temperature inversion risk"; }
-  else if (wN > 15 || gN >= 22) { verdict = "Hold"; vt = "risk"; reason = "Too windy / gusty for drift"; }
-  else if (dtNow != null && dtNow > 10) { verdict = "Caution"; vt = "warn"; reason = "High Delta-T — fast evaporation"; }
-  else if (wN < 3) { verdict = "Caution"; vt = "warn"; reason = "Too calm — drift / inversion prone"; }
-  else if (dtNow != null && dtNow >= 2 && dtNow <= 8 && wN >= 3 && wN <= 15 && gN < 20) { verdict = "Go"; vt = "go"; reason = "Conditions in the spray band"; }
-
-  let rainFast = null;
-  for (let i = ni; i < Math.min(N, ni + 48); i++) { if ((P[i] || 0) > 0.2) { rainFast = i - ni; break; } }
-
-  let invStart = -1;
-  for (let i = ni; i < Math.min(N, ni + 20); i++) {
-    if (isNightHour(hourNum(time[i])) && W[i] < 7 && (CL[i] ?? 50) < 50) { invStart = i; break; }
-  }
-  let invLen = 0;
-  if (invStart >= 0) { for (let i = invStart; i < Math.min(N, ni + 26) && isNightHour(hourNum(time[i])) && W[i] < 7 && (CL[i] ?? 50) < 50; i++) invLen++; }
-  const inversion = invStart >= 0
-    ? { risk: W[invStart] < 5 ? "High" : "Likely", window: time[invStart].slice(11, 16) + "–" + time[Math.min(N - 1, invStart + invLen)].slice(11, 16) }
-    : { risk: "Low", window: null };
-
-  const dt2 = dtNow == null ? null : Math.round(dtNow * 10) / 10;
-  const dtLabel = dt2 == null ? "—" : dt2 < 2 ? "Too low" : dt2 <= 8 ? "Ideal" : dt2 <= 10 ? "Marginal" : "Too high";
-  const dtTone = dt2 == null ? "muted" : dt2 < 2 ? "warn" : dt2 <= 8 ? "go" : dt2 <= 10 ? "warn" : "risk";
-  const spraying = { deltaT: dt2, deltaTLabel: dtLabel, deltaTTone: dtTone, verdict, verdictTone: vt, verdictReason: reason, windNow: Math.round(wN ?? 0), gustNow: Math.round(gN ?? 0), nextWindow, rainFast, inversion };
+  // One rule for the verdict and every hour, from the shared weather engine
+  // (src/lib/weather-engine, ported from AceAg). Night follows sunrise/sunset.
+  const rows = openMeteoHourlyRows(h, d);
+  const sprayOk = (i) => isSprayable(rows[i]);
+  const spraying = buildSpraying(rows.slice(ni), cur || {}, rows[ni] || {}).spraying;
 
   // ---------- DRYING ----------
   const dryDays = dates.filter((k) => k >= todayKey).slice(0, 6).map((k) => {

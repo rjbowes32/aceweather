@@ -185,6 +185,20 @@ export function RiskStrip({ days }: { days: RiskDay[] }) {
   );
 }
 
+type SprayHour = { label: string; tone: string };
+
+/** The next 48 hours as one bar: green go, amber caution, grey hold. */
+export function SprayHourStrip({ hours }: { hours: SprayHour[] }) {
+  if (!hours.length) return null;
+  return (
+    <div className="awx-sprayhours" role="img" aria-label="Spray conditions, next 48 hours">
+      {hours.map((h, i) => <i key={i} className={"awx-sh-" + h.tone} title={h.label} />)}
+      <span className="awx-sh-tick" style={{ left: "0%" }}>Now</span>
+      {hours.length > 24 && <span className="awx-sh-tick" style={{ left: `${(24 / hours.length) * 100}%` }}>+24 h</span>}
+    </div>
+  );
+}
+
 type OpsDay = { weekday: string };
 type OpsRow = { label: string; cells: string[] };
 

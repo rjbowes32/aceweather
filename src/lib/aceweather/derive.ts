@@ -8,6 +8,7 @@ import {
   weekdayIndexMonFirst, dayOfMonth, timeLabel,
 } from "./format";
 import { buildAgronomy } from "./agronomy";
+import { buildAccess, openMeteoDailyRows, openMeteoHourlyRows } from "../weather-engine/index.ts";
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 const sum = (xs) => xs.reduce((a, b) => a + (Number(b) || 0), 0);
@@ -159,14 +160,10 @@ export function buildModel(raw) {
 
   // ---------- AGRONOMY (heuristic) ----------
   const rhh = h.relative_humidity_2m, prc = h.precipitation;
-  const surfM = h.soil_moisture_0_to_1cm?.[ni] ?? 0.3;
-  const accessScore = Math.round(clamp(100 - ((surfM - 0.18) / (0.45 - 0.18)) * 80 - clamp(past7 * 1.5, 0, 20)));
-  const access = {
-    score: accessScore, moist: Math.round(surfM * 100),
-    label: accessScore >= 60 ? "Good" : accessScore >= 35 ? "Caution" : "Poor",
-    tone: accessScore >= 60 ? "go" : accessScore >= 35 ? "warn" : "risk",
-    sub: `Surface ${Math.round(surfM * 100)}% · 7-day rain ${past7.toFixed(1)} mm`,
-  };
+  // Field workability: the shared engine's score (surface moisture plus rain
+  // forecast for the next 24 h and 7 days), the same as AceAg.
+  const engineRows = openMeteoHourlyRows(h, d);
+  const access = buildAccess(engineRows.slice(ni), openMeteoDailyRows(d).slice(di), engineRows[ni] || {});
 
   let wetHours = 0;
   for (let i = ni; i < ni + 24 && i < h.time.length; i++) if ((rhh[i] || 0) >= 90 || (prc[i] || 0) > 0.1) wetHours++;
