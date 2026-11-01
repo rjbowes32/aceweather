@@ -54,3 +54,47 @@
 .awx .awx-refresh-btn { min-height: 44px; }
 .awx .awx-icon-btn { min-width: 44px; }
 .awx .awx-brand { min-height: 44px; }
+
+/* r2 (Dev UX review of d5da946) */
+/* Stat tiles: one left alignment, matched heights, note line always reserved. */
+.awx .weather-detail { min-height: 168px; }
+.awx .weather-detail > strong,
+.awx .weather-detail-note { text-align: left; }
+.awx .weather-detail-note { min-height: 1.4em; }
+.awx .weather-detail-grid { align-items: stretch; }
+.awx .weather-rain-link { margin-top: 0; }
+
+/* Rain tab: month-to-date uses the shared inset block, full width, no tint or shadow. */
+.awx .awx-rain-comparison { grid-template-columns: minmax(0, 1fr); }
+.awx .awx-rain-comparison-tile,
+.awx .awx-rain-comparison-tile.is-drier,
+.awx .awx-rain-comparison-tile.is-similar {
+  min-height: 0;
+  border: 1px solid var(--awx-line);
+  border-radius: var(--awx-radius-sm);
+  background: var(--awx-surface);
+  box-shadow: none;
+}
+
+/* Desktop side column: no clipping, top lines up with the feed cards. */
+.awx .awx-side { padding-top: 66px; min-width: 0; }
+.awx .awx-side-card { min-width: 0; }
+.awx .awx-side .awx-location-picker,
+.awx .awx-side .awx-location-form,
+.awx .awx-side .awx-search { min-width: 0; max-width: 100%; }
+.awx .awx-side .awx-search input { min-width: 0; flex: 1 1 auto; width: 100%; }
+.awx .awx-side .awx-go { flex: 0 0 auto; white-space: nowrap; }
+.awx .awx-side .awx-location-gps { white-space: normal; text-align: left; justify-content: flex-start; }
+.awx .awx-location-gps { justify-content: flex-start; }
+
+/* Radar error/offline state with a 44px Retry. */
+.awx .awx-radar-error {
+  display: grid; place-content: center; justify-items: center; gap: 12px;
+  padding: 16px; text-align: center; color: var(--awx-text);
+}
+.awx .awx-radar-stage .awx-radar-error { position: absolute; inset: 0; }
+.awx .awx-radar-stage { position: relative; }
+.awx .awx-radar-retry { min-height: 44px; min-width: 96px; border: 1px solid var(--awx-line-2); border-radius: var(--awx-control-radius); }
+.awx .awx-radar-card, .awx .awx-radar-fallback { padding-top: var(--awx-card-padding, 16px); }
+
+/* TODO (de-vibe step): fold ui-tidy.css into design-tokens.css / shared-surfaces.css so there is one source. */

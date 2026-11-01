@@ -16,7 +16,6 @@ import {
   type RadarIndex,
 } from "@/lib/aceweather/met-office-radar";
 import { nearestPaletteIndex, PALETTE, PALETTE_BANDS, radarPixel } from "@/lib/aceweather/radar-palette";
-import { Card } from "./ui";
 
 const OPEN_FREE_MAP = (theme: "dark" | "light") =>
   `https://tiles.openfreemap.org/styles/${theme === "light" ? "positron" : "dark"}`;
@@ -83,7 +82,9 @@ async function loadFrame(frame: MetOfficeRadarFrame, lat: number, lon: number): 
 
 type RadarMapProps = { lat: number; lon: number; theme: "dark" | "light"; active: boolean; tz?: string };
 
-export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
+const RADAR_DATA_TIMEOUT_MS = 15_000;
+
+export function RadarMap({ lat, lon, theme, active, tz, onRetry }: RadarMapProps & { onRetry?: () => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const indexRef = useRef<RadarIndex | null>(null);
@@ -307,6 +308,15 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   const hereBand = shownFrame ? bands[`${shownFrame.stamp}|${lat}|${lon}`] : undefined;
   const here = hereBand == null ? null : PALETTE_BANDS[hereBand];
   const loading = !error && (!mapReady || !index || (frames.length > 0 && !shownStamp));
+  // Weak signal or offline: stop spinning and offer Retry instead.
+  useEffect(() => {
+    if (!loading) return undefined;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) { setError("offline"); return undefined; }
+    const timer = window.setTimeout(() => setError("timeout"), RADAR_DATA_TIMEOUT_MS);
+    const offline = () => setError("offline");
+    window.addEventListener("offline", offline);
+    return () => { window.clearTimeout(timer); window.removeEventListener("offline", offline); };
+  }, [loading]);
   const stale = latest ? now - latest.time > 45 * 60_000 : false;
 
   return (
@@ -319,7 +329,12 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
         </div>
       </div>
 
-      {error ? <div className="awx-radar-status is-error">Radar unavailable.</div> : null}
+      {error ? (
+        <div className="awx-radar-error" role="alert">
+          <span>Radar couldn&apos;t load. Check your signal.</span>
+          {onRetry ? <button type="button" className="awx-btn awx-btn-ghost awx-radar-retry" onClick={onRetry}>Retry</button> : null}
+        </div>
+      ) : null}
       {!loading && !error && !frames.length ? <div className="awx-radar-status">No radar frames available.</div> : null}
 
       {!error && frames.length ? (
@@ -358,15 +373,10 @@ export function RadarMap({ lat, lon, theme, active, tz }: RadarMapProps) {
   );
 }
 
-export function RadarCard({ location, theme }: { location: AwLocation; theme: "dark" | "light" }) {
+export function RadarCard({ location, theme, onRetry }: { location: AwLocation; theme: "dark" | "light"; onRetry?: () => void }) {
   return (
-    <Card
-      section="radar"
-      tick="rain"
-      kicker="Rainfall radar"
-      detail="Observed UK radar from the Met Office (CC BY-SA 4.0), reprojected and recoloured by AceWeather. A new frame arrives every 15 minutes, usually 5 to 10 minutes after it was observed. Rings mark 25, 50, 100 and 200 km from your location. Rain rate bands: light under 1 mm/h, moderate 1 to 4, heavy 4 to 16, very heavy over 16."
-    >
-      <RadarMap lat={location.lat} lon={location.lon} theme={theme} active tz={location.tz} />
-    </Card>
+    <article className="awx-card awx-radar-card" data-section="radar">
+      <RadarMap lat={location.lat} lon={location.lon} theme={theme} active tz={location.tz} onRetry={onRetry} />
+    </article>
   );
 }

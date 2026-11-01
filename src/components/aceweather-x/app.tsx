@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import dynamic from "next/dynamic";
 
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
-import { NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
+import { CloseIcon, NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
 import { NowExperience } from "./now-experience";
@@ -15,30 +14,69 @@ import { OverviewExperience } from "./overview-experience";
 import { LocationPickerContent } from "./location-picker-content";
 import { FieldExperience } from "./field-experience";
 
-const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard), {
-  ssr: false,
-  loading: () => <RadarFallback />,
-});
+const RADAR_LOAD_TIMEOUT_MS = 12_000;
+type RadarModule = typeof import("./radar-card");
 
-function RadarFallback() {
+/** Same shape as the real radar card, so opening Radar never shows a blank screen. */
+function RadarShell({ failed, onRetry }: { failed?: boolean; onRetry?: () => void }) {
   return (
     <article className="awx-card awx-radar-fallback" data-section="radar">
-      <div className="awx-card-head"><div className="awx-title"><div className="awx-kicker">Rainfall radar</div></div><span className="awx-tick awx-tick-rain" /></div>
-      <div className="awx-radar is-loading">
+      <div className={"awx-radar" + (failed ? "" : " is-loading")}>
         <div className="awx-radar-stage">
           <div className="awx-radar-map" style={{ height: 300 }} />
-          <div className="awx-radar-loading" role="status" aria-live="polite"><span>Loading rainfall radar</span><i aria-hidden="true" /></div>
+          {failed ? (
+            <RadarErrorPanel onRetry={onRetry} />
+          ) : (
+            <div className="awx-radar-loading" role="status" aria-live="polite"><span>Loading rainfall radar</span><i aria-hidden="true" /></div>
+          )}
         </div>
       </div>
     </article>
   );
 }
 
+export function RadarErrorPanel({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="awx-radar-error" role="alert">
+      <span>Radar couldn&apos;t load. Check your signal.</span>
+      {onRetry ? <button type="button" className="awx-btn awx-btn-ghost awx-radar-retry" onClick={onRetry}>Retry</button> : null}
+    </div>
+  );
+}
+
 /** Warm the radar chunk (map library included) so opening Radar is instant. */
-let radarPrefetch: Promise<unknown> | null = null;
-function prefetchRadar() {
-  if (!radarPrefetch) radarPrefetch = import("./radar-card").catch(() => { radarPrefetch = null; });
+let radarPrefetch: Promise<RadarModule> | null = null;
+function prefetchRadar(): Promise<RadarModule> {
+  if (!radarPrefetch) {
+    radarPrefetch = import("./radar-card");
+    radarPrefetch.catch(() => { radarPrefetch = null; });
+  }
   return radarPrefetch;
+}
+
+/** Loads the radar code with a timeout, an error card and Retry (replaces next/dynamic, which spun for ever on weak signal). */
+function RadarSlot({ location, theme }: { location: AwLocation; theme: Theme }) {
+  const [mod, setMod] = useState<RadarModule | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let done = false;
+    setFailed(false);
+    const timer = window.setTimeout(() => { if (!done) { done = true; radarPrefetch = null; setFailed(true); } }, RADAR_LOAD_TIMEOUT_MS);
+    prefetchRadar().then((m) => { if (!done) { done = true; setMod(m); } }).catch(() => { if (!done) { done = true; setFailed(true); } });
+    return () => { done = true; window.clearTimeout(timer); };
+  }, [attempt]);
+  const retry = () => { setMod(null); setAttempt((n) => n + 1); };
+  if (mod) return <mod.RadarCard key={attempt} location={location} theme={theme} onRetry={retry} />;
+  return <RadarShell failed={failed} onRetry={retry} />;
+}
+
+/** Short zone name for now, e.g. GMT or BST, from the browser's own time-zone data. */
+function zoneLabel(tz?: string): string {
+  if (!tz) return "";
+  try {
+    return new Intl.DateTimeFormat("en-GB", { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date()).find((p) => p.type === "timeZoneName")?.value ?? "";
+  } catch { return ""; }
 }
 
 type View = "all" | "now" | "rain" | "radar" | "field" | "outlook" | "seasonal" | "about";
@@ -377,7 +415,7 @@ export function AceWeatherApp() {
 
   const learned = useMemo(() => (raw ? applyLearned(raw, learnedOverlay) : null), [raw, learnedOverlay]);
   const model = useMemo(() => (learned ? buildModel(learned.forecast) : null), [learned]);
-  const freshness = model ? `${model.now.obsTime} ${location.tz?.includes("London") ? "BST" : ""}`.trim() : "—";
+  const freshness = model ? `${model.now.obsTime} ${zoneLabel(location.tz)}`.trim() : "—";
 
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
   useEffect(() => {
@@ -552,7 +590,8 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked" : "Use my location";
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
+  const placeSubtitle = geoFollow ? (location.region || "GPS location") : [location.region, "Chosen place · GPS off"].filter(Boolean).join(" · ");
 
   const settingsControls = (
     <>
@@ -611,7 +650,7 @@ export function AceWeatherApp() {
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
             <strong>{location.name}</strong>
-            <small>{location.region || (geoFollow ? "GPS active" : "Change location")}</small>
+            <small>{geoFollow ? (location.region || "GPS active") : "Chosen place · GPS off"}</small>
           </button>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
@@ -622,7 +661,7 @@ export function AceWeatherApp() {
         <div className="awx-feed-head">
           <div>
             <h1>{location.name}</h1>
-            <span className="awx-sub">{location.region}</span>
+            <span className="awx-sub">{placeSubtitle}</span>
           </div>
           <div className="awx-head-actions">
             <span className={"awx-status" + statusCls}>{statusText}</span>
@@ -653,7 +692,7 @@ export function AceWeatherApp() {
               {view === "rain" ? (
                 <RainExperience model={model} seasonal={seasonal} onSelectView={selectViewAndReset} />
               ) : null}
-              {view === "radar" ? <RadarCard location={location} theme={theme} /> : null}
+              {view === "radar" ? <RadarSlot location={location} theme={theme} /> : null}
               {view === "outlook" ? <CalendarCard model={model} unit={unit} windUnit={windUnit} /> : null}
               {view === "field" ? <FieldExperience model={model} windUnit={windUnit} /> : null}
               {view === "seasonal" ? <SeasonalCard seasonal={seasonal} /> : null}
@@ -727,7 +766,7 @@ export function AceWeatherApp() {
           <div className="awx-sheet awx-location-sheet" role="dialog" aria-modal="true" aria-label="Change location" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>Location</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close">x</button>
+              <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
               <LocationPickerContent
@@ -753,7 +792,7 @@ export function AceWeatherApp() {
           <div className="awx-sheet" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>Settings</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close">x</button>
+              <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
               {settingsControls}
@@ -771,7 +810,7 @@ export function AceWeatherApp() {
           <div className="awx-sheet awx-more-sheet" role="dialog" aria-modal="true" aria-label="More" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>More</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setMoreOpen(false)} aria-label="Close">x</button>
+              <button className="awx-icon-btn" type="button" onClick={() => setMoreOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
               <div className="awx-more-grid" role="group" aria-label="More sections">

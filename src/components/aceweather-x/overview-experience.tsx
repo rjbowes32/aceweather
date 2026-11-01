@@ -38,9 +38,9 @@ export function OverviewExperience({model, unit, windUnit, statusText, freshness
         </div>
       </div>
     </section>
-    <div className="weather-detail-grid">{cards.map(card=><article className="weather-surface weather-detail" key={card.name}><header><h3>{card.name}</h3></header><strong>{card.value}<small> {card.unit}</small></strong>{card.note ? <span className="weather-detail-note">{card.note}</span> : null}{card.meter!==undefined?<Meter value={card.meter}/>:null}</article>)}</div>
+    <div className="weather-detail-grid">{cards.map(card=><article className="weather-surface weather-detail" key={card.name}><header><h3>{card.name}</h3></header><strong>{card.value}<small> {card.unit}</small></strong><span className="weather-detail-note">{card.note || "\u00a0"}</span>{card.meter!==undefined?<Meter value={card.meter}/>:null}</article>)}</div>
     <section className="weather-surface weather-daylight" aria-label="Daylight"><div><span>Sunrise</span><strong>{model.sun.sunrise}</strong></div><div><span>{model.sun.daylightLeft==="Night"?"Night-time":model.sun.daylightLeft+" daylight left"}</span></div><div><span>Sunset</span><strong>{model.sun.sunset}</strong></div></section>
-    <button className="weather-surface weather-next-rain" onClick={()=>onSelectView("rain")}><NavIcon name="rain"/><span><strong>{rain.headline}</strong><small>{rain.detail}</small></span><span aria-hidden="true">›</span></button>
+    {model.nextRain ? <button className="weather-surface weather-next-rain" onClick={()=>onSelectView("rain")}><NavIcon name="rain"/><span><strong>{rain.headline}</strong><small>{rain.detail}</small></span><span aria-hidden="true">›</span></button> : <button className="weather-field-link weather-rain-link" onClick={()=>onSelectView("rain")}>Rain <span>none due 24h</span><span aria-hidden="true">›</span></button>}
     <button className="weather-field-link" onClick={()=>onSelectView("field")}>Field conditions <span>Spraying · {model.agronomy.spraying.verdict}</span><span aria-hidden="true">›</span></button>
   </section>;
 }
