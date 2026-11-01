@@ -20,9 +20,9 @@ export function OverviewExperience({model, unit, windUnit, statusText, freshness
   const cards = [
     {name:"Feels like",value:formatTemperature(model.now.feels,unit)+"°",unit:"",icon:"thermometer",note:"High "+formatTemperature(model.now.hi,unit)+"° · Low "+formatTemperature(model.now.lo,unit)+"°"},
     {name:"Wind",value:formatWind(model.now.wind,windUnit),unit:windUnitLabel(windUnit),icon:"wind",note:model.now.compass+" · Gusts "+formatWind(model.now.gust,windUnit)+" "+windUnitLabel(windUnit)},
-    {name:"Rainfall",value:model.rain.sum24,unit:"mm",icon:"rain",note:"Next 24 hours"},
+    {name:"Rainfall",value:model.rain.sum24,unit:"mm",icon:"rain",note:""},
     {name:"UV index",value:Math.round(uv),unit:uv>=11?"Extreme":uv>=8?"Very high":uv>=6?"High":uv>=3?"Moderate":"Low",icon:"now",note:"Peak today "+Math.round(model.sun.uvMax ?? uv)},
-    {name:"Humidity", value: Math.round(model.now.rh), unit:"%", icon:"humidity", note:"Relative humidity", meter:model.now.rh},
+    {name:"Humidity", value: Math.round(model.now.rh), unit:"%", icon:"humidity", note:"", meter:model.now.rh},
     {name:"Rain tomorrow",value:model.rain.tomorrowChance == null ? "—" : Math.round(model.rain.tomorrowChance),unit:model.rain.tomorrowChance == null ? "" : "%",icon:"umbrella",note:model.rain.tomorrowRain == null ? "" : formatRain(model.rain.tomorrowRain) + " mm",meter:model.rain.tomorrowChance ?? 0},
   ];
   return <section className="weather-dashboard" aria-label="Weather overview">
@@ -38,9 +38,8 @@ export function OverviewExperience({model, unit, windUnit, statusText, freshness
         </div>
       </div>
     </section>
-    <h2 className="weather-details-title">Today’s weather</h2>
-    <div className="weather-detail-grid">{cards.map(card=><article className="weather-surface weather-detail" key={card.name}><header><h3>{card.name}</h3><span className="weather-icon"><NavIcon name={card.icon}/></span></header><strong>{card.value}<small> {card.unit}</small></strong><span className="weather-detail-note">{card.note}</span>{card.meter!==undefined?<Meter value={card.meter}/>:null}</article>)}</div>
-    <section className="weather-surface weather-daylight" aria-label="Daylight"><div><span>Sunrise</span><strong>{model.sun.sunrise}</strong></div><div><NavIcon name="now"/><span>{model.sun.daylightLeft==="Night"?"Night-time":model.sun.daylightLeft+" daylight left"}</span></div><div><span>Sunset</span><strong>{model.sun.sunset}</strong></div></section>
+    <div className="weather-detail-grid">{cards.map(card=><article className="weather-surface weather-detail" key={card.name}><header><h3>{card.name}</h3></header><strong>{card.value}<small> {card.unit}</small></strong>{card.note ? <span className="weather-detail-note">{card.note}</span> : null}{card.meter!==undefined?<Meter value={card.meter}/>:null}</article>)}</div>
+    <section className="weather-surface weather-daylight" aria-label="Daylight"><div><span>Sunrise</span><strong>{model.sun.sunrise}</strong></div><div><span>{model.sun.daylightLeft==="Night"?"Night-time":model.sun.daylightLeft+" daylight left"}</span></div><div><span>Sunset</span><strong>{model.sun.sunset}</strong></div></section>
     <button className="weather-surface weather-next-rain" onClick={()=>onSelectView("rain")}><NavIcon name="rain"/><span><strong>{rain.headline}</strong><small>{rain.detail}</small></span><span aria-hidden="true">›</span></button>
     <button className="weather-field-link" onClick={()=>onSelectView("field")}>Field conditions <span>Spraying · {model.agronomy.spraying.verdict}</span><span aria-hidden="true">›</span></button>
   </section>;

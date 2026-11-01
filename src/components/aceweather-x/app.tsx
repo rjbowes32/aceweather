@@ -17,8 +17,29 @@ import { FieldExperience } from "./field-experience";
 
 const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard), {
   ssr: false,
-  loading: () => <article className="awx-card"><div className="awx-radar-status">Loading radar…</div></article>,
+  loading: () => <RadarFallback />,
 });
+
+function RadarFallback() {
+  return (
+    <article className="awx-card awx-radar-fallback" data-section="radar">
+      <div className="awx-card-head"><div className="awx-title"><div className="awx-kicker">Rainfall radar</div></div><span className="awx-tick awx-tick-rain" /></div>
+      <div className="awx-radar is-loading">
+        <div className="awx-radar-stage">
+          <div className="awx-radar-map" style={{ height: 300 }} />
+          <div className="awx-radar-loading" role="status" aria-live="polite"><span>Loading rainfall radar</span><i aria-hidden="true" /></div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/** Warm the radar chunk (map library included) so opening Radar is instant. */
+let radarPrefetch: Promise<unknown> | null = null;
+function prefetchRadar() {
+  if (!radarPrefetch) radarPrefetch = import("./radar-card").catch(() => { radarPrefetch = null; });
+  return radarPrefetch;
+}
 
 type View = "all" | "now" | "rain" | "radar" | "field" | "outlook" | "seasonal" | "about";
 type MobileNavKey = View | "more";
@@ -244,6 +265,8 @@ export function AceWeatherApp() {
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
   const gpsLastLoadedRef = useRef<LatLon | null>(null);
+  // Set when the user picks a place by hand; any GPS reading still in flight is ignored.
+  const manualPickRef = useRef(false);
   const lastSheetFocusRef = useRef<HTMLElement | null>(null);
 
   // prefs on mount
@@ -423,7 +446,9 @@ export function AceWeatherApp() {
       return undefined;
     }
     setGeoStatus("locating");
+    manualPickRef.current = false;
     const applyGpsPosition = (pos: GeolocationPosition) => {
+      if (manualPickRef.current) return;
       const next = gpsLocationFromPosition(pos);
       if (distanceKm(gpsLastLoadedRef.current, next) < GPS_UPDATE_MIN_KM) {
         setGeoStatus("following");
@@ -452,6 +477,8 @@ export function AceWeatherApp() {
 
   function loadLocation(loc: AwLocation, opts: LoadLocationOptions = {}) {
     if (!opts.keepGeoFollow) {
+      manualPickRef.current = true;
+      try { localStorage.setItem(GPS_FOLLOW_KEY, "0"); } catch { /* */ }
       gpsLastLoadedRef.current = null;
       setGeoFollow(false);
       setGeoStatus("idle");
@@ -489,7 +516,9 @@ export function AceWeatherApp() {
       return;
     }
     setGeoStatus("locating");
+    manualPickRef.current = false;
     navigator.geolocation.getCurrentPosition((pos) => {
+      if (manualPickRef.current) return;
       const next = gpsLocationFromPosition(pos);
       gpsLastLoadedRef.current = { lat: next.lat, lon: next.lon };
       loadLocation(next, { keepGeoFollow: true, save: false });
@@ -593,7 +622,7 @@ export function AceWeatherApp() {
         <div className="awx-feed-head">
           <div>
             <h1>{location.name}</h1>
-            <span className="awx-sub">{[location.region, model ? `updated ${freshness}` : "loading"].filter(Boolean).join(" · ")}</span>
+            <span className="awx-sub">{location.region}</span>
           </div>
           <div className="awx-head-actions">
             <span className={"awx-status" + statusCls}>{statusText}</span>
@@ -679,6 +708,7 @@ export function AceWeatherApp() {
             aria-pressed={k === "more" ? moreOpen || MORE_VIEWS.has(view) : view === k}
             onClick={() => {
               if (k === "more") {
+                void prefetchRadar();
                 setMoreOpen(true);
                 setSettingsOpen(false);
                 setLocationOpen(false);

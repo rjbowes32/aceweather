@@ -1,0 +1,56 @@
+/* UI tidy (2026-11-01): one card style, calm states, 44px touch targets.
+   Loaded last so it wins over older per-screen card rules. */
+.awx {
+  --awx-card-border: 1px solid var(--awx-line-2);
+  --awx-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .awx { --awx-card-shadow: 0 1px 3px rgba(12, 16, 22, 0.05); }
+
+/* One card style everywhere: thin light border, one faint shadow, same radius. */
+.awx .awx-card,
+.awx .awx-side-card,
+.awx .weather-surface,
+.awx .awx-rain-summary,
+.awx .awx-rain-chart,
+.awx .awx-rain-radar-link,
+.awx .awx-field-switcher,
+.awx .awx-now-detail {
+  border: var(--awx-card-border);
+  border-radius: var(--awx-radius);
+  box-shadow: var(--awx-card-shadow);
+}
+.awx .weather-dashboard { gap: 16px; }
+.awx .weather-detail-grid { gap: 16px; }
+
+/* Bug 1: saved place rows keep white text in every state; tick on the active row. */
+.awx .awx-place,
+.awx .awx-place:hover,
+.awx .awx-place:active,
+.awx .awx-place:focus,
+.awx .awx-place:focus-visible,
+.awx .awx-place[aria-pressed="true"] {
+  color: var(--awx-text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.awx .awx-place .awx-p-name { color: var(--awx-text); }
+.awx .awx-place:focus:not(:focus-visible) { outline: none; }
+.awx .awx-sheet .awx-place { min-height: 56px; }
+.awx .awx-place .awx-p-temp { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--awx-text); }
+.awx .awx-p-tick { color: var(--awx-accent); font-weight: 700; font-size: 16px; }
+
+/* Bug 3: the stand-in card matches the real radar card. */
+.awx .awx-radar-fallback .awx-radar-map { background: var(--awx-surface-2); border-radius: var(--awx-radius-sm); }
+
+/* 44px touch targets. */
+.awx .awx-icon-btn,
+.awx .awx-segmented button,
+.awx .awx-btn,
+.awx .awx-nav button,
+.awx .awx-disclosure,
+.awx .awx-more-grid button,
+.awx .awx-refresh-btn { min-height: 44px; }
+.awx .awx-icon-btn { min-width: 44px; }
+.awx .awx-brand { min-height: 44px; }

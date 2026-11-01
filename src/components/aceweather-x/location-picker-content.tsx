@@ -73,8 +73,8 @@ export function LocationPickerContent({
             const active = location.name === activeLocationName;
             return (
               <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" aria-pressed={active} onClick={() => onSelectLocation(location)}>
-                <span><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{location.region || location.country || "Saved location"}</span></span>
-                <span className="awx-p-temp">{active ? currentTemperature || "Current" : "›"}</span>
+                <span><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{location.region || location.country || ""}</span></span>
+                <span className="awx-p-temp">{active ? <><span className="awx-p-tick" aria-hidden="true">✓</span>{currentTemperature ? <span>{currentTemperature}</span> : null}</> : null}</span>
               </button>
             );
           })}
