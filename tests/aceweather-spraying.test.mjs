@@ -91,9 +91,9 @@ test("spray window reads in UK time with day words and no zone label", () => {
   assert.equal(ENGINE_TIME_ZONE, "Europe/London");
   const now = Date.UTC(2026, 10, 2, 10, 0);
   assert.equal(rangeText(Date.UTC(2026, 10, 2, 17), Date.UTC(2026, 10, 3, 3), now), "today 17:00 – tomorrow 03:00");
-  assert.equal(rangeText(Date.UTC(2026, 10, 2, 11), Date.UTC(2026, 10, 2, 14), now), "today 11:00 – 14:00");
+  assert.equal(rangeText(Date.UTC(2026, 10, 2, 11), Date.UTC(2026, 10, 2, 14), now), "today 11:00–14:00");
   // Summer: 09:00 UTC is 10:00 in London.
-  assert.equal(rangeText(Date.UTC(2026, 6, 1, 9), Date.UTC(2026, 6, 1, 12), Date.UTC(2026, 6, 1, 8)), "today 10:00 – 13:00");
+  assert.equal(rangeText(Date.UTC(2026, 6, 1, 9), Date.UTC(2026, 6, 1, 12), Date.UTC(2026, 6, 1, 8)), "today 10:00–13:00");
 });
 
 test("hours with the place's UTC offset carry their real instant", () => {
@@ -118,4 +118,24 @@ test("UKMO overlay only takes finite numbers", () => {
   const merged = overlayUkmoPayload(base, ukmo);
   assert.deepEqual(merged.hourly.wind_speed_10m, [5, 6]);
   assert.equal(merged.current.wind_speed_10m, 5);
+});
+
+test("one source for the current hour: Hold now means the bar's first hour is Hold and the window starts later", () => {
+  const [h, d, ni, di, cur] = scenario(11, {}); // forecast hours are fine to spray
+  cur.wind_speed_10m = 22; // but conditions now are too windy
+  const s = buildAgronomy(h, d, ni, di, cur, 0).spraying;
+  assert.equal(s.verdict, "Hold");
+  assert.equal(s.timeline[0].tone, "risk");
+  assert.equal(s.timeline[0].reason, s.verdictReason);
+  assert.equal(s.timeline[0].wind, 22);
+  assert.equal(s.nextWindow.startsNow, false);
+  assert.equal(s.nextWindow.start, "12:00");
+  assert.equal(sprayRuns(s.timeline)[0].tone, "risk");
+});
+
+test("range day rules: same day without spaces, cross-day with both days, 00:00 ends its start day", () => {
+  const now = Date.UTC(2026, 10, 2, 10, 0);
+  assert.equal(rangeText(Date.UTC(2026, 10, 2, 15), Date.UTC(2026, 10, 3, 3), now), "today 15:00 – tomorrow 03:00");
+  assert.equal(rangeText(Date.UTC(2026, 10, 2, 21), Date.UTC(2026, 10, 3, 0), now), "today 21:00–00:00");
+  assert.equal(rangeText(Date.UTC(2026, 10, 3, 5), Date.UTC(2026, 10, 3, 9), now, false), "05:00–09:00");
 });

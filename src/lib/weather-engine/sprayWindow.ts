@@ -136,7 +136,29 @@ export function isSprayable(row: WeatherRow) {
 
 export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, nowRow: WeatherRow) {
   const next48 = futureRows.slice(0, 48);
-  const sprayFlags = next48.map(isSprayable);
+  const windNow = toNum(current?.wind_speed_10m, toNum(nowRow?.windSpeed, null));
+  const gustNow = toNum(current?.wind_gusts_10m, toNum(nowRow?.windGusts, null));
+  const rainNow = toNum(current?.precipitation, toNum(nowRow?.precipitation, 0));
+  const nowDeltaT = deltaT({
+    temperature: current?.temperature_2m ?? nowRow?.temperature,
+    humidity: current?.relative_humidity_2m ?? nowRow?.humidity,
+  });
+  const dtRounded = round(nowDeltaT, 1);
+
+  // The verdict is the same rule as the hour bar, applied to conditions now.
+  const nowCheck = sprayCheck({
+    ...nowRow,
+    temperature: current?.temperature_2m ?? nowRow?.temperature,
+    humidity: current?.relative_humidity_2m ?? nowRow?.humidity,
+    windSpeed: windNow,
+    windGusts: gustNow,
+    precipitation: rainNow,
+  });
+  // One source for the current hour: the verdict (conditions now) also sets
+  // the first hour of the bar and of the window, so "Hold" now never sits
+  // next to a window that starts now.
+  const checkAt = (index: number) => (index === 0 ? nowCheck : sprayCheck(next48[index]));
+  const sprayFlags = next48.map((_, index) => checkAt(index).tone !== "risk");
   const openHoursNext24 = sprayFlags.slice(0, 24).filter(Boolean).length;
   const longestBlockHours = longestTrueBlock(sprayFlags.slice(0, 24));
 
@@ -157,7 +179,7 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
     nextWindow = {
       // Strongest gust inside the window, for the "gusts up to" caution.
       gustMax: maxRows(windowRows, (row) => row?.windGusts),
-      gusty: windowRows.some((row) => sprayCheck(row).gusty),
+      gusty: windowRows.some((_, offset) => checkAt(firstWindowIndex + offset).gusty),
       startEpoch: rowEpoch(next48[firstWindowIndex]),
       endEpoch: endIndex < next48.length ? rowEpoch(next48[endIndex]) : addHour(rowEpoch(next48[endIndex - 1])),
       start: timeLabel(next48[firstWindowIndex]?.time),
@@ -170,24 +192,6 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
     };
   }
 
-  const windNow = toNum(current?.wind_speed_10m, toNum(nowRow?.windSpeed, null));
-  const gustNow = toNum(current?.wind_gusts_10m, toNum(nowRow?.windGusts, null));
-  const rainNow = toNum(current?.precipitation, toNum(nowRow?.precipitation, 0));
-  const nowDeltaT = deltaT({
-    temperature: current?.temperature_2m ?? nowRow?.temperature,
-    humidity: current?.relative_humidity_2m ?? nowRow?.humidity,
-  });
-  const dtRounded = round(nowDeltaT, 1);
-
-  // The verdict is the same rule as the hour bar, applied to conditions now.
-  const nowCheck = sprayCheck({
-    ...nowRow,
-    temperature: current?.temperature_2m ?? nowRow?.temperature,
-    humidity: current?.relative_humidity_2m ?? nowRow?.humidity,
-    windSpeed: windNow,
-    windGusts: gustNow,
-    precipitation: rainNow,
-  });
   const verdict = nowCheck.tone === "go" ? "Go" : nowCheck.tone === "warn" ? "Caution" : "Hold";
   const verdictTone = nowCheck.tone;
   const verdictReason = nowCheck.reason;
@@ -256,11 +260,11 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
       inversion,
       openHoursNext24,
       longestBlockHours,
-      timeline: next48.map((row) => {
-        const check = sprayCheck(row);
+      timeline: next48.map((row, index) => {
+        const check = checkAt(index);
         return {
           time: row?.time, epoch: rowEpoch(row), label: timeLabel(row?.time), tone: check.tone, reason: check.reason,
-          gust: toNum(row?.windGusts, null), wind: toNum(row?.windSpeed, null), rainChance: toNum(row?.precipProbability, null),
+          gust: index === 0 ? gustNow : toNum(row?.windGusts, null), wind: index === 0 ? windNow : toNum(row?.windSpeed, null), rainChance: toNum(row?.precipProbability, null),
           rain: toNum(row?.precipitation, null), temperature: toNum(row?.temperature, null),
         };
       }),

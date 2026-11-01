@@ -1,6 +1,7 @@
 "use client";
 
-import { clockTime, dayWord, sprayRuns, type SprayHourSummary, type SprayRun } from "@/lib/weather-engine/index.ts";
+import { useState } from "react";
+import { dayWord, endDayWord, rangeText, sprayRuns, type SprayHourSummary, type SprayRun } from "@/lib/weather-engine/index.ts";
 import { windUnitLabel as WU, formatWind as wSpd, type WindUnit } from "@/lib/aceweather/format";
 
 // A choppy forecast can have many runs; the bar's label lists them all.
@@ -33,27 +34,26 @@ export function runReason(run: SprayRun, windUnit: WindUnit) {
   }
 }
 
-function runTime(run: SprayRun, nowEpoch: number, prevDay: string | null) {
-  const day = dayWord(run.startEpoch, nowEpoch);
-  return { day, text: `${day === prevDay ? "" : `${day} `}${clockTime(run.startEpoch)}–${clockTime(run.endEpoch)}` };
-}
-
+/** Legend lines: the start day on the first run of each new day, the end
+ * day only when it differs (rangeText rules). */
 export function runLines(runs: SprayRun[], nowEpoch: number, windUnit: WindUnit) {
-  let prev: string | null = null;
+  let prevDay: string | null = null;
   return runs.map((run) => {
-    const t = runTime(run, nowEpoch, prev);
-    prev = t.day;
+    const startDay = dayWord(run.startEpoch, nowEpoch);
+    const range = rangeText(run.startEpoch, run.endEpoch, nowEpoch, startDay !== prevDay);
+    prevDay = endDayWord(run.endEpoch, nowEpoch);
     const why = run.tone === "go" ? null : runReason(run, windUnit);
-    return { tone: run.tone, text: `${TONE_WORD[run.tone] || run.tone} ${t.text}${why ? ` (${why})` : ""}` };
+    return { tone: run.tone, text: `${TONE_WORD[run.tone] || run.tone} ${range}${why ? ` (${why})` : ""}` };
   });
 }
 
 /** The next 48 h as one bar (go solid, caution hatched, hold solid grey with
  * dots), the same runs written out underneath, and a label built from them. */
 export function SprayHourStrip({ hours, nowEpoch, windUnit }: { hours: SprayHourSummary[]; nowEpoch: number; windUnit: WindUnit }) {
+  const [showAll, setShowAll] = useState(false);
   if (!hours.length) return null;
   const lines = runLines(sprayRuns(hours), nowEpoch, windUnit);
-  const endEpoch = (hours[hours.length - 1].epoch ?? nowEpoch) + 3_600_000;
+  const shown = showAll ? lines : lines.slice(0, LEGEND_MAX);
   return (
     <div className="awx-spray-strip">
       <div className="awx-sprayhours" role="img" aria-label={`Spray conditions, next 48 hours: ${lines.map((l) => l.text).join("; ")}`}>
@@ -64,10 +64,14 @@ export function SprayHourStrip({ hours, nowEpoch, windUnit }: { hours: SprayHour
         <span style={{ left: `${(24 / hours.length) * 100}%` }}>+24 h</span>
         <span className="is-end">+48 h</span>
       </div>
-      <ul className="awx-sh-legend" aria-hidden="true">
-        {lines.slice(0, LEGEND_MAX).map((l, i) => <li key={i} className={"awx-shl-" + l.tone}><i aria-hidden="true" />{l.text}</li>)}
-        {lines.length > LEGEND_MAX ? <li className="awx-shl-more">{`+${lines.length - LEGEND_MAX} more changes to ${clockTime(endEpoch)} ${dayWord(endEpoch - 1, nowEpoch)}`}</li> : null}
+      <ul className="awx-sh-legend" id="awx-sh-legend" aria-hidden="true">
+        {shown.map((l, i) => <li key={i} className={"awx-shl-" + l.tone}><i aria-hidden="true" />{l.text}</li>)}
       </ul>
+      {lines.length > LEGEND_MAX ? (
+        <button type="button" className="awx-shl-toggle" aria-expanded={showAll} aria-controls="awx-sh-legend" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Show fewer" : `Show all ${lines.length} changes`}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -75,13 +79,13 @@ export function SprayHourStrip({ hours, nowEpoch, windUnit }: { hours: SprayHour
 /** Placeholder card while the forecast loads. */
 export function SprayCardSkeleton() {
   return (
-    <article className="awx-card awx-spray-skeleton" aria-busy="true" aria-label="Spraying, loading">
+    <article className="awx-card awx-spray-skeleton" aria-busy="true">
       <div className="awx-skel awx-skel-title" />
       <div className="awx-skel awx-skel-verdict" />
       <div className="awx-skel awx-skel-line" />
       <div className="awx-skel awx-skel-strip" />
       <div className="awx-skel awx-skel-line short" />
-      <span className="awx-visually-hidden">Loading spray conditions…</span>
+      <span role="status" className="awx-visually-hidden">Loading spray forecast</span>
     </article>
   );
 }

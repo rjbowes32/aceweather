@@ -25,10 +25,21 @@ export function clockTime(epoch: number) {
   return read(epoch).time;
 }
 
-/** "today 17:00 – tomorrow 03:00", or "today 10:00 – 14:00" within one day. */
-export function rangeText(startEpoch: number, endEpoch: number, nowEpoch: number) {
+/** The day a range ends on: a range ending exactly at 00:00 belongs to the
+ * day it ran in. */
+export function endDayWord(endEpoch: number, nowEpoch: number) {
+  return dayWord(endEpoch - 1, nowEpoch);
+}
+
+/**
+ * One rule for every spray range (window line, legend, aria-label):
+ * same day "today 10:00–11:00" (no spaces; the day dropped when
+ * showStartDay is false), across days "today 15:00 – tomorrow 03:00".
+ * 24 h, UK time, never a zone label.
+ */
+export function rangeText(startEpoch: number, endEpoch: number, nowEpoch: number, showStartDay = true) {
   const startDay = dayWord(startEpoch, nowEpoch);
-  // A window ending at midnight belongs to the day it ran in.
-  const endDay = dayWord(endEpoch - 1, nowEpoch);
-  return `${startDay} ${clockTime(startEpoch)} – ${endDay === startDay ? "" : `${endDay} `}${clockTime(endEpoch)}`;
+  const endDay = endDayWord(endEpoch, nowEpoch);
+  if (endDay === startDay) return `${showStartDay ? `${startDay} ` : ""}${clockTime(startEpoch)}–${clockTime(endEpoch)}`;
+  return `${startDay} ${clockTime(startEpoch)} – ${endDay} ${clockTime(endEpoch)}`;
 }

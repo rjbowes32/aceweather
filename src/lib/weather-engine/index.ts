@@ -9,6 +9,6 @@ export { openMeteoHourlyRows, openMeteoDailyRows } from "./open-meteo-rows.ts";
 export { overlayUkmoPayload, UKMO_HOURLY_OVERLAY, UKMO_CURRENT_OVERLAY } from "./ukmo-overlay.ts";
 export { deltaTBand, LOW_DELTA_T_TONE, RAIN_ON_CANOPY_MM, RAIN_FAST_MM } from "./sprayWindow.ts";
 export type { DeltaTSegment } from "./sprayWindow.ts";
-export { ENGINE_TIME_ZONE, dayWord, clockTime, rangeText } from "./london-time.ts";
+export { ENGINE_TIME_ZONE, dayWord, endDayWord, clockTime, rangeText } from "./london-time.ts";
 export { sprayRuns, mainLimit, limitOf } from "./spray-runs.ts";
 export type { SprayRun, SprayHourSummary } from "./spray-runs.ts";
