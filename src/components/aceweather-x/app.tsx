@@ -71,12 +71,37 @@ function RadarSlot({ location, theme }: { location: AwLocation; theme: Theme }) 
   return <RadarShell failed={failed} onRetry={retry} />;
 }
 
-/** Short zone name for now, e.g. GMT or BST, from the browser's own time-zone data. */
-function zoneLabel(tz?: string): string {
-  if (!tz) return "";
-  try {
-    return new Intl.DateTimeFormat("en-GB", { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date()).find((p) => p.type === "timeZoneName")?.value ?? "";
-  } catch { return ""; }
+/** Desktop: stretch the shorter of the feed's last card and the side column's last card so both columns end level. */
+function useLevelColumnEnds(feedRef: React.RefObject<HTMLElement | null>, sideRef: React.RefObject<HTMLElement | null>, key: string) {
+  useEffect(() => {
+    const feed = feedRef.current, side = sideRef.current;
+    if (!feed || !side || typeof ResizeObserver === "undefined") return undefined;
+    const desktop = window.matchMedia("(min-width: 1081px)");
+    let frame = 0;
+    const lastCard = (root: Element, sel: string) => [...root.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetParent !== null).at(-1);
+    const level = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const a = lastCard(feed, ".awx-feed-list > *"), b = lastCard(side, ".awx-side-card");
+        [a, b].forEach((e) => { if (e) e.style.minHeight = ""; });
+        if (!a || !b || !desktop.matches || getComputedStyle(side).display === "none") return;
+        const diff = a.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom;
+        const grow = diff > 0 ? b : a;
+        if (Math.abs(diff) >= 1) grow.style.minHeight = `${grow.getBoundingClientRect().height + Math.abs(diff)}px`;
+      });
+    };
+    const ro = new ResizeObserver(level);
+    [...feed.querySelectorAll(".awx-feed-list > *"), ...side.querySelectorAll(".awx-side-card")].forEach((e) => ro.observe(e));
+    desktop.addEventListener("change", level);
+    level();
+    return () => { ro.disconnect(); desktop.removeEventListener("change", level); cancelAnimationFrame(frame); };
+  }, [feedRef, sideRef, key]);
+}
+
+const LONDON_HM = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+/** Observation time as 24-hour Europe/London HH:MM, no zone label. */
+function londonTime(at: number | null | undefined, fallback: string): string {
+  return typeof at === "number" && Number.isFinite(at) ? LONDON_HM.format(at) : fallback;
 }
 
 type View = "all" | "now" | "rain" | "radar" | "field" | "outlook" | "seasonal" | "about";
@@ -415,7 +440,10 @@ export function AceWeatherApp() {
 
   const learned = useMemo(() => (raw ? applyLearned(raw, learnedOverlay) : null), [raw, learnedOverlay]);
   const model = useMemo(() => (learned ? buildModel(learned.forecast) : null), [learned]);
-  const freshness = model ? `${model.now.obsTime} ${zoneLabel(location.tz)}`.trim() : "—";
+  const feedRef = useRef<HTMLElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
+  useLevelColumnEnds(feedRef, sideRef, `${view}|${model ? 1 : 0}`);
+  const freshness = model ? londonTime(model.now.obsAt, model.now.obsTime) : "—";
 
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
   useEffect(() => {
@@ -645,7 +673,7 @@ export function AceWeatherApp() {
       </aside>
 
       {/* FEED */}
-      <main className="awx-feed" id="top" data-view={view}>
+      <main ref={feedRef} className="awx-feed" id="top" data-view={view}>
         <header className="awx-mobile-top">
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
@@ -705,7 +733,7 @@ export function AceWeatherApp() {
       </main>
 
       {/* SIDEBAR */}
-      <aside className="awx-side" aria-label="Utilities">
+      <aside ref={sideRef} className="awx-side" aria-label="Utilities">
         <div className="awx-side-card">
           <h3>Location</h3>
           <div className="awx-side-body">

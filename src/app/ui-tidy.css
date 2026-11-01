@@ -77,7 +77,7 @@
 }
 
 /* Desktop side column: no clipping, top lines up with the feed cards. */
-.awx .awx-side { padding-top: 66px; min-width: 0; }
+.awx .awx-side { padding-top: 89.5px; min-width: 0; } /* header 73.5 + 16 gap */
 .awx .awx-side-card { min-width: 0; }
 .awx .awx-side .awx-location-picker,
 .awx .awx-side .awx-location-form,

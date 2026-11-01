@@ -61,7 +61,7 @@ export function buildModel(raw) {
     wind: cur.wind_speed_10m, gust: cur.wind_gusts_10m, compass, windDir: cur.wind_direction_10m,
     cloud: cur.cloud_cover, vis: cur.visibility != null ? Number(cur.visibility) / 1000 : null,
     uv: cur.uv_index, precip: cur.precipitation, precipProb: h.precipitation_probability?.[ni], isDay, condition,
-    summary: conditionSummary(condition.key, compass), obsTime: timeLabel(obs),
+    summary: conditionSummary(condition.key, compass), obsTime: timeLabel(obs), obsAt: obsInstant(obs, raw.utc_offset_seconds),
   };
 
   // ---------- 24h TREND (line chart) ----------
@@ -258,3 +258,10 @@ export function buildModel(raw) {
 }
 
 export type AwModel = ReturnType<typeof buildModel>;
+
+/** Epoch ms for an Open-Meteo local wall time, using the response's utc_offset_seconds. */
+export function obsInstant(local: string, offsetSeconds: unknown): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local);
+  if (!m || typeof offsetSeconds !== "number" || !Number.isFinite(offsetSeconds)) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - offsetSeconds * 1000;
+}
