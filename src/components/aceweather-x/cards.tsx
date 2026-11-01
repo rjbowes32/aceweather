@@ -7,7 +7,6 @@ import { formatRain, formatTemperature, formatWind, windUnitLabel, type Temperat
 import { weatherIconText } from "@/lib/aceweather/weather-icons";
 import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, WeatherIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
 
-const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const tC = formatTemperature;
 const wSpd = formatWind;
 const WU = windUnitLabel;
@@ -76,8 +75,6 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
   const [sel, setSel] = useState(0);
   const selectedDayRef = useRef<HTMLButtonElement | null>(null);
   const day = model.calendar[sel] || model.calendar[0];
-  const leading = Array.from({ length: model.calendarOffset });
-  const trailing = Array.from({ length: (7 - ((leading.length + model.calendar.length) % 7)) % 7 });
 
   useEffect(() => {
     selectedDayRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
@@ -116,9 +113,7 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
           </div>
         </div>
       )}
-      <div className="awx-cal">
-        {DOW.map((dn) => <div key={dn} className="awx-cal-dow">{dn}</div>)}
-        {leading.map((_, i) => <div key={"e" + i} className="awx-cal-day is-empty" />)}
+      <div className="awx-outlook-days"><div className="awx-cal">
         {model.calendar.map((c, i) => {
           const label = `${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°` +
             (c.icon ? `, ${weatherIconText(c.icon).toLowerCase()}` : "") +
@@ -134,15 +129,14 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
               <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
               {c.further ? null : (
                 <div className="awx-cal-rainrow awx-tnum">
-                  <b>{outlookChanceText(c.chance)}</b>
+                  {c.chance == null ? <span aria-hidden="true" /> : <b>{outlookChanceText(c.chance)}</b>}
                   <span className={formatRain(c.rain ?? 0) === "0" ? "is-dry" : ""}>{outlookRainText(c.rain)}</span>
                 </div>
               )}
             </button>
           );
         })}
-        {trailing.map((_, i) => <div key={"t" + i} className="awx-cal-day is-empty" />)}
-      </div>
+      </div></div>
       <HourlyDetail day={day} unit={unit} windUnit={windUnit} />
     </Card>
   );

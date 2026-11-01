@@ -80,3 +80,36 @@
 /* Far-ahead days: normal text colour so labels pass AA (1.4.3) in both themes. */
 .awx .awx-cal-day.is-further .awx-date b,
 .awx .awx-cal-day.is-further .awx-cal-hi { color: var(--awx-text); }
+
+/* r3: rolling 14-day grid from today (7 x 2), each day a square tile in the standard card style. */
+.awx .awx-outlook-days { container-type: inline-size; }
+.awx .awx-cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 0; }
+.awx .awx-cal-day,
+.awx .awx-cal-day:hover,
+.awx .awx-cal-day[aria-pressed="true"],
+.awx .awx-cal-day.is-wet, .awx .awx-cal-day.is-breezy, .awx .awx-cal-day.is-further {
+  --awx-cal-fill: var(--awx-surface); --awx-badge-ring: var(--awx-surface);
+  background: var(--awx-surface); border: var(--awx-card-border); border-radius: 12px; box-shadow: var(--awx-card-shadow);
+  aspect-ratio: 1 / 1; min-height: 0; height: auto; overflow: hidden;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 2px; padding: 6px 7px;
+}
+.awx .awx-cal-day::before { display: none; }
+.awx .awx-cal-day.is-today { border-color: var(--awx-accent); }
+.awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 8%, var(--awx-surface)); }
+.awx .awx-cal-day .awx-date { flex-wrap: nowrap; white-space: nowrap; min-width: 0; font-size: 11px; }
+.awx .awx-cal-day .awx-date b { overflow: hidden; }
+.awx .awx-cal-day .awx-cal-icon.awx-wicon { width: 16px; height: 16px; --awx-badge: 10px; }
+.awx .awx-cal-temps { display: flex; align-items: baseline; gap: 4px; align-self: center; }
+.awx .awx-cal-hi { font-size: 17px; }
+.awx .awx-cal-temps .awx-lo { font-size: 12px; }
+.awx .awx-cal-rainrow { flex-wrap: nowrap; margin: 0; padding: 0; font-size: 10.5px; gap: 3px; justify-content: space-between; }
+/* Too narrow for 7 readable squares (phone, small laptops): one scrolling row of squares. */
+@container (max-width: 500px) {
+  .awx .awx-cal { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 6px; }
+  .awx .awx-cal-day { flex: 0 0 96px; width: 96px; scroll-snap-align: start; }
+}
+@media (max-width: 700px) { .awx .awx-cal-day { flex: 0 0 96px; width: 96px; min-height: 0; } }
+.awx .awx-cal-day { padding: 6px; }
+.awx .awx-cal-day .awx-date { gap: 2px; letter-spacing: -0.01em; }
+.awx .awx-cal-rainrow { font-size: 10px; letter-spacing: -0.01em; }
+.awx .awx-cal-day .awx-date { font-size: 10.5px; }
