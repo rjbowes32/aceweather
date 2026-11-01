@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from "react";
 import { buildModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
-import { ConditionIcon, NavIcon, ShareIcon } from "./icons";
+import { ConditionIcon, NavIcon, ShareIcon, WeatherIcon } from "./icons";
 
 type Props = { model: ReturnType<typeof buildModel>; unit: TemperatureUnit; windUnit: WindUnit; statusText: string; freshness: string; onShare: () => void; shareLabel: string; onSelectView: (view: string) => void; hint?: ReactNode };
 function Meter({ value }: { value: number }) {
@@ -32,7 +32,7 @@ export function OverviewExperience({model, unit, windUnit, statusText, freshness
       <header className="weather-section-head"><h2 id="weather-hours-title">Upcoming hours</h2><div><select aria-label="Hourly chart measurement" value={metric} onChange={e=>setMetric(e.target.value)}><option value="rain">Rainfall · mm</option><option value="temp">Temperature · °{unit.toUpperCase()}</option></select><button onClick={()=>onSelectView("outlook")}>Next days ›</button></div></header>
       <div className="weather-hours-scroll" tabIndex={0} role="region" aria-label="Hourly forecast">
         <div style={{minWidth:hours.length*78}}>
-          <div className="weather-hour-labels" style={{gridTemplateColumns:"repeat("+hours.length+",1fr)"}}>{hours.map(h=><div key={h.dateKey+h.label}><span>{h.label}</span><ConditionIcon k={h.condition.key}/><strong>{formatTemperature(h.temp,unit)}°</strong></div>)}</div>
+          <div className="weather-hour-labels" style={{gridTemplateColumns:"repeat("+hours.length+",1fr)"}}>{hours.map(h=><div key={h.dateKey+h.label}><span>{h.label}</span>{h.icon ? <WeatherIcon className="weather-hour-icon" icon={h.icon}/> : <ConditionIcon k={h.condition.key}/>}<strong>{formatTemperature(h.temp,unit)}°</strong></div>)}</div>
           <svg className="weather-area" viewBox={"0 0 "+hours.length*100+" 135"} preserveAspectRatio="none" aria-hidden="true"><polygon points={"50,130 "+points+" "+(50+(hours.length-1)*100)+",130"}/><polyline points={points}/>{hours.map((h,i)=><line key={h.label} x1={50+i*100} x2={50+i*100} y1="0" y2="135"/>)}</svg>
           <div className="weather-hour-values" style={{gridTemplateColumns:"repeat("+hours.length+",1fr)"}}>{values.map((v,i)=><span key={i}><span className="weather-sr">{hours[i].label} {metric==="rain"?"rainfall":"temperature"}: </span>{metric==="rain"?formatRain(v):Math.round(v)}{metric==="rain"?" mm":"°"}</span>)}</div>
           {metric !== "rain" ? <div className="weather-hour-values weather-hour-rain" style={{gridTemplateColumns:"repeat("+hours.length+",1fr)"}}>{hours.map(hour=><span key={hour.dateKey+hour.label}><span className="weather-sr">{hour.label} rainfall: </span>{formatRain(hour.precip)} mm</span>)}</div> : null}

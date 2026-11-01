@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
-import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
+import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, WeatherIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const tC = formatTemperature;
@@ -87,10 +87,10 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
       {day && (
         <div className={"awx-outlook-lead" + outlookTone(day)}>
           <div className="awx-outlook-lead-main">
-            <ConditionIcon className="awx-outlook-icon" k={day.condition.key} />
+            {day.icon ? <WeatherIcon className="awx-outlook-icon" icon={day.icon} /> : <ConditionIcon className="awx-outlook-icon" k={day.condition.key} />}
             <div>
               <span>{day.weekday} {day.dayNum}</span>
-              <strong>{day.condition.label}</strong>
+              <strong>{day.icon?.label ?? day.condition.label}</strong>
             </div>
           </div>
           <div className="awx-outlook-stat">
@@ -128,7 +128,7 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
               aria-pressed={sel === i}
               aria-label={label}
               onClick={() => setSel(i)}>
-              <div className="awx-date"><b>{c.weekday} {c.dayNum}</b><ConditionIcon className="awx-cal-icon" k={c.condition.key} /></div>
+              <div className="awx-date"><b>{c.weekday} {c.dayNum}</b>{c.icon ? <WeatherIcon className="awx-cal-icon" icon={c.icon} /> : <ConditionIcon className="awx-cal-icon" k={c.condition.key} />}</div>
               <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
               {c.further ? null : (
                 <div className="awx-cal-rainrow awx-tnum">

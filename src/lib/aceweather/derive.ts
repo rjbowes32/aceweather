@@ -8,6 +8,7 @@ import {
   weekdayIndexMonFirst, dayOfMonth, timeLabel,
 } from "./format";
 import { buildAgronomy } from "./agronomy";
+import { pickWeatherIcon, grassOffset as grassOffsetAt } from "./weather-icons";
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 const sum = (xs) => xs.reduce((a, b) => a + (Number(b) || 0), 0);
@@ -128,6 +129,20 @@ export function buildModel(raw) {
     if (!arr) { arr = []; hoursByDate.set(key, arr); }
     arr.push(j);
   }
+  const dayIcon = (code, idxs) => {
+    let wettest = -1, maxMm = null, gustMax = null, grassMin = null;
+    for (const j of idxs) {
+      const mm = h.precipitation[j];
+      if (typeof mm === "number" && (maxMm == null || mm > maxMm)) { maxMm = mm; wettest = j; }
+      const g = h.wind_gusts_10m?.[j];
+      if (typeof g === "number" && (gustMax == null || g > gustMax)) gustMax = g;
+      if (Number(h.time[j].slice(11, 13)) <= 8 && typeof h.temperature_2m[j] === "number") {
+        const gm = h.temperature_2m[j] - grassOffsetAt(h.cloud_cover?.[j], h.wind_speed_10m?.[j]);
+        if (grassMin == null || gm < grassMin) grassMin = gm;
+      }
+    }
+    return pickWeatherIcon({ code, isDay: 1, precipMm: maxMm, tempC: wettest >= 0 ? h.temperature_2m[wettest] : null, gustKmh: gustMax, grassMinC: grassMin });
+  };
   const calMax = Math.max(1, ...dailyP.slice(di, di + 14));
   const calendar = [];
   for (let i = 0; i < 14 && di + i < d.time.length; i++) {
@@ -146,6 +161,7 @@ export function buildModel(raw) {
       further: i > 7,
       rainPct: clamp(((dailyP[k] || 0) / calMax) * 100, 0, 100),
       condition: weatherCondition(d.weather_code?.[k], 1), isToday: i === 0,
+      icon: dayIcon(d.weather_code?.[k], idxs),
       hours: {
         labels: idxs.map((j) => h.time[j].slice(11, 13)),
         temp: hTemp, rain: hRain, wind: hWind,
@@ -209,6 +225,12 @@ export function buildModel(raw) {
   const AP = h.apparent_temperature || [];
   const mkHour = (i) => ({
     condition: weatherCondition(h.weather_code?.[i], h.is_day?.[i] ?? 1),
+    icon: pickWeatherIcon({
+      code: h.weather_code?.[i], isDay: h.is_day?.[i] ?? 1, precipMm: h.precipitation[i], tempC: h.temperature_2m[i],
+      gustKmh: h.wind_gusts_10m?.[i],
+      // Grass frost is a night/early-morning risk: only badge hours without daylight.
+      grassMinC: typeof h.temperature_2m[i] === "number" && (h.is_day?.[i] ?? 1) === 0 ? h.temperature_2m[i] - grassOffsetAt(h.cloud_cover?.[i], h.wind_speed_10m?.[i]) : null,
+    }),
     label: h.time[i].slice(11, 16), dateKey: h.time[i].slice(0, 10), weekday: weekdayShort(h.time[i]),
     temp: h.temperature_2m[i], feels: AP[i], wind: h.wind_speed_10m[i], gust: h.wind_gusts_10m[i],
     precip: h.precipitation[i] ?? 0, prob: h.precipitation_probability?.[i] ?? 0,

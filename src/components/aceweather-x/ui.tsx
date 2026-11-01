@@ -210,5 +210,5 @@ export function OpsMatrix({ days, rows }: { days: OpsDay[]; rows: OpsRow[] }) {
   );
 }
 
-export { ConditionIcon } from "./icons";
+export { ConditionIcon, WeatherIcon } from "./icons";
 export type { ConditionKey };
