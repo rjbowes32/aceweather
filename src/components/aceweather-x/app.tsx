@@ -14,6 +14,7 @@ import { NowExperience } from "./now-experience";
 import { OverviewExperience } from "./overview-experience";
 import { LocationPickerContent } from "./location-picker-content";
 import { FieldExperience } from "./field-experience";
+import { SprayCardSkeleton } from "./spray-strip";
 
 const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard), {
   ssr: false,
@@ -631,7 +632,7 @@ export function AceWeatherApp() {
               {view === "about" ? <SourcesCard source={status} freshness={freshness} aceForecast={Boolean(learned?.meta)} /> : null}
             </>
           ) : (
-            <article className="awx-card"><div className="awx-radar-status">{status === "error" ? "Could not reach Open-Meteo. Check your connection and retry." : "Loading live conditions…"}</div></article>
+            status !== "error" && view === "field" ? <SprayCardSkeleton /> : <article className="awx-card"><div className="awx-radar-status">{status === "error" ? "Could not reach Open-Meteo. Check your connection and retry." : "Loading live conditions…"}</div></article>
           )}
         </section>
       </main>

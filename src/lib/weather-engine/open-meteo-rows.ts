@@ -24,10 +24,15 @@ export function openMeteoDailyRows(daily: Series = {}): WeatherRow[] {
 }
 
 /** Hourly rows, each marked dark or light from its day's sunrise and sunset. */
-export function openMeteoHourlyRows(hourly: Series = {}, daily: Series = {}): WeatherRow[] {
+export function openMeteoHourlyRows(hourly: Series = {}, daily: Series = {}, utcOffsetSeconds: number | null = null): WeatherRow[] {
   const time = Array.isArray(hourly.time) ? hourly.time : [];
   const rows = time.map((t, i) => {
     const row: WeatherRow = { time: t };
+    // With the place's offset, each hour also carries its real instant.
+    if (typeof utcOffsetSeconds === "number" && Number.isFinite(utcOffsetSeconds)) {
+      const ms = Date.parse(`${String(t)}:00Z`) - utcOffsetSeconds * 1000;
+      if (Number.isFinite(ms)) row.epoch = ms;
+    }
     for (const [name, key] of Object.entries(HOURLY)) row[name] = at(hourly, key, i);
     return row;
   });

@@ -13,6 +13,9 @@ export const UKMO_HOURLY_OVERLAY = [
 ];
 export const UKMO_CURRENT_OVERLAY = UKMO_HOURLY_OVERLAY;
 
+/** Only a finite number may replace a base value; anything else is ignored. */
+const isReading = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
 export function overlayUkmoPayload<T extends Payload>(base: T, ukmo: Payload | null | undefined): T {
   const baseTimes = base?.hourly?.time;
   const ukmoTimes = ukmo?.hourly?.time;
@@ -24,12 +27,12 @@ export function overlayUkmoPayload<T extends Payload>(base: T, ukmo: Payload | n
     // UKMO stops short of a long forecast: keep the base value for any hour it leaves blank.
     if (Array.isArray(arr) && arr.length === baseTimes.length) {
       const own = (base.hourly?.[field] as unknown[]) || [];
-      merged.hourly[field] = arr.map((v, i) => (v === null || v === undefined ? own[i] ?? null : v));
+      merged.hourly[field] = arr.map((v, i) => (isReading(v) ? v : own[i] ?? null));
     }
   }
   for (const field of UKMO_CURRENT_OVERLAY) {
     const v = ukmo?.current?.[field];
-    if (v !== null && v !== undefined) merged.current[field] = v;
+    if (isReading(v)) merged.current[field] = v;
   }
   return merged;
 }

@@ -8,7 +8,7 @@ import { buildSpraying, isSprayable, openMeteoHourlyRows } from "../weather-engi
 
 const hourNum = (t) => Number(String(t).slice(11, 13));
 
-export function buildAgronomy(h, d, ni, di, cur) {
+export function buildAgronomy(h, d, ni, di, cur, utcOffsetSeconds = null) {
   const time = h.time || [];
   const N = time.length;
   const T = h.temperature_2m, RH = h.relative_humidity_2m, P = h.precipitation;
@@ -26,7 +26,7 @@ export function buildAgronomy(h, d, ni, di, cur) {
   // ---------- SPRAYING ----------
   // One rule for the verdict and every hour, from the shared weather engine
   // (src/lib/weather-engine, ported from AceAg). Night follows sunrise/sunset.
-  const rows = openMeteoHourlyRows(h, d);
+  const rows = openMeteoHourlyRows(h, d, utcOffsetSeconds);
   const sprayOk = (i) => isSprayable(rows[i]);
   const spraying = buildSpraying(rows.slice(ni), cur || {}, rows[ni] || {}).spraying;
 

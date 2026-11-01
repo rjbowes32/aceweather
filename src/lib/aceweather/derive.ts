@@ -244,7 +244,7 @@ export function buildModel(raw) {
     }
   }
 
-  const agro = buildAgronomy(h, d, ni, di, cur);
+  const agro = buildAgronomy(h, d, ni, di, cur, raw.utc_offset_seconds ?? null);
   const planning = {
     timezone: raw.timezone || "UTC",
     time: h.time.slice(ni, ni + 73),

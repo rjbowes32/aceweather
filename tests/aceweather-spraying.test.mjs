@@ -65,3 +65,57 @@ test("UKMO overlay replaces atmospheric fields only and ignores a mismatched pay
   assert.equal(overlayUkmoPayload(base, { hourly: { time: ["x"] } }), base);
   assert.equal(overlayUkmoPayload(base, null), base);
 });
+
+import { deltaTBand, LOW_DELTA_T_TONE, RAIN_FAST_MM, RAIN_ON_CANOPY_MM, rangeText, sprayRuns, mainLimit, ENGINE_TIME_ZONE } from "../src/lib/weather-engine/index.ts";
+
+test("Delta-T has four segments and one reading; low stays green and never cautions an hour", () => {
+  assert.deepEqual([0.4, 5, 9, 11, null].map((v) => deltaTBand(v).segment), ["low", "ideal", "high", "too-high", "unknown"]);
+  assert.equal(LOW_DELTA_T_TONE, "go");
+  assert.equal(deltaTBand(0.4).tone, "go");
+  const s = spray(11, { rh: 99 });
+  assert.equal(s.deltaTSegment, "low");
+  assert.ok(s.timeline.slice(0, 5).every((h) => h.tone === "go"));
+});
+
+test("rain thresholds are named, and light rain is not reported as dry", () => {
+  assert.equal(RAIN_ON_CANOPY_MM, 0.1);
+  assert.equal(RAIN_FAST_MM, 0.2);
+  const s = spray(11, { p: 0.15 });
+  assert.equal(s.timeline[1].reason, "Rain on the canopy");
+  assert.equal(s.rainFast, null);
+  assert.equal(s.lightRainOnly, true);
+  assert.equal(spray(11).lightRainOnly, false);
+});
+
+test("spray window reads in UK time with day words and no zone label", () => {
+  assert.equal(ENGINE_TIME_ZONE, "Europe/London");
+  const now = Date.UTC(2026, 10, 2, 10, 0);
+  assert.equal(rangeText(Date.UTC(2026, 10, 2, 17), Date.UTC(2026, 10, 3, 3), now), "today 17:00 – tomorrow 03:00");
+  assert.equal(rangeText(Date.UTC(2026, 10, 2, 11), Date.UTC(2026, 10, 2, 14), now), "today 11:00 – 14:00");
+  // Summer: 09:00 UTC is 10:00 in London.
+  assert.equal(rangeText(Date.UTC(2026, 6, 1, 9), Date.UTC(2026, 6, 1, 12), Date.UTC(2026, 6, 1, 8)), "today 10:00 – 13:00");
+});
+
+test("hours with the place's UTC offset carry their real instant", () => {
+  const [h, d, ni, di, cur] = scenario(11);
+  const s = buildAgronomy(h, d, ni, di, cur, 0).spraying;
+  assert.equal(s.timeline[0].epoch, Date.UTC(2026, 10, 2, 11));
+  assert.equal(s.nextWindow.startEpoch, Date.UTC(2026, 10, 2, 11));
+});
+
+test("runs group the 48 h bar with a reason each; the main limit is the commonest", () => {
+  const s = spray(11, { w: 20 });
+  const runs = sprayRuns(s.timeline);
+  assert.equal(s.nextWindow, null);
+  assert.ok(runs.every((r) => r.tone !== "go"));
+  assert.equal(runs[0].limit, "wind");
+  assert.equal(mainLimit(s.timeline), "wind");
+});
+
+test("UKMO overlay only takes finite numbers", () => {
+  const base = { hourly: { time: ["a", "b"], wind_speed_10m: [5, 6] }, current: { wind_speed_10m: 5 } };
+  const ukmo = { hourly: { time: ["a", "b"], wind_speed_10m: ["9", Number.NaN] }, current: { wind_speed_10m: "x" } };
+  const merged = overlayUkmoPayload(base, ukmo);
+  assert.deepEqual(merged.hourly.wind_speed_10m, [5, 6]);
+  assert.equal(merged.current.wind_speed_10m, 5);
+});

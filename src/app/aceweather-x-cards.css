@@ -313,14 +313,8 @@
 .awx-deltat-head b { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .awx-deltat-head small { color: var(--awx-muted); font-weight: 400; font-size: 12px; }
 .awx-deltat-track { position: relative; height: 8px; border-radius: var(--awx-pill); background: var(--awx-surface-3); }
-.awx-deltat-band { position: absolute; top: 0; bottom: 0; border-radius: var(--awx-pill); background: color-mix(in srgb, var(--awx-go) 40%, transparent); }
 .awx-deltat-marker { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--awx-text); transform: translateX(-50%); }
 
-.awx-sprayhours { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 1px; height: 10px; margin: 10px 0 18px; border-radius: var(--awx-pill); overflow: visible; }
-.awx-sprayhours > i { display: block; height: 100%; background: var(--awx-line-2); }
-.awx-sprayhours > i:first-child { border-radius: var(--awx-pill) 0 0 var(--awx-pill); } .awx-sprayhours > i:last-of-type { border-radius: 0 var(--awx-pill) var(--awx-pill) 0; }
-.awx-sprayhours > .awx-sh-go { background: var(--awx-go); } .awx-sprayhours > .awx-sh-warn { background: var(--awx-warn); }
-.awx-sh-tick { position: absolute; top: 14px; font-size: 10px; color: var(--awx-muted); font-variant-numeric: tabular-nums; }
 .awx-riskstrip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; margin-top: 6px; }
 .awx-risk-cell { display: grid; gap: 5px; justify-items: center; padding: 9px 2px; border-radius: 9px; background: var(--awx-surface-2); }
 .awx-rc-d { font-size: 11px; font-weight: 600; color: var(--awx-faint); }

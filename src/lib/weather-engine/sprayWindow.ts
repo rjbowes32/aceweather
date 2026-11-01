@@ -71,6 +71,28 @@ const SPRAY = {
   rainChanceMax: 35,
 };
 
+/** Rain (mm/h) that wets the canopy: an hour at or above it is held. */
+export const RAIN_ON_CANOPY_MM = SPRAY.rainMax;
+/** Rain (mm/h) that counts for "rain-fast" (hours until rain). Rob to pick one
+ * threshold; until then both are kept and the card says "light rain only"
+ * when rain falls between them. Make them equal to unify. */
+export const RAIN_FAST_MM = 0.2;
+
+/** How a Delta-T under 2 reads. AceAg shows it green; switch to "warn" for
+ * amber. Display only: low Delta-T never blocks or cautions an hour. */
+export const LOW_DELTA_T_TONE: "go" | "warn" = "go";
+
+export type DeltaTSegment = "low" | "ideal" | "high" | "too-high" | "unknown";
+/** The one Delta-T reading used by the number, the bar and the hour rule. */
+export function deltaTBand(value: unknown): { segment: DeltaTSegment; label: string; tone: "go" | "warn" | "risk" | "muted" } {
+  const dt = toNum(value, null);
+  if (dt === null) return { segment: "unknown", label: "Unknown", tone: "muted" };
+  if (dt < 2) return { segment: "low", label: "Low", tone: LOW_DELTA_T_TONE };
+  if (dt <= SPRAY.deltaTCaution) return { segment: "ideal", label: "Ideal", tone: "go" };
+  if (dt <= SPRAY.deltaTMax) return { segment: "high", label: "Marginal", tone: "warn" };
+  return { segment: "too-high", label: "Too high", tone: "risk" };
+}
+
 type SprayCheck = { tone: "go" | "warn" | "risk"; reason: string; gusty: boolean };
 
 /** One hour judged against the spray rules: go, caution (warn) or hold (risk). */
@@ -91,11 +113,22 @@ function sprayCheck(row: WeatherRow): SprayCheck {
   if (temp < SPRAY.tempMin) return hold("Too cold");
   if (temp > SPRAY.tempMax) return hold("Too hot");
   if (dt === null) return hold("Humidity unknown");
-  if (dt > SPRAY.deltaTMax) return hold("Delta-T above 10; droplets dry too fast");
+  const band = deltaTBand(dt).segment;
+  if (band === "too-high") return hold("Delta-T above 10; droplets dry too fast");
   if (gust !== null && gust >= SPRAY.gustCaution) return { tone: "warn", reason: "Gusty", gusty: true };
-  if (dt > SPRAY.deltaTCaution) return { tone: "warn", reason: "Delta-T 8–10; droplets may dry quickly", gusty: false };
+  if (band === "high") return { tone: "warn", reason: "Delta-T 8–10; droplets may dry quickly", gusty: false };
   return { tone: "go", reason: "Conditions are in the spray band", gusty: false };
 }
+
+/** The hour's real instant: the row's epoch when the adapter knew the
+ * place's UTC offset, else the clock time read as UTC. */
+function rowEpoch(row: WeatherRow): number | null {
+  const epoch = toNum(row?.epoch, null);
+  if (epoch !== null) return epoch;
+  const ms = Date.parse(`${String(row?.time || "")}:00Z`);
+  return Number.isFinite(ms) ? ms : null;
+}
+const addHour = (ms: number | null) => (ms === null ? null : ms + 3_600_000);
 
 export function isSprayable(row: WeatherRow) {
   return sprayCheck(row).tone !== "risk";
@@ -125,6 +158,8 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
       // Strongest gust inside the window, for the "gusts up to" caution.
       gustMax: maxRows(windowRows, (row) => row?.windGusts),
       gusty: windowRows.some((row) => sprayCheck(row).gusty),
+      startEpoch: rowEpoch(next48[firstWindowIndex]),
+      endEpoch: endIndex < next48.length ? rowEpoch(next48[endIndex]) : addHour(rowEpoch(next48[endIndex - 1])),
       start: timeLabel(next48[firstWindowIndex]?.time),
       end: endLabel,
       hours: length,
@@ -159,7 +194,7 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
 
   let rainFast = null;
   for (let i = 0; i < next48.length; i += 1) {
-    if (toNum(next48[i]?.precipitation, 0) > 0.2) {
+    if (toNum(next48[i]?.precipitation, 0) > RAIN_FAST_MM) {
       rainFast = i;
       break;
     }
@@ -186,8 +221,9 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
       }
     : { risk: "Low", tone: "go", window: null };
 
-  const deltaTLabel = dtRounded === null ? "Unknown" : dtRounded < 2 ? "Low" : dtRounded <= 8 ? "Ideal" : dtRounded <= 10 ? "Marginal" : "Too high";
-  const deltaTTone = dtRounded === null ? "muted" : dtRounded <= 8 ? "go" : dtRounded <= 10 ? "warn" : "risk";
+  const { label: deltaTLabel, tone: deltaTTone, segment: deltaTSegment } = deltaTBand(dtRounded);
+  // Rain that holds spraying but is too light to count as rain-fast.
+  const lightRainOnly = rainFast === null && next48.some((row) => toNum(row?.precipitation, 0) >= RAIN_ON_CANOPY_MM);
   const sprayScore = Math.round((openHoursNext24 / 24) * 100);
   const sprayLabel = sprayScore >= 60 ? "Go" : sprayScore >= 35 ? "Watch" : "Limited";
   const sprayTone = sprayScore >= 60 ? "go" : sprayScore >= 35 ? "warn" : "risk";
@@ -205,6 +241,10 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
       deltaT: dtRounded,
       deltaTLabel,
       deltaTTone,
+      deltaTSegment,
+      lightRainOnly,
+      // The hour "now" falls in, for today/tomorrow wording.
+      nowEpoch: rowEpoch(nowRow) ?? rowEpoch(next48[0]),
       verdict,
       verdictTone,
       verdictReason,
@@ -216,7 +256,14 @@ export function buildSpraying(futureRows: WeatherRow[], current: WeatherRow, now
       inversion,
       openHoursNext24,
       longestBlockHours,
-      timeline: next48.map((row) => ({ time: row?.time, label: timeLabel(row?.time), tone: sprayCheck(row).tone, gust: toNum(row?.windGusts, null) })),
+      timeline: next48.map((row) => {
+        const check = sprayCheck(row);
+        return {
+          time: row?.time, epoch: rowEpoch(row), label: timeLabel(row?.time), tone: check.tone, reason: check.reason,
+          gust: toNum(row?.windGusts, null), wind: toNum(row?.windSpeed, null), rainChance: toNum(row?.precipProbability, null),
+          rain: toNum(row?.precipitation, null), temperature: toNum(row?.temperature, null),
+        };
+      }),
     },
   };
 }

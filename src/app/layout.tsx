@@ -5,6 +5,7 @@ import { PwaBootstrap } from "@/components/pwa-bootstrap";
 
 import "./aceweather-x.css";
 import "./aceweather-x-cards.css";
+import "./spray-card.css";
 import "./typography.css";
 import "./design-tokens.css";
 import "./shared-surfaces.css";

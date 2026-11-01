@@ -1,5 +1,6 @@
 "use client";
 
+import { LOW_DELTA_T_TONE } from "@/lib/weather-engine/index.ts";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { ConditionKey } from "@/lib/aceweather/format";
 import { ChevronIcon } from "./icons";
@@ -155,14 +156,26 @@ export function Verdict({ label, tone, reason }: { label: ReactNode; tone: Tone;
   );
 }
 
-export function DeltaTBand({ value, label, tone }: { value?: number | null; label: string; tone: Tone }) {
+// Four Delta-T segments on a 0–12 °C scale: 0–2 low, 2–8 ideal, 8–10 high,
+// above 10 too high. The tones come from the engine's deltaTBand, the same
+// reading that drives the number and the hour rule.
+const DT_SEGMENTS: Array<{ key: string; from: number; to: number; tone: string }> = [
+  { key: "low", from: 0, to: 2, tone: LOW_DELTA_T_TONE },
+  { key: "ideal", from: 2, to: 8, tone: "go" },
+  { key: "high", from: 8, to: 10, tone: "warn" },
+  { key: "too-high", from: 10, to: 12, tone: "risk" },
+];
+
+export function DeltaTBand({ value, label, tone, segment }: { value?: number | null; label: string; tone: Tone; segment?: string }) {
   const v = value == null ? null : Math.max(0, Math.min(12, value));
   const pct = (x: number) => (x / 12) * 100;
   return (
     <div className="awx-deltat">
       <div className="awx-deltat-head"><span>Delta-T</span><b className={"awx-v-" + tone}>{value ?? "—"}<small> °C · {label}</small></b></div>
-      <div className="awx-deltat-track" role="meter" aria-label={`Delta-T ${value ?? "unknown"} degrees Celsius, ${label}`} aria-valuemin={0} aria-valuemax={12} aria-valuenow={v ?? undefined}>
-        <div className="awx-deltat-band" style={{ left: pct(2) + "%", width: pct(6) + "%" }} />
+      <div className="awx-deltat-track awx-deltat-4" role="meter" aria-label={`Delta-T ${value ?? "unknown"} degrees Celsius, ${label}`} aria-valuemin={0} aria-valuemax={12} aria-valuenow={v ?? undefined}>
+        {DT_SEGMENTS.map((seg) => (
+          <div key={seg.key} className={`awx-dt-seg awx-dt-${seg.tone}${seg.key === segment ? " is-current" : ""}`} style={{ left: pct(seg.from) + "%", width: pct(seg.to - seg.from) + "%" }} />
+        ))}
         {v != null ? <div className="awx-deltat-marker" style={{ left: pct(v) + "%" }} /> : null}
       </div>
     </div>
@@ -181,20 +194,6 @@ export function RiskStrip({ days }: { days: RiskDay[] }) {
           <span className="awx-rc-h">{d.label}</span>
         </div>
       ))}
-    </div>
-  );
-}
-
-type SprayHour = { label: string; tone: string };
-
-/** The next 48 hours as one bar: green go, amber caution, grey hold. */
-export function SprayHourStrip({ hours }: { hours: SprayHour[] }) {
-  if (!hours.length) return null;
-  return (
-    <div className="awx-sprayhours" role="img" aria-label="Spray conditions, next 48 hours">
-      {hours.map((h, i) => <i key={i} className={"awx-sh-" + h.tone} title={h.label} />)}
-      <span className="awx-sh-tick" style={{ left: "0%" }}>Now</span>
-      {hours.length > 24 && <span className="awx-sh-tick" style={{ left: `${(24 / hours.length) * 100}%` }}>+24 h</span>}
     </div>
   );
 }

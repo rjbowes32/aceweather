@@ -76,14 +76,25 @@ export async function fetchForecast(loc: AwLocation, signal?: AbortSignal, cache
   ukmoParams.set("current", UKMO_CURRENT_OVERLAY.join(","));
   ukmoParams.set("hourly", UKMO_HOURLY_OVERLAY.join(","));
   ukmoParams.delete("daily");
-  const ukmoRequest = fetch(`${FORECAST}?${ukmoParams}`, fetchInit(signal, cache))
+  // UKMO may never hold up the forecast: it gets 8 s, then it is cancelled.
+  const ukmoAbort = new AbortController();
+  const ukmoTimer = setTimeout(() => ukmoAbort.abort(), 8000);
+  const cancelUkmo = () => ukmoAbort.abort();
+  signal?.addEventListener("abort", cancelUkmo, { once: true });
+  const ukmoRequest = fetch(`${FORECAST}?${ukmoParams}`, fetchInit(ukmoAbort.signal, cache))
     .then((res) => (res.ok ? res.json() : null))
-    .catch(() => null);
-  const r = await fetch(`${FORECAST}?${params}`, fetchInit(signal, cache));
-  if (!r.ok) throw new Error(`Open-Meteo forecast ${r.status}`);
-  const base = (await r.json()) as ForecastResponse;
-  // UKMO may never hold up the forecast: give it 8 s, then go without.
-  const ukmo = await Promise.race([ukmoRequest, new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))]);
+    .catch(() => null)
+    .finally(() => { clearTimeout(ukmoTimer); signal?.removeEventListener("abort", cancelUkmo); });
+  let base: ForecastResponse;
+  try {
+    const r = await fetch(`${FORECAST}?${params}`, fetchInit(signal, cache));
+    if (!r.ok) throw new Error(`Open-Meteo forecast ${r.status}`);
+    base = (await r.json()) as ForecastResponse;
+  } catch (error) {
+    cancelUkmo();
+    throw error;
+  }
+  const ukmo = await ukmoRequest;
   return overlayUkmoPayload(base, ukmo);
 }
 

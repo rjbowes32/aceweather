@@ -8,7 +8,10 @@ fetching, no app state, no dependencies.
   from AceAg `packages/core/src/weather` (main 41ce0ffd); only import extensions
   changed and `buildAccess` exported.
 - `open-meteo-rows.ts`: turns a raw Open-Meteo payload into engine rows (night from sunrise/sunset).
-- `ukmo-overlay.ts`: the Met Office 2 km UKV blend (from AceAg `openMeteoPayload.js`).
+- `ukmo-overlay.ts`: the Met Office 2 km UKV blend (from AceAg `openMeteoPayload.js`); finite numbers only.
+- `london-time.ts`: window times in `Europe/London`, 24 h, today/tomorrow wording.
+- `spray-runs.ts`: the 48 h bar as runs with a reason each, and the main limit.
+- Switches: `LOW_DELTA_T_TONE` (go/warn, display only), `RAIN_ON_CANOPY_MM` / `RAIN_FAST_MM` (set equal once Rob picks one).
 - Tests: `tests/weather-engine.test.mjs` (AceAg's suite) and `tests/aceweather-spraying.test.mjs`.
 
 ## Plan: AceAg imports this
