@@ -77,3 +77,6 @@
 .awx .awx-rain-timeline > div > span { box-shadow: none; }
 /* Phone: selected-day ring not clipped at the scroller edge. */
 @media (max-width: 700px) { .awx .awx-cal { padding: 2px; scroll-padding-inline: 2px; } }
+/* Far-ahead days: normal text colour so labels pass AA (1.4.3) in both themes. */
+.awx .awx-cal-day.is-further .awx-date b,
+.awx .awx-cal-day.is-further .awx-cal-hi { color: var(--awx-text); }
