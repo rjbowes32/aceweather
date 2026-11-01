@@ -164,6 +164,10 @@ export function buildModel(raw) {
       // AceWeather's calibrated chance of at least 1 mm (days 0-7); null further ahead or if it is unavailable.
       chance: typeof d.rain_chance?.[k] === "number" ? d.rain_chance[k] : null,
       further: i > 7,
+      // Wind range: hourly minimum to daily maximum (hourly maximum if the daily value is missing); gust = daily max gust.
+      windLo: hWind.length ? Math.round(minOf(hWind)) : null,
+      windHi: typeof d.wind_speed_10m_max?.[k] === "number" ? Math.round(d.wind_speed_10m_max[k]) : (hWind.length ? Math.round(maxOf(hWind)) : null),
+      gustMax: typeof d.wind_gusts_10m_max?.[k] === "number" ? Math.round(d.wind_gusts_10m_max[k]) : null,
       rainPct: clamp(((dailyP[k] || 0) / calMax) * 100, 0, 100),
       condition: weatherCondition(d.weather_code?.[k], 1), isToday: i === 0,
       icon: dayIcon(d.weather_code?.[k], idxs),

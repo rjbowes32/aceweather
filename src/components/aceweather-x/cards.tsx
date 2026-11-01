@@ -118,15 +118,23 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
           const label = `${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°` +
             (c.icon ? `, ${weatherIconText(c.icon).toLowerCase()}` : "") +
             (c.further ? ", further ahead and less certain" : "") + (c.chance == null && c.rain == null ? "" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
+          const windText = c.windLo == null || c.windHi == null ? null : `${wSpd(Math.min(c.windLo, c.windHi), windUnit)}–${wSpd(c.windHi, windUnit)}`;
+          const fullLabel = label + (windText ? `, wind ${windText} ${WU(windUnit)}` : "") + (c.gustMax == null ? "" : `, gusts to ${wSpd(c.gustMax, windUnit)} ${WU(windUnit)}`);
           return (
             <button key={c.dateKey} type="button"
               ref={sel === i ? selectedDayRef : null}
               className={"awx-cal-day" + (c.isToday ? " is-today" : "") + (sel === i ? " is-sel" : "") + dayTone(c)}
               aria-pressed={sel === i}
-              aria-label={label}
+              aria-label={fullLabel}
               onClick={() => setSel(i)}>
               <div className="awx-date"><b>{c.weekday} {c.dayNum}</b>{c.icon ? <WeatherIcon className="awx-cal-icon" icon={c.icon} /> : <ConditionIcon className="awx-cal-icon" k={c.condition.key} />}</div>
               <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
+              {windText ? (
+                <div className="awx-cal-wind awx-tnum" aria-hidden="true">
+                  <span>{windText} <small>{WU(windUnit)}</small></span>
+                  {c.gustMax == null ? null : <b title="Max gust">G{wSpd(c.gustMax, windUnit)}</b>}
+                </div>
+              ) : null}
               {c.chance == null && c.rain == null ? null : (
                 <div className="awx-cal-rainrow awx-tnum">
                   {c.chance == null ? <span aria-hidden="true" /> : <b>{outlookChanceText(c.chance)}</b>}

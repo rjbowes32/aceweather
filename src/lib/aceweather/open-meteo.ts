@@ -62,7 +62,7 @@ export async function fetchForecast(loc: AwLocation, signal?: AbortSignal, cache
     ].join(","),
     daily: [
       "temperature_2m_max", "temperature_2m_min", "precipitation_sum", "precipitation_probability_max",
-      "wind_speed_10m_max", "wind_direction_10m_dominant", "weather_code",
+      "wind_speed_10m_max", "wind_gusts_10m_max", "wind_direction_10m_dominant", "weather_code",
       "sunrise", "sunset", "uv_index_max",
     ].join(","),
   });
