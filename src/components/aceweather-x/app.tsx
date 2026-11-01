@@ -657,10 +657,10 @@ export function AceWeatherApp() {
         <button type="button" className={windUnit === "kmh" ? "is-on" : ""} onClick={() => setWindUnit("kmh")}>km/h</button>
         <button type="button" className={windUnit === "mph" ? "is-on" : ""} onClick={() => setWindUnit("mph")}>mph</button>
       </div>
-      <button type="button" className={"awx-btn awx-btn-ghost awx-bell" + (rainAlerts ? " is-on" : "")} onClick={toggleRainAlerts}>
+      <button type="button" title={rainAlerts ? "Rain alerts on" : "Rain alerts"} className={"awx-btn awx-btn-ghost awx-bell" + (rainAlerts ? " is-on" : "")} onClick={toggleRainAlerts}>
         <BellIcon /><span>{rainAlerts ? "Rain alerts on" : "Rain alerts"}</span>
       </button>
-      <button type="button" className="awx-link-btn awx-tips-btn" aria-label="Show set-up tips" onClick={() => { showSetupHint(); setSettingsOpen(false); setView("all"); }}><svg className="awx-tips-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg><span>Show set-up tips</span></button>
+      <button type="button" className="awx-link-btn awx-tips-btn" aria-label="Show set-up tips" title="Show set-up tips" onClick={() => { showSetupHint(); setSettingsOpen(false); setView("all"); }}><svg className="awx-tips-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg><span>Show set-up tips</span></button>
     </>
   );
 
@@ -668,20 +668,20 @@ export function AceWeatherApp() {
     <div className="awx">
       {/* RAIL */}
       <aside className="awx-rail" aria-label="Primary">
-        <a className="awx-brand" href="#top"><span className="awx-brand-mark" aria-hidden="true" />
+        <a className="awx-brand" href="#top" title="AceWeather"><span className="awx-brand-mark" aria-hidden="true" />
           <span><span className="awx-brand-name">AceWeather</span></span></a>
         <nav className="awx-nav" aria-label="Sections">
           {NAV.map(([k, label]) => (
-            <button key={k} type="button" aria-pressed={view === k} onClick={() => selectViewAndReset(k)}>
+            <button key={k} type="button" title={label} aria-pressed={view === k} onClick={() => selectViewAndReset(k)}>
               <NavIcon name={k === "all" ? "overview" : k} /><span>{label}</span>
             </button>
           ))}
         </nav>
         <div className="awx-rail-spacer" />
         <div className="awx-rail-foot">
-          <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
+          <button className="awx-btn awx-btn-primary" type="button" title={shareLabel} onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
           <section className="awx-settings-panel" aria-label="Settings">
-            <div className="awx-settings-head">
+            <div className="awx-settings-head" title="Settings">
               <SettingsIcon />
               <span>
                 <strong>Settings</strong>
@@ -850,7 +850,7 @@ export function AceWeatherApp() {
               {settingsControls}
               <div className="awx-sheet-actions">
                 <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>{gpsButtonLabel}</span></button>
-                <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
+                <button className="awx-btn awx-btn-primary" type="button" title={shareLabel} onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
               </div>
             </div>
           </div>
