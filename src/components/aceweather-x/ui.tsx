@@ -105,7 +105,7 @@ export function LineTrend({ trend }: { trend: LineTrendData }) {
 export function HourlyChart({ temp, rain, wind, labels }: { temp: number[]; rain: number[]; wind: number[]; labels: string[] }) {
   const n = temp.length;
   if (!n) return null;
-  const W = 600, H = 132, x0 = 10, x1 = 590, yTop = 14, yBase = 96;
+  const W = 600, H = 104, x0 = 10, x1 = 590, yTop = 14, yBase = 100;
   const xs = (i: number) => x0 + ((x1 - x0) * i) / Math.max(1, n - 1);
   const tmin = Math.min(...temp), tmax = Math.max(...temp);
   const ts = (v: number) => yBase - (yBase - yTop) * ((v - tmin) / ((tmax - tmin) || 1));
@@ -116,7 +116,8 @@ export function HourlyChart({ temp, rain, wind, labels }: { temp: number[]; rain
   const tPath = temp.map((v, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)} ${ts(v).toFixed(1)}`).join("");
   const wPath = wind.map((v, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)} ${ws(v).toFixed(1)}`).join("");
   return (
-    <svg className="awx-line awx-hourly-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Hourly temperature, rain and wind">
+    <div className="awx-hourly-chart" role="img" aria-label="Hourly temperature, rain and wind">
+    <svg className="awx-line awx-hourly-plot" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
       <path className="awx-grid" d={`M${x0} ${yBase}H${x1}`} />
       {rain.map((v, i) => {
         if (!(v > 0)) return null;
@@ -125,8 +126,11 @@ export function HourlyChart({ temp, rain, wind, labels }: { temp: number[]; rain
       })}
       <path d={wPath} fill="none" stroke="var(--awx-cool)" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.75" />
       <path className="awx-temp" d={tPath} />
-      {labels.map((l, i) => (["00", "06", "12", "18", "23"].includes(l) ? <text key={i} x={xs(i)} y={H - 6} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}>{l}:00</text> : null))}
     </svg>
+    <div className="awx-hourly-axis" aria-hidden="true">
+      {labels.map((l, i) => (["00", "06", "12", "18", "23"].includes(l) ? <span key={i} className={i === 0 ? "is-start" : i === n - 1 ? "is-end" : ""} style={{ left: `${(xs(i) / W) * 100}%` }}>{l}:00</span> : null))}
+    </div>
+    </div>
   );
 }
 
