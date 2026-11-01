@@ -5,8 +5,8 @@
    badges, map controls. */
 .awx {
   --awx-radius: 12px;
-  --awx-radius-sm: 8px;
-  --awx-card-padding: 20px;
+  --awx-radius-sm: 12px;
+  --awx-card-padding: 16px;
   --awx-inner-tint: var(--awx-surface-2);
 }
 @media (max-width: 700px) { .awx { --awx-radius: 12px; --awx-card-padding: 12px; } }
@@ -32,7 +32,7 @@
 .awx .awx-rows { gap: 0; background: transparent; border: 0; }
 .awx .awx-rows > .awx-row-item { background: transparent; border: 0; padding-inline: 0; }
 .awx .awx-hours { gap: 4px; background: transparent; border: 0; }
-.awx .awx-hours > * { background: var(--awx-inner-tint); border: 0; border-radius: 6px; }
+.awx .awx-hours > * { background: var(--awx-inner-tint); border: 0; border-radius: var(--awx-radius-sm); }
 
 /* Inner boxes: tint, no border. */
 .awx .awx-hourly, .awx .awx-now-trend, .awx .awx-now-table, .awx .awx-radar, .awx .awx-verdict,
@@ -52,7 +52,7 @@
 .awx .awx-cal-day { --awx-cal-edge: transparent; }
 .awx .awx-cal-day:hover { --awx-cal-edge: transparent; }
 .awx .awx-cal-day.is-sel { --awx-cal-edge: color-mix(in srgb, var(--awx-accent) 62%, transparent); }
-.awx .awx-cal-day.is-further { border: 0; opacity: 0.85; }
+.awx .awx-cal-day.is-further { border: 0; }
 .awx .awx-cal-day.is-empty { background: transparent; box-shadow: none; }
 .awx .awx-cal-dow { box-shadow: none; border: 0; background: transparent; }
 
@@ -62,6 +62,18 @@
 .awx .awx-doc-link { border: 0; background: var(--awx-inner-tint); }
 .awx .awx-more-grid button, .awx .awx-more-grid a, .awx .awx-sheet .awx-place { border: 0; }
 .awx .awx-more-grid button[aria-pressed="true"], .awx .awx-sheet .awx-place[aria-pressed="true"] { background: var(--awx-accent-weak); }
-/* Field switcher: every tile tinted; the selected one a step stronger plus its coloured bar. */
-.awx .awx-field-switcher > .awx-field-switch { background: var(--awx-inner-tint); }
-.awx .awx-field-switcher > .awx-field-switch[aria-pressed="true"] { background: var(--awx-surface-3); }
+/* r2 (Dev UX 634a213) */
+/* List rows keep a 1px divider (AceAg List rows). */
+.awx .awx-rows > .awx-row-item + .awx-row-item { border-top: 1px solid var(--awx-line); }
+/* Field summary: one card, four stats (label over figure, no box, 16px gaps); selected keeps its coloured bar. */
+.awx .awx-field-switcher {
+  background: var(--awx-surface); border: var(--awx-card-border); border-radius: var(--awx-radius);
+  box-shadow: var(--awx-card-shadow); padding: 8px var(--awx-card-padding); gap: 16px;
+}
+.awx .awx-field-switcher > .awx-field-switch,
+.awx .awx-field-switcher > .awx-field-switch[aria-pressed="true"] { background: transparent; border-radius: 0; padding-left: 12px; }
+/* Leftover rings. */
+.awx .awx-radar-loading span { border: 0; }
+.awx .awx-rain-timeline > div > span { box-shadow: none; }
+/* Phone: selected-day ring not clipped at the scroller edge. */
+@media (max-width: 700px) { .awx .awx-cal { padding: 2px; scroll-padding-inline: 2px; } }
