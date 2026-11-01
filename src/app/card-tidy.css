@@ -89,9 +89,15 @@
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start;
   }
   .awx:has(.awx-feed[data-view="outlook"]) > .awx-side > * { margin: 0; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side { align-items: stretch; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side .awx-btn span { display: inline; }
   /* The 100vh sticky rail spans both rows, so row 1 is only as tall as the outlook card (16px gap below it). */
   .awx:has(.awx-feed[data-view="outlook"]) { grid-template-rows: auto 1fr; align-items: start; }
   .awx:has(.awx-feed[data-view="outlook"]) > .awx-rail { grid-row: 1 / span 2; align-self: start; }
+}
+/* Compact icon rail range: keep the rail 76px on Outlook, like every other view. */
+@media (min-width: 901px) and (max-width: 1080px) {
+  .awx:has(.awx-feed[data-view="outlook"]) { grid-template-columns: 76px minmax(0, 980px); }
 }
 
 /* Rolling 14-day grid from today (7 x 2), each day a square tile in the standard card style. */
@@ -139,3 +145,13 @@
 @container (max-width: 663px) { .awx .awx-cal-day { flex: 0 0 112px; width: 112px; } }
 /* 7 x 2 tiles under ~100px (e.g. 1024 desktop): drop the repeated unit; it stays in the Wind stat above and the aria-label. */
 @container (min-width: 664px) and (max-width: 800px) { .awx .awx-cal-wind small { display: none; } .awx .awx-cal-day { padding: 8px; gap: 2px; } .awx .awx-cal-hi { font-size: 16px; } .awx .awx-cal-day .awx-date, .awx .awx-cal-wind, .awx .awx-cal-rainrow { line-height: 15px; } }
+
+/* r7: six selected-day stats (Max gust added): one row of 6 on desktop, 2 rows of 3 on phone. */
+.awx .awx-outlook-lead { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 700px) { .awx .awx-outlook-lead .awx-outlook-stat:nth-last-child(-n + 2) { grid-column: span 2; } }
+/* Compact rail (901-1080px): stacked toggles as one rounded block with separate, non-overlapping options. */
+@media (min-width: 901px) and (max-width: 1080px) {
+  .awx .awx-rail .awx-segmented { border-radius: 12px; gap: 2px; padding: 3px; }
+  .awx .awx-rail .awx-segmented button { border-radius: 9px; min-height: 36px; padding: 0 4px; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side .awx-btn { width: auto; padding: 0 14px; white-space: nowrap; justify-content: flex-start; }
+}

@@ -111,6 +111,10 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
             <span>Wind</span>
             <b className="awx-tnum">{outlookWind(day, windUnit)} <small>{day?.hours?.windMax == null ? "" : WU(windUnit)}</small></b>
           </div>
+          <div className="awx-outlook-stat">
+            <span>Max gust</span>
+            <b className="awx-tnum">{day.gustMax == null ? "—" : wSpd(day.gustMax, windUnit)} <small>{day.gustMax == null ? "" : WU(windUnit)}</small></b>
+          </div>
         </div>
       )}
       <div className="awx-outlook-days"><div className="awx-cal">
