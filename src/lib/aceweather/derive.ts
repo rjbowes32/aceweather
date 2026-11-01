@@ -55,7 +55,12 @@ export function buildModel(raw) {
   const isDay = cur.is_day == null ? 1 : Number(cur.is_day);
   const condition = weatherCondition(cur.weather_code, isDay);
   const compass = dirToCompass(cur.wind_direction_10m);
+  const nowIcon = pickWeatherIcon({
+    code: cur.weather_code, isDay, precipMm: cur.precipitation, tempC: cur.temperature_2m, gustKmh: cur.wind_gusts_10m,
+    grassMinC: !isDay && typeof cur.temperature_2m === "number" ? cur.temperature_2m - grassOffsetAt(cur.cloud_cover, cur.wind_speed_10m) : null,
+  });
   const now = {
+    icon: nowIcon,
     temp: cur.temperature_2m, feels: cur.apparent_temperature,
     hi: d.temperature_2m_max?.[di], lo: d.temperature_2m_min?.[di],
     rh: cur.relative_humidity_2m, dew: cur.dew_point_2m, pressure: cur.pressure_msl,

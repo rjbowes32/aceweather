@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
+import { weatherIconText } from "@/lib/aceweather/weather-icons";
 import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, WeatherIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -120,6 +121,7 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
         {leading.map((_, i) => <div key={"e" + i} className="awx-cal-day is-empty" />)}
         {model.calendar.map((c, i) => {
           const label = `${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°` +
+            (c.icon ? `, ${weatherIconText(c.icon).toLowerCase()}` : "") +
             (c.further ? ", further ahead and less certain" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
           return (
             <button key={c.dateKey} type="button"

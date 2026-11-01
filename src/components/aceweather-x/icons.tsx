@@ -1,7 +1,7 @@
 /* Thin line icons (24x24, stroke=currentColor). Inherit sizing/stroke from CSS. */
 import type { ReactNode } from "react";
 import type { ConditionKey } from "@/lib/aceweather/format";
-import type { IconKey, WeatherIcon as WeatherIconData } from "@/lib/aceweather/weather-icons";
+import { weatherIconText, type IconKey, type WeatherIcon as WeatherIconData } from "@/lib/aceweather/weather-icons";
 
 const P = (d: string) => <path d={d} />;
 
@@ -48,22 +48,21 @@ const RULE: Record<IconKey, ReactNode> = {
   fog: COND.fog,
   cloud: COND.cloud,
   partly: <>{P("M8 3.5v1.2M3.5 8h1.2M4.8 4.8l.9.9M11.2 4.8l-.9.9")}{P("M5.6 10.4A3.2 3.2 0 1 1 10.9 7")}{P("M9 19h8.5a3.3 3.3 0 0 0 .3-6.6 5 5 0 0 0-9.6 1.1A2.8 2.8 0 0 0 9 19z")}</>,
+  "partly-night": <>{P("M10.8 6.6A3.6 3.6 0 1 1 5.2 11 3 3 0 0 0 10.8 6.6z")}{P("M9 19h8.5a3.3 3.3 0 0 0 .3-6.6 5 5 0 0 0-9.6 1.1A2.8 2.8 0 0 0 9 19z")}</>,
   clear: COND.clear,
   night: P("M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"),
 };
 
 /** Main condition icon from pickWeatherIcon, plus small frost and gust badges. */
 export function WeatherIcon({ icon, className }: { icon: WeatherIconData; className?: string }) {
-  const parts = [icon.label];
-  if (icon.frost === "frost") parts.push("frost");
-  if (icon.frost === "risk") parts.push("frost risk");
-  if (icon.gust) parts.push("gusty");
+  const text = weatherIconText(icon);
   return (
-    <span className={"awx-wicon" + (className ? " " + className : "")} role="img" aria-label={parts.join(", ")} title={parts.join(", ")}>
+    <span className={"awx-wicon" + (className ? " " + className : "")} role="img" aria-label={text} title={text}>
       <svg viewBox="0 0 24 24" aria-hidden="true">{RULE[icon.key] ?? RULE.partly}</svg>
       {icon.frost || icon.gust ? (
         <span className="awx-wicon-badges" aria-hidden="true">
-          {icon.frost ? <svg className={"awx-badge awx-badge-frost" + (icon.frost === "risk" ? " is-risk" : "")} viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" /></svg> : null}
+          {icon.frost === "frost" ? <svg className="awx-badge awx-badge-frost" viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" /></svg> : null}
+          {icon.frost === "risk" ? <svg className="awx-badge awx-badge-frost is-risk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6.5v11M7.2 9.2l9.6 5.6M7.2 14.8l9.6-5.6" /></svg> : null}
           {icon.gust ? <svg className="awx-badge awx-badge-gust" viewBox="0 0 24 24"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h6" /></svg> : null}
         </span>
       ) : null}

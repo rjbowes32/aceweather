@@ -27,7 +27,7 @@ export function OverviewExperience({model, unit, windUnit, statusText, freshness
   ];
   return <section className="weather-dashboard" aria-label="Weather overview">
     {hint}
-    <header className="weather-intro"><div className="weather-current"><ConditionIcon k={model.now.condition.key}/><strong>{formatTemperature(model.now.temp,unit)}°</strong><div><h2>{model.now.condition.label}</h2><span>{statusText} · {freshness}</span></div></div><button className="weather-share" onClick={onShare} aria-label={shareLabel}><ShareIcon/></button></header>
+    <header className="weather-intro"><div className="weather-current">{model.now.icon ? <WeatherIcon className="weather-current-icon" icon={model.now.icon}/> : <ConditionIcon k={model.now.condition.key}/>}<strong>{formatTemperature(model.now.temp,unit)}°</strong><div><h2>{model.now.icon?.label ?? model.now.condition.label}</h2><span>{statusText} · {freshness}</span></div></div><button className="weather-share" onClick={onShare} aria-label={shareLabel}><ShareIcon/></button></header>
     <section className="weather-surface weather-hours" aria-labelledby="weather-hours-title">
       <header className="weather-section-head"><h2 id="weather-hours-title">Upcoming hours</h2><div><select aria-label="Hourly chart measurement" value={metric} onChange={e=>setMetric(e.target.value)}><option value="rain">Rainfall · mm</option><option value="temp">Temperature · °{unit.toUpperCase()}</option></select><button onClick={()=>onSelectView("outlook")}>Next days ›</button></div></header>
       <div className="weather-hours-scroll" tabIndex={0} role="region" aria-label="Hourly forecast">

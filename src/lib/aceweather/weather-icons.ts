@@ -13,7 +13,7 @@ export const GUST_BADGE_KMH = 25;
 export const FROST_GRASS_C = 0;
 export const FROST_RISK_GRASS_C = 2;
 
-export type IconKey = "storm" | "snow" | "rain" | "drizzle" | "fog" | "cloud" | "partly" | "clear" | "night";
+export type IconKey = "storm" | "snow" | "rain" | "drizzle" | "fog" | "cloud" | "partly" | "partly-night" | "clear" | "night";
 export type FrostBadge = "frost" | "risk" | null;
 export type WeatherIcon = { key: IconKey; label: string; frost: FrostBadge; gust: boolean };
 
@@ -58,5 +58,15 @@ export function pickWeatherIcon(i: IconInput): WeatherIcon {
   if (code === 45 || code === 48) return out("fog", "Fog");
   if (code === 3) return out("cloud", "Overcast");
   if (code === 0 || code === 1) return night ? out("night", code === 0 ? "Clear night" : "Mainly clear") : out("clear", code === 0 ? "Clear" : "Mainly clear");
-  return out("partly", code === 2 ? "Partly cloudy" : "Cloudy");
+  if (code === 2) return out(night ? "partly-night" : "partly", "Partly cloudy");
+  return out("partly", "Cloudy");
+}
+
+/** Spoken/title text for an icon and its badges. Wording lives here, never as visible helper text. */
+export function weatherIconText(icon: WeatherIcon): string {
+  const parts = [icon.label];
+  if (icon.frost === "frost") parts.push("frost overnight");
+  if (icon.frost === "risk") parts.push("frost risk overnight");
+  if (icon.gust) parts.push("gusty");
+  return parts.join(", ");
 }
