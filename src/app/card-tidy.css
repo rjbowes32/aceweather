@@ -1,0 +1,67 @@
+/* Card tidy (2026-11-01), following AceAg DESIGN.md: one card per block, 12px radius,
+   20px padding (12px on phone), never a bordered box inside a card. Inner groups are
+   separated by spacing or a soft tint (AceAg "filled" = surface-high, no border, no shadow).
+   Loaded last. Lines kept only where they carry meaning: selected day, chart legend keys,
+   badges, map controls. */
+.awx {
+  --awx-radius: 12px;
+  --awx-radius-sm: 8px;
+  --awx-card-padding: 20px;
+  --awx-inner-tint: var(--awx-surface-2);
+}
+@media (max-width: 700px) { .awx { --awx-radius: 12px; --awx-card-padding: 12px; } }
+
+/* Outer card: the one style (thin light border, one faint shadow, same radius). */
+.awx .awx-card, .awx .awx-side-card, .awx .weather-surface, .awx .awx-rain-summary, .awx .awx-rain-chart,
+.awx .awx-rain-radar-link, .awx .awx-now-current, .awx .awx-now-detail, .awx .awx-now-hourly, .awx .awx-now-daylight {
+  border: var(--awx-card-border); border-radius: var(--awx-radius); box-shadow: var(--awx-card-shadow);
+}
+
+/* 1px-gap "grid line" dividers -> spaced tinted tiles. */
+.awx .awx-outlook-lead, .awx .awx-glance, .awx .awx-now-key-metrics, .awx .awx-rain-key-metrics,
+.awx .awx-now-daylight-grid, .awx .awx-field-switcher {
+  gap: 8px; background: transparent; border: 0; box-shadow: none; overflow: visible;
+}
+.awx .awx-outlook-lead > *, .awx .awx-glance > div, .awx .awx-now-key-metrics > *, .awx .awx-rain-key-metrics > *,
+.awx .awx-now-daylight-grid > * {
+  background: var(--awx-inner-tint); border: 0; border-radius: var(--awx-radius-sm);
+}
+.awx .awx-outlook-lead > :first-child { background: var(--awx-inner-tint); }
+.awx .awx-field-switcher > * { border: 0; border-radius: var(--awx-radius-sm); }
+/* Row lists (spray, field): spacing only. */
+.awx .awx-rows { gap: 0; background: transparent; border: 0; }
+.awx .awx-rows > .awx-row-item { background: transparent; border: 0; padding-inline: 0; }
+.awx .awx-hours { gap: 4px; background: transparent; border: 0; }
+.awx .awx-hours > * { background: var(--awx-inner-tint); border: 0; border-radius: 6px; }
+
+/* Inner boxes: tint, no border. */
+.awx .awx-hourly, .awx .awx-now-trend, .awx .awx-now-table, .awx .awx-radar, .awx .awx-verdict,
+.awx .awx-rain-comparison-tile, .awx .awx-rain-comparison-tile.is-drier, .awx .awx-rain-comparison-tile.is-similar {
+  border: 0; box-shadow: none; background: var(--awx-inner-tint); border-radius: var(--awx-radius-sm);
+}
+.awx .awx-hourly .awx-hourly-chart, .awx .awx-hourly svg.awx-line { border: 0; background: transparent; }
+.awx .awx-hourly .awx-hours > * { background: var(--awx-surface); }
+.awx .awx-now-table-row, .awx .awx-now-table-row.is-head { border-bottom: 0; }
+.awx .awx-radar-controls, .awx .awx-radar-foot, .awx .awx-radar-status { border-top: 0; }
+.awx .awx-cal-rainrow { border-top: 0; }
+.awx .awx-tag, .awx .awx-tag-sm { border: 0; }
+.awx .awx-now-hours > div, .awx .awx-now-hours > div.is-wet { border: 0; }
+.awx .awx-now-hours > div.is-wet { background: var(--awx-accent-weak); }
+
+/* Calendar: no tile rings or dashed "further" tiles; selection keeps its accent ring (meaning). */
+.awx .awx-cal-day { --awx-cal-edge: transparent; }
+.awx .awx-cal-day:hover { --awx-cal-edge: transparent; }
+.awx .awx-cal-day.is-sel { --awx-cal-edge: color-mix(in srgb, var(--awx-accent) 62%, transparent); }
+.awx .awx-cal-day.is-further { border: 0; opacity: 0.85; }
+.awx .awx-cal-day.is-empty { background: transparent; box-shadow: none; }
+.awx .awx-cal-dow { box-shadow: none; border: 0; background: transparent; }
+
+/* Rail and sheets: spacing instead of divider lines and boxed links. */
+.awx .awx-feed-head { border-bottom: 0; }
+.awx .awx-settings-panel, .awx .awx-docs { border-top: 0; }
+.awx .awx-doc-link { border: 0; background: var(--awx-inner-tint); }
+.awx .awx-more-grid button, .awx .awx-more-grid a, .awx .awx-sheet .awx-place { border: 0; }
+.awx .awx-more-grid button[aria-pressed="true"], .awx .awx-sheet .awx-place[aria-pressed="true"] { background: var(--awx-accent-weak); }
+/* Field switcher: every tile tinted; the selected one a step stronger plus its coloured bar. */
+.awx .awx-field-switcher > .awx-field-switch { background: var(--awx-inner-tint); }
+.awx .awx-field-switcher > .awx-field-switch[aria-pressed="true"] { background: var(--awx-surface-3); }

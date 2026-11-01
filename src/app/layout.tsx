@@ -10,6 +10,7 @@ import "./design-tokens.css";
 import "./shared-surfaces.css";
 import "./weather-dashboard.css";
 import "./ui-tidy.css";
+import "./card-tidy.css";
 
 const themeBootstrap = `try{const theme=localStorage.getItem("awx-theme");if(theme==="light"||theme==="dark")document.documentElement.dataset.theme=theme}catch{}`;
 
