@@ -344,6 +344,20 @@ export function AceWeatherApp() {
   const [shareLabel, setShareLabel] = useState("Share report");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!locationOpen || !vv) return;
+    const root = document.documentElement;
+    const sync = () => {
+      root.style.setProperty("--awx-vvh", `${Math.round(vv.height)}px`);
+      root.style.setProperty("--awx-kb", `${Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))}px`);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => { vv.removeEventListener("resize", sync); vv.removeEventListener("scroll", sync); root.style.removeProperty("--awx-vvh"); root.style.removeProperty("--awx-kb"); };
+  }, [locationOpen]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [geoFollow, setGeoFollow] = useState(false);
   const [geoPreferenceReady, setGeoPreferenceReady] = useState(false);
@@ -455,9 +469,10 @@ export function AceWeatherApp() {
 
   // search debounce
   useEffect(() => {
-    if (query.trim().length < 2) { setSuggestions([]); return undefined; }
+    if (query.trim().length < 2) { setSuggestions([]); setSearchedQuery(null); return undefined; }
     const ctrl = new AbortController();
-    const t = setTimeout(() => { searchLocations(query, ctrl.signal).then(setSuggestions).catch(() => {}); }, 280);
+    const q = query.trim();
+    const t = setTimeout(() => { searchLocations(query, ctrl.signal).then((r) => { setSuggestions(r); setSearchedQuery(q); }).catch(() => {}); }, 280);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [query]);
 
@@ -641,8 +656,8 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
-  const placeSubtitle = geoFollow ? (location.region || "GPS location") : [location.region, "Chosen place · GPS off"].filter(Boolean).join(" · ");
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating…" : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
+  const placeSubtitle = geoFollow ? (location.region || "GPS location") : (location.region ? `${location.region} · GPS off` : "Chosen place · GPS off");
 
   const settingsControls = (
     <>
@@ -765,10 +780,12 @@ export function AceWeatherApp() {
             <LocationPickerContent
               query={query}
               suggestions={suggestions}
+              searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
               saved={saved}
               activeLocationName={location.name}
               currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
               gpsButtonLabel={gpsButtonLabel}
+              gpsStatus={geoStatus}
               onQueryChange={setQuery}
               onSubmit={onSubmit}
               onSelectLocation={loadLocation}
@@ -825,10 +842,12 @@ export function AceWeatherApp() {
               <LocationPickerContent
                 query={query}
                 suggestions={suggestions}
+                searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
                 saved={saved}
                 activeLocationName={location.name}
                 currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
                 gpsButtonLabel={gpsButtonLabel}
+              gpsStatus={geoStatus}
                 autoFocus
                 onQueryChange={setQuery}
                 onSubmit={onSubmit}

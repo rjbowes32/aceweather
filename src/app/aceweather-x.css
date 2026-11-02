@@ -666,9 +666,9 @@ html[data-awx] body {
     scroll-snap-align: start;
   }
   .awx-now-hours > div.is-wet { border-color: color-mix(in srgb, var(--awx-accent) 40%, var(--awx-line)); }
-  .awx-now-hours span { color: var(--awx-faint); font-size: 10px; }
+  .awx-now-hours span { color: var(--awx-muted); font-size: 12px; }
   .awx-now-hours strong { font-size: 17px; }
-  .awx-now-hours small { color: var(--awx-muted); font-size: 9px; white-space: nowrap; }
+  .awx-now-hours small { color: var(--awx-muted); font-size: 12px; white-space: nowrap; }
   .awx-now-hours > div.is-wet small:first-of-type { color: var(--awx-accent); }
   .awx-now-daylight-grid {
     display: grid;
@@ -1019,9 +1019,9 @@ html[data-awx] body {
     border: 1px solid var(--awx-line); border-radius: var(--awx-control-radius); background: var(--awx-surface-2); scroll-snap-align: start;
   }
   .awx-now-hours > div.is-wet { border-color: color-mix(in srgb, var(--awx-accent) 40%, var(--awx-line)); }
-  .awx-now-hours span { color: var(--awx-faint); font-size: 10px; }
+  .awx-now-hours span { color: var(--awx-muted); font-size: 12px; }
   .awx-now-hours strong { font-size: 17px; }
-  .awx-now-hours small { color: var(--awx-muted); font-size: 9px; white-space: nowrap; }
+  .awx-now-hours small { color: var(--awx-muted); font-size: 12px; white-space: nowrap; }
   .awx-now-hours > div.is-wet small:first-of-type { color: var(--awx-accent); }
   .awx-now-daylight { grid-column: 1 / -1; padding: 18px 20px 20px; }
   .awx-now-daylight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--awx-line); border-radius: var(--awx-radius-sm); background: var(--awx-line); }
