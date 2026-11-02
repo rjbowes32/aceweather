@@ -29,13 +29,13 @@ function HourlyDetail({ day, unit, windUnit }: { day?: CalendarDay; unit: Temper
         <span><i className="awx-key-rain" aria-hidden="true" />Rain mm</span>
         <span><i className="awx-key-wind" aria-hidden="true" />Wind {WU(windUnit)}</span>
       </div>
-      <div className="awx-hours">
+      <div className="awx-hours" role="list" aria-label="Hour by hour">
         {hrs.labels.map((l: string, i: number) => (
-          <div className="awx-hour" key={i}>
-            <span className="awx-h-h">{l}</span>
-            <b className="awx-h-t awx-tnum">{tC(hrs.temp[i], unit)}°</b>
-            <span className={"awx-h-r awx-tnum" + (formatRain(hrs.rain[i]) !== "0" ? " wet" : "")}>{formatRain(hrs.rain[i]) === "0" ? "·" : formatRain(hrs.rain[i])}</span>
-            <span className="awx-h-w awx-tnum">{wSpd(hrs.wind[i], windUnit)}</span>
+          <div className="awx-hour" key={i} role="listitem" aria-label={`${l}:00, ${tC(hrs.temp[i], unit)}°, ${formatRain(hrs.rain[i])} mm rain, wind ${wSpd(hrs.wind[i], windUnit)} ${WU(windUnit)}`}>
+            <span className="awx-h-h" aria-hidden="true">{l}</span>
+            <b className="awx-h-t awx-tnum" aria-hidden="true">{tC(hrs.temp[i], unit)}°</b>
+            <span aria-hidden="true" className={"awx-h-r awx-tnum" + (formatRain(hrs.rain[i]) !== "0" ? " wet" : "")}>{formatRain(hrs.rain[i]) === "0" ? "·" : formatRain(hrs.rain[i])}</span>
+            <span className="awx-h-w awx-tnum" aria-hidden="true">{wSpd(hrs.wind[i], windUnit)}</span>
           </div>
         ))}
       </div>

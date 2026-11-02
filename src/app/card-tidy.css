@@ -177,7 +177,7 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
   .awx > .awx-side .awx-btn { width: auto; padding: 0 14px; justify-content: flex-start; text-align: left; }
 }
 /* r2: units shown once in the Next ten hours heading; Sun & daylight UV stays on one line. */
-.awx .awx-now-units { display: block; margin: 2px 0 0; color: var(--awx-muted); font-size: 12px; font-weight: 500; }
+.awx .awx-now-units { display: block; margin: -12px 0 6px; color: var(--awx-muted); font-size: 12px; font-weight: 500; }
 .awx .awx-now-daylight-grid strong { white-space: nowrap; }
 .awx .awx-hour .awx-h-h, .awx .awx-hour .awx-h-r, .awx .awx-hour .awx-h-w, .awx .awx-hours-cap { font-size: 12px; }
 .awx .awx-hour .awx-h-h, .awx .awx-hour .awx-h-r, .awx .awx-hour .awx-h-w { color: var(--awx-muted); }

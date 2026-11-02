@@ -59,9 +59,10 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
 
       <section className="awx-now-hourly" aria-labelledby="awx-now-hourly-title">
         <div className="awx-now-section-head">
-          <div><span id="awx-now-hourly-title">Next ten hours</span><span className="awx-now-units" aria-hidden="true">mm · {windLabel}</span></div>
+          <div><span id="awx-now-hourly-title">Next ten hours</span></div>
           <button type="button" onClick={() => onSelectView("rain")}>Rain detail</button>
         </div>
+        <span className="awx-now-units" aria-hidden="true">mm · {windLabel}</span>
         {rain.headline === NO_RAIN_HEADLINE ? null : <button className="awx-now-rain-callout" type="button" onClick={() => onSelectView("rain")}>
           <span><small>Change ahead</small><strong>{rain.headline}</strong></span>
           <span>{rain.detail}</span>
@@ -70,8 +71,8 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
         <div className="awx-now-hours" role="list" aria-label="Hourly forecast">
           {hourly.map((hour) => (
             <div key={`${hour.dateKey}-${hour.label}`} role="listitem" aria-label={`${hour.label}, ${formatTemperature(hour.temp, unit)}°, ${formatRain(hour.precip ?? 0)} mm rain, wind ${formatWind(hour.wind, windUnit)} ${windLabel}`} className={formatRain(hour.precip ?? 0) !== "0" ? "is-wet" : ""}>
-              <span>{hour.label}</span>
-              <strong className="awx-tnum">{formatTemperature(hour.temp, unit)}°</strong>
+              <span aria-hidden="true">{hour.label}</span>
+              <strong className="awx-tnum" aria-hidden="true">{formatTemperature(hour.temp, unit)}°</strong>
               <small aria-hidden="true">{formatRain(hour.precip ?? 0)}</small>
               <small aria-hidden="true">{formatWind(hour.wind, windUnit)}</small>
             </div>
