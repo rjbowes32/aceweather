@@ -182,3 +182,57 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
 .awx .awx-hour .awx-h-h, .awx .awx-hour .awx-h-r, .awx .awx-hour .awx-h-w, .awx .awx-hours-cap { font-size: 12px; }
 .awx .awx-hour .awx-h-h, .awx .awx-hour .awx-h-r, .awx .awx-hour .awx-h-w { color: var(--awx-muted); }
 .awx .awx-hour .awx-h-r.wet { color: var(--awx-accent); }
+
+/* r4: Location sheet/panel. One search field, one grouped list with dividers, no boxes inside boxes. */
+.awx .awx-location-picker { gap: 12px; }
+.awx .awx-location-picker .awx-search {
+  min-height: 48px; padding: 0 6px 0 14px; gap: 10px;
+  border: 1px solid var(--awx-line); border-radius: var(--awx-control-radius);
+  background: var(--awx-surface); box-shadow: none;
+}
+.awx .awx-location-picker .awx-search:focus-within { border-color: var(--awx-accent-line); background: var(--awx-surface); }
+.awx .awx-location-picker .awx-search input { font-size: 16px; height: 46px; line-height: 46px; outline: none; box-shadow: none; }
+.awx .awx-location-picker .awx-search input:focus-visible { outline: none; }
+.awx .awx-location-picker .awx-search input::placeholder { color: var(--awx-muted); }
+.awx .awx-location-picker .awx-search svg { stroke: var(--awx-muted); flex: none; }
+.awx .awx-location-picker .awx-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.awx .awx-location-picker .awx-search .awx-go { min-height: 44px; padding: 0 10px; font-size: 15px; background: none; border: 0; }
+.awx .awx-loc-list {
+  display: grid; border: 0; background: transparent;
+}
+.awx .awx-loc-list > * + * { border-top: 1px solid var(--awx-line); }
+.awx .awx-loc-list .awx-place,
+.awx .awx-loc-list .awx-loc-gps {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; margin: 0;
+  padding: 0 14px; border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0;
+  background: transparent; box-shadow: none; color: var(--awx-text); font-size: 15px; font-weight: 500; text-align: left;
+}
+.awx .awx-loc-list > :first-child { border-top: 0; }
+.awx .awx-loc-list .awx-place:hover, .awx .awx-loc-list .awx-loc-gps:hover { background: var(--awx-surface-2); }
+.awx .awx-loc-list .awx-place[aria-pressed="true"] { background: transparent; border-color: var(--awx-line); }
+.awx .awx-loc-list .awx-place:focus-visible, .awx .awx-loc-list .awx-loc-gps:focus-visible { outline: 2px solid var(--awx-accent); outline-offset: -2px; }
+.awx .awx-loc-list .awx-loc-gps svg { width: 18px; height: 18px; flex: none; color: var(--awx-muted); stroke: currentColor; }
+.awx .awx-loc-list .awx-loc-gps.is-on, .awx .awx-loc-list .awx-loc-gps.is-on svg { color: var(--awx-accent); }
+.awx .awx-loc-list .awx-loc-gps.is-blocked { border: 0; border-top: 0; }
+.awx .awx-loc-list > .awx-loc-gps + * { border-top: 1px solid var(--awx-line); }
+.awx .awx-loc-list .awx-loc-gps span { display: inline; white-space: normal; }
+.awx .awx-loc-list .awx-p-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1 1 auto; }
+.awx .awx-loc-list .awx-p-name { flex: none; font-size: 15px; font-weight: 500; color: var(--awx-text); }
+.awx .awx-loc-list .awx-p-region { min-width: 0; font-size: 13px; color: var(--awx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.awx .awx-loc-list .awx-p-temp { flex: none; margin-left: auto; min-width: 0; font-size: 15px; color: var(--awx-text); }
+.awx .awx-loc-list .awx-p-tick { color: var(--awx-accent); }
+.awx .awx-location-picker .awx-sheet-section-title { display: none; }
+/* Phone sheet: room under the header, and it rides above the keyboard and scrolls within what is visible. */
+.awx .awx-location-sheet {
+  padding-top: 26px;
+  max-height: min(calc(var(--awx-vvh, 100dvh) - 72px), 720px);
+  margin-bottom: var(--awx-kb, 0px);
+  overscroll-behavior: contain;
+}
+.awx .awx-location-sheet .awx-sheet-head { padding-bottom: 16px; }
+/* r4b: dividers win over the older .awx-sheet .awx-place { border: 0 } rule; rows sit flush in the outer card. */
+.awx .awx-location-picker .awx-loc-list > .awx-place,
+.awx .awx-location-picker .awx-loc-list > .awx-loc-gps { border: 0; border-top: 1px solid var(--awx-line); padding-inline: 4px; }
+.awx .awx-location-picker .awx-loc-list > :first-child { border-top: 0; }
+.awx .awx-location-picker .awx-loc-list > .awx-loc-gps { padding-block: 10px; }
+.awx .awx-location-sheet { background: var(--awx-surface); border-top: 1px solid var(--awx-line); }

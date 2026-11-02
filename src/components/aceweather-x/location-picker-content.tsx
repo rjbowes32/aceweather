@@ -35,14 +35,12 @@ export function LocationPickerContent({
 }: LocationPickerContentProps) {
   return (
     <div className="awx-location-picker">
-      <button className={"awx-btn awx-btn-ghost awx-location-gps" + (gpsStatus === "blocked" ? " is-blocked" : "")} type="button" onClick={onLocate} disabled={gpsStatus === "locating"}>
-        <GpsIcon /><span>{gpsButtonLabel}</span>
-      </button>
-      <form className="awx-location-form" onSubmit={onSubmit}>
+      <form className="awx-location-form" onSubmit={onSubmit} role="search">
         <label className="awx-search">
           <SearchIcon />
           <input
             type="search"
+            enterKeyHint="search"
             aria-label="Search for a location"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
@@ -50,39 +48,36 @@ export function LocationPickerContent({
             autoComplete="off"
             autoFocus={autoFocus}
           />
-          <button className="awx-go" type="submit">Load</button>
+          {query.trim() ? <button className="awx-go" type="submit">Load</button> : null}
         </label>
       </form>
 
       {suggestions.length ? (
-        <section className="awx-sheet-section" aria-label="Search results">
-          <div className="awx-sheet-section-title">Results</div>
-          <div className="awx-sheet-list">
-            {suggestions.map((location) => (
-              <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" onClick={() => onSelectLocation(location)}>
-                <span><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{[location.region, location.country].filter(Boolean).join(", ")}</span></span>
-                <span className="awx-p-temp">Load</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        <div className="awx-loc-list" role="group" aria-label="Search results">
+          {suggestions.map((location) => (
+            <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" onClick={() => onSelectLocation(location)}>
+              <span className="awx-p-line"><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{[location.region, location.country].filter(Boolean).join(", ")}</span></span>
+              <span className="awx-p-temp" aria-hidden="true">›</span>
+            </button>
+          ))}
+        </div>
       ) : null}
 
-      <section className="awx-sheet-section" aria-label="Saved places">
-        <div className="awx-sheet-section-title">Saved places</div>
-        <div className="awx-sheet-list">
-          {saved.map((location) => {
-            const active = location.name === activeLocationName;
-            return (
-              <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" aria-pressed={active} onClick={() => onSelectLocation(location)}>
-                <span><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{location.region || location.country || ""}</span></span>
-                <span className="awx-p-temp">{active ? <><span className="awx-p-tick" aria-hidden="true">✓</span>{currentTemperature ? <span>{currentTemperature}</span> : null}</> : null}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
+      <div className="awx-loc-list" role="group" aria-label="Saved places">
+        <button className={"awx-loc-gps awx-location-gps" + (gpsStatus === "blocked" ? " is-blocked" : "") + (gpsStatus === "following" ? " is-on" : "")} type="button" onClick={onLocate} disabled={gpsStatus === "locating"}>
+          <GpsIcon /><span>{gpsButtonLabel}</span>
+        </button>
+        {saved.map((location) => {
+          const active = location.name === activeLocationName;
+          const region = location.region || location.country || "";
+          return (
+            <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" aria-pressed={active} aria-label={region ? `${location.name}, ${region}` : location.name} onClick={() => onSelectLocation(location)}>
+              <span className="awx-p-line" aria-hidden="true"><span className="awx-p-name">{location.name}</span>{region ? <span className="awx-p-region">{region}</span> : null}</span>
+              <span className="awx-p-temp">{active ? <><span className="awx-p-tick" aria-hidden="true">✓</span>{currentTemperature ? <span>{currentTemperature}</span> : null}</> : null}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

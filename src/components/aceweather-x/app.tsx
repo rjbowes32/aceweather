@@ -344,6 +344,19 @@ export function AceWeatherApp() {
   const [shareLabel, setShareLabel] = useState("Share report");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!locationOpen || !vv) return;
+    const root = document.documentElement;
+    const sync = () => {
+      root.style.setProperty("--awx-vvh", `${Math.round(vv.height)}px`);
+      root.style.setProperty("--awx-kb", `${Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))}px`);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => { vv.removeEventListener("resize", sync); vv.removeEventListener("scroll", sync); root.style.removeProperty("--awx-vvh"); root.style.removeProperty("--awx-kb"); };
+  }, [locationOpen]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [geoFollow, setGeoFollow] = useState(false);
   const [geoPreferenceReady, setGeoPreferenceReady] = useState(false);
