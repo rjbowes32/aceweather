@@ -33,7 +33,7 @@ export function LocationPickerContent({
 }: LocationPickerContentProps) {
   return (
     <div className="awx-location-picker">
-      <button className="awx-btn awx-btn-ghost awx-location-gps" type="button" onClick={onLocate} disabled={gpsButtonLabel === "Locating..."}>
+      <button className={"awx-btn awx-btn-ghost awx-location-gps" + (gpsButtonLabel.startsWith("Location off") ? " is-blocked" : "")} type="button" onClick={onLocate} disabled={gpsButtonLabel === "Locating..."}>
         <GpsIcon /><span>{gpsButtonLabel}</span>
       </button>
       <form className="awx-location-form" onSubmit={onSubmit}>
@@ -73,8 +73,8 @@ export function LocationPickerContent({
             const active = location.name === activeLocationName;
             return (
               <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" aria-pressed={active} onClick={() => onSelectLocation(location)}>
-                <span><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{location.region || location.country || "Saved location"}</span></span>
-                <span className="awx-p-temp">{active ? currentTemperature || "Current" : "›"}</span>
+                <span><span className="awx-p-name">{location.name}</span><span className="awx-p-region">{location.region || location.country || ""}</span></span>
+                <span className="awx-p-temp">{active ? <><span className="awx-p-tick" aria-hidden="true">✓</span>{currentTemperature ? <span>{currentTemperature}</span> : null}</> : null}</span>
               </button>
             );
           })}

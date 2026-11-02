@@ -1,0 +1,171 @@
+/* Card tidy (2026-11-01), following AceAg DESIGN.md: one card per block, 12px radius,
+   20px padding (12px on phone), never a bordered box inside a card. Inner groups are
+   separated by spacing or a soft tint (AceAg "filled" = surface-high, no border, no shadow).
+   Loaded last. Lines kept only where they carry meaning: selected day, chart legend keys,
+   badges, map controls. */
+.awx {
+  --awx-radius: 12px;
+  --awx-radius-sm: 12px;
+  --awx-card-padding: 16px;
+  --awx-inner-tint: var(--awx-surface-2);
+}
+@media (max-width: 700px) { .awx { --awx-radius: 12px; --awx-card-padding: 12px; } }
+
+/* Outer card: the one style (thin light border, one faint shadow, same radius). */
+.awx .awx-card, .awx .awx-side-card, .awx .weather-surface, .awx .awx-rain-summary, .awx .awx-rain-chart,
+.awx .awx-rain-radar-link, .awx .awx-now-current, .awx .awx-now-detail, .awx .awx-now-hourly, .awx .awx-now-daylight {
+  border: var(--awx-card-border); border-radius: var(--awx-radius); box-shadow: var(--awx-card-shadow);
+}
+
+/* 1px-gap "grid line" dividers -> spaced tinted tiles. */
+.awx .awx-outlook-lead, .awx .awx-glance, .awx .awx-now-key-metrics, .awx .awx-rain-key-metrics,
+.awx .awx-now-daylight-grid, .awx .awx-field-switcher {
+  gap: 8px; background: transparent; border: 0; box-shadow: none; overflow: visible;
+}
+.awx .awx-outlook-lead > *, .awx .awx-glance > div, .awx .awx-now-key-metrics > *, .awx .awx-rain-key-metrics > *,
+.awx .awx-now-daylight-grid > * {
+  background: var(--awx-inner-tint); border: 0; border-radius: var(--awx-radius-sm);
+}
+.awx .awx-outlook-lead > :first-child { background: var(--awx-inner-tint); }
+.awx .awx-field-switcher > * { border: 0; border-radius: var(--awx-radius-sm); }
+/* Row lists (spray, field): spacing only. */
+.awx .awx-rows { gap: 0; background: transparent; border: 0; }
+.awx .awx-rows > .awx-row-item { background: transparent; border: 0; padding-inline: 0; }
+.awx .awx-hours { gap: 4px; background: transparent; border: 0; }
+.awx .awx-hours > * { background: var(--awx-inner-tint); border: 0; border-radius: var(--awx-radius-sm); }
+
+/* Inner boxes: tint, no border. */
+.awx .awx-hourly, .awx .awx-now-trend, .awx .awx-now-table, .awx .awx-radar, .awx .awx-verdict,
+.awx .awx-rain-comparison-tile, .awx .awx-rain-comparison-tile.is-drier, .awx .awx-rain-comparison-tile.is-similar {
+  border: 0; box-shadow: none; background: var(--awx-inner-tint); border-radius: var(--awx-radius-sm);
+}
+.awx .awx-hourly .awx-hourly-chart, .awx .awx-hourly svg.awx-line { border: 0; background: transparent; }
+.awx .awx-hourly .awx-hours > * { background: var(--awx-surface); }
+.awx .awx-now-table-row, .awx .awx-now-table-row.is-head { border-bottom: 0; }
+.awx .awx-radar-controls, .awx .awx-radar-foot, .awx .awx-radar-status { border-top: 0; }
+.awx .awx-cal-rainrow { border-top: 0; }
+.awx .awx-tag, .awx .awx-tag-sm { border: 0; }
+.awx .awx-now-hours > div, .awx .awx-now-hours > div.is-wet { border: 0; }
+.awx .awx-now-hours > div.is-wet { background: var(--awx-accent-weak); }
+
+/* Calendar: no tile rings or dashed "further" tiles; selection keeps its accent ring (meaning). */
+.awx .awx-cal-day { --awx-cal-edge: transparent; }
+.awx .awx-cal-day:hover { --awx-cal-edge: transparent; }
+.awx .awx-cal-day.is-sel { --awx-cal-edge: color-mix(in srgb, var(--awx-accent) 62%, transparent); }
+.awx .awx-cal-day.is-further { border: 0; }
+.awx .awx-cal-day.is-empty { background: transparent; box-shadow: none; }
+.awx .awx-cal-dow { box-shadow: none; border: 0; background: transparent; }
+
+/* Rail and sheets: spacing instead of divider lines and boxed links. */
+.awx .awx-feed-head { border-bottom: 0; }
+.awx .awx-settings-panel, .awx .awx-docs { border-top: 0; }
+.awx .awx-doc-link { border: 0; background: var(--awx-inner-tint); }
+.awx .awx-more-grid button, .awx .awx-more-grid a, .awx .awx-sheet .awx-place { border: 0; }
+.awx .awx-more-grid button[aria-pressed="true"], .awx .awx-sheet .awx-place[aria-pressed="true"] { background: var(--awx-accent-weak); }
+/* r2 (Dev UX 634a213) */
+/* List rows keep a 1px divider (AceAg List rows). */
+.awx .awx-rows > .awx-row-item + .awx-row-item { border-top: 1px solid var(--awx-line); }
+/* Field summary: one card, four stats (label over figure, no box, 16px gaps); selected keeps its coloured bar. */
+.awx .awx-field-switcher {
+  background: var(--awx-surface); border: var(--awx-card-border); border-radius: var(--awx-radius);
+  box-shadow: var(--awx-card-shadow); padding: 8px var(--awx-card-padding); gap: 16px;
+}
+.awx .awx-field-switcher > .awx-field-switch,
+.awx .awx-field-switcher > .awx-field-switch[aria-pressed="true"] { background: transparent; border-radius: 0; padding-left: 12px; }
+/* Leftover rings. */
+.awx .awx-radar-loading span { border: 0; }
+.awx .awx-rain-timeline > div > span { box-shadow: none; }
+/* Phone: selected-day ring not clipped at the scroller edge. */
+@media (max-width: 700px) { .awx .awx-cal { padding: 2px; scroll-padding-inline: 2px; } }
+/* Far-ahead days: normal text colour so labels pass AA (1.4.3) in both themes. */
+.awx .awx-cal-day.is-further .awx-date b,
+.awx .awx-cal-day.is-further .awx-cal-hi { color: var(--awx-text); }
+
+/* r4: Outlook view gets the full main width; Location and Today panels sit below it. */
+@media (min-width: 901px) {
+  .awx:has(.awx-feed[data-view="outlook"]) { grid-template-columns: minmax(76px, 232px) minmax(0, 980px); }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side {
+    grid-column: 2; position: static; height: auto; overflow: visible; border-left: 0; padding: 0 24px 40px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start;
+  }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side > * { margin: 0; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side { align-items: stretch; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side .awx-btn span { display: inline; }
+  /* The 100vh sticky rail spans both rows, so row 1 is only as tall as the outlook card (16px gap below it). */
+  .awx:has(.awx-feed[data-view="outlook"]) { grid-template-rows: auto 1fr; align-items: start; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-rail { grid-row: 1 / span 2; align-self: start; }
+}
+/* Compact icon rail range: keep the rail 76px on Outlook, like every other view. */
+@media (min-width: 901px) and (max-width: 1080px) {
+  .awx:has(.awx-feed[data-view="outlook"]) { grid-template-columns: 76px minmax(0, 980px); }
+}
+
+/* Rolling 14-day grid from today (7 x 2), each day a square tile in the standard card style. */
+.awx .awx-outlook-days { container-type: inline-size; }
+.awx .awx-cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; padding: 0; }
+.awx .awx-cal-day,
+.awx .awx-cal-day:hover,
+.awx .awx-cal-day[aria-pressed="true"],
+.awx .awx-cal-day.is-wet, .awx .awx-cal-day.is-breezy, .awx .awx-cal-day.is-further {
+  --awx-cal-fill: var(--awx-surface); --awx-badge-ring: var(--awx-surface);
+  background: var(--awx-surface); border: var(--awx-card-border); border-radius: 12px; box-shadow: var(--awx-card-shadow);
+  aspect-ratio: 1 / 1; min-height: 0; height: auto; overflow: hidden;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 4px; padding: 10px;
+}
+.awx .awx-cal-day::before { display: none; }
+.awx .awx-cal-day.is-today { border-color: var(--awx-accent); }
+.awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 8%, var(--awx-surface)); }
+.awx .awx-cal-day .awx-date { flex-wrap: nowrap; white-space: nowrap; min-width: 0; gap: 4px; font-size: 12px; letter-spacing: 0; }
+.awx .awx-cal-day .awx-cal-icon.awx-wicon { width: 20px; height: 20px; --awx-badge: 12px; }
+.awx .awx-cal-temps { display: flex; align-items: baseline; gap: 5px; align-self: center; }
+.awx .awx-cal-hi { font-size: 18px; }
+.awx .awx-cal-temps .awx-lo { font-size: 13px; }
+.awx .awx-cal-rainrow { flex-wrap: nowrap; margin: 0; padding: 0; font-size: 12px; letter-spacing: 0; gap: 4px; justify-content: space-between; }
+/* Below 7 x 88px tiles: one scrolling row of squares (phone, narrow windows). */
+@container (max-width: 663px) {
+  .awx .awx-cal { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 6px; }
+  .awx .awx-cal-day { flex: 0 0 100px; width: 100px; scroll-snap-align: start; }
+}
+
+/* r5: hourly chart has a fixed height at any width; lines stretch, time labels are HTML at a fixed 12px. */
+.awx .awx-hourly-chart { position: relative; display: block; border: 0; background: transparent; padding-bottom: 22px; }
+.awx .awx-hourly-plot { display: block; width: 100%; height: 110px; border: 0; background: transparent; }
+.awx .awx-hourly-plot path, .awx .awx-hourly-plot rect { vector-effect: non-scaling-stroke; }
+.awx .awx-hourly-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; font-size: 12px; line-height: 18px; color: var(--awx-muted); }
+.awx .awx-hourly-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.awx .awx-hourly-axis span.is-start { transform: none; }
+.awx .awx-hourly-axis span.is-end { transform: translateX(-100%); }
+
+/* r6: wind range + max gust line in each outlook tile (12px). Rows: date, temps, wind, rain. */
+.awx .awx-cal-day, .awx .awx-cal-day:hover, .awx .awx-cal-day[aria-pressed="true"],
+.awx .awx-cal-day.is-wet, .awx .awx-cal-day.is-breezy, .awx .awx-cal-day.is-further { grid-template-rows: auto 1fr auto auto; gap: 3px; }
+.awx .awx-cal-wind { display: flex; justify-content: space-between; gap: 4px; white-space: nowrap; font-size: 12px; color: var(--awx-text); }
+.awx .awx-cal-wind small { font-size: 12px; color: var(--awx-muted); }
+.awx .awx-cal-wind b { font-weight: 600; color: var(--awx-text); }
+@container (max-width: 663px) { .awx .awx-cal-day { flex: 0 0 112px; width: 112px; } }
+/* 7 x 2 tiles under ~100px (e.g. 1024 desktop): drop the repeated unit; it stays in the Wind stat above and the aria-label. */
+@container (min-width: 664px) and (max-width: 800px) { .awx .awx-cal-wind small { display: none; } .awx .awx-cal-day { padding: 8px; gap: 2px; } .awx .awx-cal-hi { font-size: 16px; } .awx .awx-cal-day .awx-date, .awx .awx-cal-wind, .awx .awx-cal-rainrow { line-height: 15px; } }
+
+/* r7: six selected-day stats (Max gust added): one row of 6 on desktop, 2 rows of 3 on phone. */
+.awx .awx-outlook-lead { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 700px) { .awx .awx-outlook-lead .awx-outlook-stat:nth-last-child(-n + 2) { grid-column: span 2; } }
+/* Compact rail (901-1080px): stacked toggles as one rounded block with separate, non-overlapping options. */
+@media (min-width: 901px) and (max-width: 1080px) {
+  .awx .awx-rail .awx-segmented { border-radius: 12px; gap: 2px; padding: 3px; }
+  .awx .awx-rail .awx-segmented button { border-radius: 9px; min-height: 36px; padding: 0 4px; }
+  .awx:has(.awx-feed[data-view="outlook"]) > .awx-side .awx-btn { width: auto; padding: 0 14px; white-space: nowrap; justify-content: flex-start; }
+}
+
+/* r8 */
+.awx .awx-rail .awx-segmented button { min-height: 44px; }
+.awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 12%, var(--awx-surface)); }
+html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: color-mix(in srgb, var(--awx-accent) 8%, var(--awx-surface)); }
+.awx .awx-tips-icon { display: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+@media (min-width: 901px) and (max-width: 1080px) {
+  .awx .awx-rail .awx-docs-rail { display: none; }
+  .awx .awx-rail .awx-tips-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-inline: auto; padding: 0; text-decoration: none; }
+  .awx .awx-rail .awx-tips-btn span { display: none; }
+  .awx .awx-rail .awx-tips-icon { display: block; }
+}
+/* r9: selected day gets a 2px inset accent ring on top of the tint; today keeps its 1px accent border. */
+.awx .awx-cal-day[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--awx-accent), var(--awx-card-shadow); }

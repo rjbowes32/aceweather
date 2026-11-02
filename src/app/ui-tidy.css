@@ -1,0 +1,126 @@
+/* UI tidy (2026-11-01): one card style, calm states, 44px touch targets.
+   Loaded last so it wins over older per-screen card rules. */
+.awx {
+  --awx-card-border: 1px solid var(--awx-line-2);
+  --awx-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .awx { --awx-card-shadow: 0 1px 3px rgba(12, 16, 22, 0.05); }
+
+/* One card style everywhere: thin light border, one faint shadow, same radius. */
+.awx .awx-card,
+.awx .awx-side-card,
+.awx .weather-surface,
+.awx .awx-rain-summary,
+.awx .awx-rain-chart,
+.awx .awx-rain-radar-link,
+.awx .awx-field-switcher,
+.awx .awx-now-detail {
+  border: var(--awx-card-border);
+  border-radius: var(--awx-radius);
+  box-shadow: var(--awx-card-shadow);
+}
+.awx .weather-dashboard { gap: 16px; }
+.awx .weather-detail-grid { gap: 16px; }
+
+/* Bug 1: saved place rows keep white text in every state; tick on the active row. */
+.awx .awx-place,
+.awx .awx-place:hover,
+.awx .awx-place:active,
+.awx .awx-place:focus,
+.awx .awx-place:focus-visible,
+.awx .awx-place[aria-pressed="true"] {
+  color: var(--awx-text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.awx .awx-place .awx-p-name { color: var(--awx-text); }
+.awx .awx-place:focus:not(:focus-visible) { outline: none; }
+.awx .awx-sheet .awx-place { min-height: 56px; }
+.awx .awx-place .awx-p-temp { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--awx-text); }
+.awx .awx-p-tick { color: var(--awx-accent); font-weight: 700; font-size: 16px; }
+
+/* Bug 3: the stand-in card matches the real radar card. */
+.awx .awx-radar-fallback .awx-radar-map { background: var(--awx-surface-2); border-radius: var(--awx-radius-sm); }
+
+/* 44px touch targets. */
+.awx .awx-icon-btn,
+.awx .awx-segmented button,
+.awx .awx-btn,
+.awx .awx-nav button,
+.awx .awx-disclosure,
+.awx .awx-more-grid button,
+.awx .awx-refresh-btn { min-height: 44px; }
+.awx .awx-icon-btn { min-width: 44px; }
+.awx .awx-brand { min-height: 44px; }
+
+/* r2 (Dev UX review of d5da946) */
+/* Stat tiles: one left alignment, matched heights, note line always reserved. */
+@media (min-width: 701px) { .awx .weather-detail { min-height: 168px; } }
+.awx .weather-detail > strong,
+.awx .weather-detail-note { text-align: left; }
+.awx .weather-detail-note { min-height: 1.4em; }
+.awx .weather-detail-grid { align-items: stretch; }
+.awx .weather-rain-link { margin-top: 0; }
+
+/* Rain tab: month-to-date uses the shared inset block, full width, no tint or shadow. */
+.awx .awx-rain-comparison { grid-template-columns: minmax(0, 1fr); }
+.awx .awx-rain-comparison-tile,
+.awx .awx-rain-comparison-tile.is-drier,
+.awx .awx-rain-comparison-tile.is-similar {
+  min-height: 0;
+  border: 1px solid var(--awx-line);
+  border-radius: var(--awx-radius-sm);
+  background: var(--awx-surface);
+  box-shadow: none;
+}
+
+/* Desktop side column: no clipping, top lines up with the feed cards. */
+.awx .awx-side { padding-top: 89.5px; min-width: 0; } /* header 73.5 + 16 gap */
+.awx .awx-side-card { min-width: 0; }
+.awx .awx-side .awx-location-picker,
+.awx .awx-side .awx-location-form,
+.awx .awx-side .awx-search { min-width: 0; max-width: 100%; }
+.awx .awx-side .awx-search input { min-width: 0; flex: 1 1 auto; width: 100%; }
+.awx .awx-side .awx-go { flex: 0 0 auto; white-space: nowrap; }
+.awx .awx-side .awx-location-gps { white-space: normal; text-align: left; justify-content: flex-start; }
+.awx .awx-location-gps { justify-content: flex-start; }
+
+/* Radar error/offline state with a 44px Retry. */
+.awx .awx-radar-error {
+  display: grid; place-content: center; justify-items: center; gap: 12px;
+  padding: 16px; text-align: center; color: var(--awx-text);
+}
+.awx .awx-radar-stage .awx-radar-error { position: absolute; inset: 0; }
+.awx .awx-radar-stage { position: relative; }
+.awx .awx-radar-retry { min-height: 44px; min-width: 96px; border: 1px solid var(--awx-line-2); border-radius: var(--awx-control-radius); }
+.awx .awx-radar-card, .awx .awx-radar-fallback { padding-top: var(--awx-card-padding, 16px); }
+
+/* TODO (de-vibe step): fold ui-tidy.css into design-tokens.css / shared-surfaces.css so there is one source. */
+
+/* Blocked GPS: plain ghost button, not the active blue fill. */
+.awx .awx-location-gps.is-blocked { background: transparent; color: var(--awx-text); border: var(--awx-card-border); }
+/* Phone header place line: one line; the probe measures the full text off screen. */
+.awx .awx-place-line { position: relative; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.awx .awx-place-probe { position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; pointer-events: none; }
+
+/* Desktop Now: ten hours as two rows of five, so the card has no empty band. */
+@media (min-width: 1081px) {
+  .awx .awx-now-hours { grid-auto-flow: row; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding-inline: 0; }
+  .awx .awx-now-hourly { display: flex; flex-direction: column; }
+  .awx .awx-now-hours { flex: 1 1 auto; grid-template-rows: repeat(2, minmax(0, 1fr)); align-content: stretch; }
+  .awx .awx-now-hours > div { padding-inline: 2px; align-content: center; }
+}
+
+/* Setup hint: lives inside the Overview column, so it inherits the page gutter and the 16px card gap. */
+.awx .awx-setup-hint { border: var(--awx-card-border); border-radius: var(--awx-radius); box-shadow: var(--awx-card-shadow); background: var(--awx-surface); color: var(--awx-text); padding: var(--awx-card-padding); margin: 0; }
+.awx .awx-setup-hint-head { display: flex; align-items: center; justify-content: space-between; gap: var(--awx-space-sm); }
+.awx .awx-setup-hint-head strong { font-size: var(--awx-type-heading); }
+.awx .awx-setup-hint-head .awx-icon-btn { width: 44px; height: 44px; margin: -10px -10px -10px 0; flex: none; }
+.awx .awx-setup-hint ul { list-style: none; margin: var(--awx-space-sm) 0 0; padding: 0; display: grid; gap: var(--awx-space-sm); }
+.awx .awx-setup-hint li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; min-height: var(--awx-control-height); font-size: 15px; color: var(--awx-text); }
+.awx .awx-setup-hint li > span:only-child { grid-column: 1 / -1; }
+.awx .awx-setup-hint .awx-btn { min-height: var(--awx-control-height); min-width: 80px; padding-inline: 14px; border: 1px solid var(--awx-accent-line); border-radius: var(--awx-control-radius); background: var(--awx-accent-weak); color: var(--awx-text); justify-content: center; }
+.awx .awx-setup-hint button:focus-visible { outline: 2px solid var(--awx-accent); outline-offset: 2px; }
+.awx .awx-link-btn { min-height: 44px; background: none; border: 0; padding: 0 4px; color: var(--awx-accent); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }

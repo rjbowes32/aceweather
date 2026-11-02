@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import type { AwModel } from "@/lib/aceweather/derive";
 import type { SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { formatRain, formatTemperature, formatWind, windUnitLabel, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
-import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
+import { weatherIconText } from "@/lib/aceweather/weather-icons";
+import { Card, Tags, Meter, Bars, SoilRows, ConditionIcon, WeatherIcon, HourlyChart, Verdict, DeltaTBand, RiskStrip, OpsMatrix } from "./ui";
 
-const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const tC = formatTemperature;
 const wSpd = formatWind;
 const WU = windUnitLabel;
@@ -75,8 +75,6 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
   const [sel, setSel] = useState(0);
   const selectedDayRef = useRef<HTMLButtonElement | null>(null);
   const day = model.calendar[sel] || model.calendar[0];
-  const leading = Array.from({ length: model.calendarOffset });
-  const trailing = Array.from({ length: (7 - ((leading.length + model.calendar.length) % 7)) % 7 });
 
   useEffect(() => {
     selectedDayRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
@@ -87,10 +85,10 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
       {day && (
         <div className={"awx-outlook-lead" + outlookTone(day)}>
           <div className="awx-outlook-lead-main">
-            <ConditionIcon className="awx-outlook-icon" k={day.condition.key} />
+            {day.icon ? <WeatherIcon className="awx-outlook-icon" icon={day.icon} /> : <ConditionIcon className="awx-outlook-icon" k={day.condition.key} />}
             <div>
               <span>{day.weekday} {day.dayNum}</span>
-              <strong>{day.condition.label}</strong>
+              <strong>{day.icon?.label ?? day.condition.label}</strong>
             </div>
           </div>
           <div className="awx-outlook-stat">
@@ -113,34 +111,44 @@ export function CalendarCard({ model, unit, windUnit }: { model: AwModel; unit: 
             <span>Wind</span>
             <b className="awx-tnum">{outlookWind(day, windUnit)} <small>{day?.hours?.windMax == null ? "" : WU(windUnit)}</small></b>
           </div>
+          <div className="awx-outlook-stat">
+            <span>Max gust</span>
+            <b className="awx-tnum">{day.gustMax == null ? "—" : wSpd(day.gustMax, windUnit)} <small>{day.gustMax == null ? "" : WU(windUnit)}</small></b>
+          </div>
         </div>
       )}
-      <div className="awx-cal">
-        {DOW.map((dn) => <div key={dn} className="awx-cal-dow">{dn}</div>)}
-        {leading.map((_, i) => <div key={"e" + i} className="awx-cal-day is-empty" />)}
+      <div className="awx-outlook-days"><div className="awx-cal">
         {model.calendar.map((c, i) => {
           const label = `${c.weekday} ${c.dayNum}: high ${tC(c.hi, unit)}°, low ${tC(c.lo, unit)}°` +
-            (c.further ? ", further ahead and less certain" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
+            (c.icon ? `, ${weatherIconText(c.icon).toLowerCase()}` : "") +
+            (c.further ? ", further ahead and less certain" : "") + (c.chance == null && c.rain == null ? "" : `, ${c.chance == null ? "chance of rain unavailable" : `${outlookChanceText(c.chance)} chance of rain`}, ${outlookRainText(c.rain)}`);
+          const windText = c.windLo == null || c.windHi == null ? null : `${wSpd(Math.min(c.windLo, c.windHi), windUnit)}–${wSpd(c.windHi, windUnit)}`;
+          const fullLabel = label + (windText ? `, wind ${windText} ${WU(windUnit)}` : "") + (c.gustMax == null ? "" : `, gusts to ${wSpd(c.gustMax, windUnit)} ${WU(windUnit)}`);
           return (
             <button key={c.dateKey} type="button"
               ref={sel === i ? selectedDayRef : null}
               className={"awx-cal-day" + (c.isToday ? " is-today" : "") + (sel === i ? " is-sel" : "") + dayTone(c)}
               aria-pressed={sel === i}
-              aria-label={label}
+              aria-label={fullLabel}
               onClick={() => setSel(i)}>
-              <div className="awx-date"><b>{c.weekday} {c.dayNum}</b><ConditionIcon className="awx-cal-icon" k={c.condition.key} /></div>
+              <div className="awx-date"><b>{c.weekday} {c.dayNum}</b>{c.icon ? <WeatherIcon className="awx-cal-icon" icon={c.icon} /> : <ConditionIcon className="awx-cal-icon" k={c.condition.key} />}</div>
               <div className="awx-cal-temps awx-tnum"><span className="awx-cal-hi">{tC(c.hi, unit)}°</span><span className="awx-lo">{tC(c.lo, unit)}°</span></div>
-              {c.further ? null : (
+              {windText ? (
+                <div className="awx-cal-wind awx-tnum" aria-hidden="true">
+                  <span>{windText} <small>{WU(windUnit)}</small></span>
+                  {c.gustMax == null ? null : <b title="Max gust">G{wSpd(c.gustMax, windUnit)}</b>}
+                </div>
+              ) : null}
+              {c.chance == null && c.rain == null ? null : (
                 <div className="awx-cal-rainrow awx-tnum">
-                  <b>{outlookChanceText(c.chance)}</b>
+                  {c.chance == null ? <span aria-hidden="true" /> : <b>{outlookChanceText(c.chance)}</b>}
                   <span className={formatRain(c.rain ?? 0) === "0" ? "is-dry" : ""}>{outlookRainText(c.rain)}</span>
                 </div>
               )}
             </button>
           );
         })}
-        {trailing.map((_, i) => <div key={"t" + i} className="awx-cal-day is-empty" />)}
-      </div>
+      </div></div>
       <HourlyDetail day={day} unit={unit} windUnit={windUnit} />
     </Card>
   );

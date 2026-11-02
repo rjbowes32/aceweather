@@ -435,3 +435,30 @@
   .awx-radar-map { height: 260px !important; }
   .awx-radar-controls { padding-inline: 12px; }
 }
+
+/* Weather icon + frost/gust badges (pickWeatherIcon). Colour only on badges: cool = frost, warn = gust.
+   All lines render at 1.5px (icon) / 1px (badge) whatever the box size. */
+.awx-wicon { --awx-badge: 14px; --awx-badge-ring: var(--awx-surface); --awx-badge-frost: var(--awx-cool); --awx-badge-gust: var(--awx-warn);
+  position: relative; display: inline-block; width: 26px; height: 26px; flex: 0 0 auto; line-height: 0; }
+[data-theme="light"] .awx-wicon { --awx-badge-frost: #2f6f98; --awx-badge-gust: #9a6420; }
+.awx-wicon > svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.awx-wicon > svg * { vector-effect: non-scaling-stroke; stroke-width: 1.5px; }
+.awx-outlook-icon.awx-wicon > svg, .awx-cal-icon.awx-wicon > svg { stroke: inherit; }
+.awx-wicon-badges { position: absolute; right: 0; bottom: 0; display: flex; gap: 1px; }
+.weather-dashboard .awx-wicon .awx-badge, .awx-wicon .awx-badge { width: var(--awx-badge); height: var(--awx-badge); border-radius: 50%;
+  background: var(--awx-badge-ring); box-shadow: 0 0 0 1px var(--awx-badge-ring); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.awx-wicon .awx-badge * { vector-effect: non-scaling-stroke; stroke-width: 1px; }
+.awx-badge-frost { stroke: var(--awx-badge-frost); }
+.awx-badge-gust { stroke: var(--awx-badge-gust); }
+.weather-dashboard .weather-hour-icon > svg { width: 26px; height: 26px; }
+.awx-outlook-icon.awx-wicon { width: 30px; height: 30px; }
+.awx-cal-day .awx-cal-icon.awx-wicon { width: 20px; height: 20px; --awx-badge: 12px; --awx-badge-ring: var(--awx-cal-fill); }
+.weather-current-icon.awx-wicon { width: 42px; height: 42px; }
+.weather-dashboard .weather-current-icon.awx-wicon > svg { width: 42px; height: 42px; }
+@media (max-width: 700px) { .weather-current-icon.awx-wicon { display: none; } }
+/* r3: stacked badges on the right edge (hour strip, Outlook lead); calendar shows one badge, frost wins. Solid ring. */
+.awx-wicon-badges { flex-direction: column; right: -4px; bottom: -2px; }
+.awx-cal-day .awx-cal-icon.awx-wicon { --awx-badge-ring: var(--awx-surface-2); }
+.awx-cal-day .awx-cal-icon .awx-wicon-badges { right: 0; bottom: 0; }
+.awx-cal-day .awx-badge-frost ~ .awx-badge-gust { display: none; }
+.weather-dashboard .weather-hour-icon, .weather-dashboard .weather-hour-icon > svg { width: 30px; height: 30px; }

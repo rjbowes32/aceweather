@@ -1,6 +1,7 @@
 /* Thin line icons (24x24, stroke=currentColor). Inherit sizing/stroke from CSS. */
 import type { ReactNode } from "react";
 import type { ConditionKey } from "@/lib/aceweather/format";
+import { weatherIconText, type IconKey, type WeatherIcon as WeatherIconData } from "@/lib/aceweather/weather-icons";
 
 const P = (d: string) => <path d={d} />;
 
@@ -37,6 +38,38 @@ export function ConditionIcon({ k, className }: { k: ConditionKey; className?: s
   return <svg className={className} viewBox="0 0 24 24" aria-hidden="true">{COND[k] ?? COND.cloud}</svg>;
 }
 
+
+const CLOUD_TOP = "M7 14.5h9.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.5 1.2A3 3 0 0 0 7 14.5z";
+const RULE: Record<IconKey, ReactNode> = {
+  storm: COND.storm,
+  snow: <>{P(CLOUD_TOP)}{P("M9 18h.01M12 20.5h.01M15 18h.01M10.5 22h.01M13.5 22h.01")}</>,
+  rain: COND.rain,
+  drizzle: <>{P(CLOUD_TOP)}{P("M10 18l-.5 1.5M14 18l-.5 1.5")}</>,
+  fog: COND.fog,
+  cloud: COND.cloud,
+  partly: <>{P("M8 3.5v1.2M3.5 8h1.2M4.8 4.8l.9.9M11.2 4.8l-.9.9")}{P("M5.6 10.4A3.2 3.2 0 1 1 10.9 7")}{P("M9 19h8.5a3.3 3.3 0 0 0 .3-6.6 5 5 0 0 0-9.6 1.1A2.8 2.8 0 0 0 9 19z")}</>,
+  "partly-night": <>{P("M10.8 6.6A3.6 3.6 0 1 1 5.2 11 3 3 0 0 0 10.8 6.6z")}{P("M9 19h8.5a3.3 3.3 0 0 0 .3-6.6 5 5 0 0 0-9.6 1.1A2.8 2.8 0 0 0 9 19z")}</>,
+  clear: COND.clear,
+  night: P("M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"),
+};
+
+/** Main condition icon from pickWeatherIcon, plus small frost and gust badges. */
+export function WeatherIcon({ icon, className }: { icon: WeatherIconData; className?: string }) {
+  const text = weatherIconText(icon);
+  return (
+    <span className={"awx-wicon" + (className ? " " + className : "")} role="img" aria-label={text} title={text}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">{RULE[icon.key] ?? RULE.partly}</svg>
+      {icon.frost || icon.gust ? (
+        <span className="awx-wicon-badges" aria-hidden="true">
+          {icon.frost === "frost" ? <svg className="awx-badge awx-badge-frost" viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" /></svg> : null}
+          {icon.frost === "risk" ? <svg className="awx-badge awx-badge-frost is-risk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6.5v11M7.2 9.2l9.6 5.6M7.2 14.8l9.6-5.6" /></svg> : null}
+          {icon.gust ? <svg className="awx-badge awx-badge-gust" viewBox="0 0 24 24"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h6" /></svg> : null}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export const ChevronIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>;
 export const SearchIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>;
 export const ShareIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" /><path d="M12 15V4M8 8l4-4 4 4" /></svg>;
@@ -45,3 +78,7 @@ export const RefreshIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><pa
 export const SettingsIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.1 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 1h-4l-.6 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 4.9 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 23h4l.6-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" /></svg>;
 export const BellIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
 export const DocsIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v5h5M9 12h6M9 16h6M9 8h2" /></svg>;
+
+export function CloseIcon() {
+  return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
+}
