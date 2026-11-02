@@ -65,7 +65,7 @@ export function LocationPickerContent({
         </div>
       ) : null}
 
-      {searchEmpty ? <div className="awx-loc-empty" role="status">No places found. Try a town or postcode.</div> : null}
+      <div className="awx-loc-empty" role="status">{searchEmpty ? "No places found." : ""}</div>
       {suggestions.length || searchEmpty ? <div className="awx-loc-label" aria-hidden="true">Saved</div> : null}
       <div className="awx-loc-list" role="group" aria-label="Saved places">
         <button className={"awx-loc-gps awx-location-gps" + (gpsStatus === "blocked" ? " is-blocked" : "") + (gpsStatus === "following" ? " is-on" : "")} type="button" onClick={onLocate} disabled={gpsStatus === "locating"}>

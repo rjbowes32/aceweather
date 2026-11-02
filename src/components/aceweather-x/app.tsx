@@ -842,7 +842,7 @@ export function AceWeatherApp() {
               <LocationPickerContent
                 query={query}
                 suggestions={suggestions}
-              searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
+                searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
                 saved={saved}
                 activeLocationName={location.name}
                 currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
