@@ -63,6 +63,7 @@ export function LocationPickerContent({
         </div>
       ) : null}
 
+      {suggestions.length ? <div className="awx-loc-label" aria-hidden="true">Saved</div> : null}
       <div className="awx-loc-list" role="group" aria-label="Saved places">
         <button className={"awx-loc-gps awx-location-gps" + (gpsStatus === "blocked" ? " is-blocked" : "") + (gpsStatus === "following" ? " is-on" : "")} type="button" onClick={onLocate} disabled={gpsStatus === "locating"}>
           <GpsIcon /><span>{gpsButtonLabel}</span>
@@ -71,7 +72,7 @@ export function LocationPickerContent({
           const active = location.name === activeLocationName;
           const region = location.region || location.country || "";
           return (
-            <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" aria-pressed={active} aria-label={region ? `${location.name}, ${region}` : location.name} onClick={() => onSelectLocation(location)}>
+            <button key={`${location.lat},${location.lon}`} className="awx-place" type="button" aria-pressed={active} aria-label={[location.name, region, active ? "selected" : "", active && currentTemperature ? currentTemperature : ""].filter(Boolean).join(", ")} onClick={() => onSelectLocation(location)}>
               <span className="awx-p-line" aria-hidden="true"><span className="awx-p-name">{location.name}</span>{region ? <span className="awx-p-region">{region}</span> : null}</span>
               <span className="awx-p-temp">{active ? <><span className="awx-p-tick" aria-hidden="true">✓</span>{currentTemperature ? <span>{currentTemperature}</span> : null}</> : null}</span>
             </button>
