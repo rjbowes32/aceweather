@@ -12,6 +12,7 @@ type LocationPickerContentProps = {
   currentTemperature?: string;
   gpsButtonLabel: string;
   gpsStatus?: string;
+  searchEmpty?: boolean;
   autoFocus?: boolean;
   onQueryChange: (query: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -27,6 +28,7 @@ export function LocationPickerContent({
   currentTemperature,
   gpsButtonLabel,
   gpsStatus,
+  searchEmpty = false,
   autoFocus = false,
   onQueryChange,
   onSubmit,
@@ -63,7 +65,8 @@ export function LocationPickerContent({
         </div>
       ) : null}
 
-      {suggestions.length ? <div className="awx-loc-label" aria-hidden="true">Saved</div> : null}
+      {searchEmpty ? <div className="awx-loc-empty" role="status">No places found. Try a town or postcode.</div> : null}
+      {suggestions.length || searchEmpty ? <div className="awx-loc-label" aria-hidden="true">Saved</div> : null}
       <div className="awx-loc-list" role="group" aria-label="Saved places">
         <button className={"awx-loc-gps awx-location-gps" + (gpsStatus === "blocked" ? " is-blocked" : "") + (gpsStatus === "following" ? " is-on" : "")} type="button" onClick={onLocate} disabled={gpsStatus === "locating"}>
           <GpsIcon /><span>{gpsButtonLabel}</span>

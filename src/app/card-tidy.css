@@ -251,3 +251,7 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
 .awx .awx-location-sheet .awx-sheet-body { padding: 0; }
 .awx .awx-location-sheet .awx-location-picker .awx-loc-list > .awx-place,
 .awx .awx-location-sheet .awx-location-picker .awx-loc-list > .awx-loc-gps { padding-inline: 0; }
+/* r6: zero-match row; Saved label on the same inset as the place names. */
+.awx .awx-loc-empty { display: flex; align-items: center; min-height: 48px; padding-inline: 4px; font-size: 15px; color: var(--awx-text); }
+.awx .awx-loc-label { padding-inline: 4px; }
+.awx .awx-location-sheet .awx-loc-empty, .awx .awx-location-sheet .awx-loc-label { padding-inline: 0; }

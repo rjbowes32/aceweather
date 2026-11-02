@@ -344,6 +344,7 @@ export function AceWeatherApp() {
   const [shareLabel, setShareLabel] = useState("Share report");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!locationOpen || !vv) return;
@@ -468,9 +469,10 @@ export function AceWeatherApp() {
 
   // search debounce
   useEffect(() => {
-    if (query.trim().length < 2) { setSuggestions([]); return undefined; }
+    if (query.trim().length < 2) { setSuggestions([]); setSearchedQuery(null); return undefined; }
     const ctrl = new AbortController();
-    const t = setTimeout(() => { searchLocations(query, ctrl.signal).then(setSuggestions).catch(() => {}); }, 280);
+    const q = query.trim();
+    const t = setTimeout(() => { searchLocations(query, ctrl.signal).then((r) => { setSuggestions(r); setSearchedQuery(q); }).catch(() => {}); }, 280);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [query]);
 
@@ -778,6 +780,7 @@ export function AceWeatherApp() {
             <LocationPickerContent
               query={query}
               suggestions={suggestions}
+              searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
               saved={saved}
               activeLocationName={location.name}
               currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
@@ -839,6 +842,7 @@ export function AceWeatherApp() {
               <LocationPickerContent
                 query={query}
                 suggestions={suggestions}
+              searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
                 saved={saved}
                 activeLocationName={location.name}
                 currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
