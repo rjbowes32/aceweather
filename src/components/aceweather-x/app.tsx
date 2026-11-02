@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import dynamic from "next/dynamic";
 
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
-import { NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
+import { CloseIcon, NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
 import { NowExperience } from "./now-experience";
@@ -15,11 +14,118 @@ import { OverviewExperience } from "./overview-experience";
 import { LocationPickerContent } from "./location-picker-content";
 import { FieldExperience } from "./field-experience";
 import { SprayCardSkeleton } from "./spray-strip";
+import { SetupHint, showSetupHint } from "./setup-hint";
 
-const RadarCard = dynamic(() => import("./radar-card").then((m) => m.RadarCard), {
-  ssr: false,
-  loading: () => <article className="awx-card"><div className="awx-radar-status">Loading radar…</div></article>,
-});
+const RADAR_LOAD_TIMEOUT_MS = 12_000;
+type RadarModule = typeof import("./radar-card");
+
+/** Same shape as the real radar card, so opening Radar never shows a blank screen. */
+function RadarShell({ failed, onRetry }: { failed?: boolean; onRetry?: () => void }) {
+  return (
+    <article className="awx-card awx-radar-fallback" data-section="radar">
+      <div className={"awx-radar" + (failed ? "" : " is-loading")}>
+        <div className="awx-radar-stage">
+          <div className="awx-radar-map" style={{ height: 300 }} />
+          {failed ? (
+            <RadarErrorPanel onRetry={onRetry} />
+          ) : (
+            <div className="awx-radar-loading" role="status" aria-live="polite"><span>Loading rainfall radar</span><i aria-hidden="true" /></div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function RadarErrorPanel({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="awx-radar-error" role="alert">
+      <span>Radar couldn&apos;t load. Check your signal.</span>
+      {onRetry ? <button type="button" className="awx-btn awx-btn-ghost awx-radar-retry" onClick={onRetry}>Retry</button> : null}
+    </div>
+  );
+}
+
+/** Warm the radar chunk (map library included) so opening Radar is instant. */
+let radarPrefetch: Promise<RadarModule> | null = null;
+function prefetchRadar(): Promise<RadarModule> {
+  if (!radarPrefetch) {
+    radarPrefetch = import("./radar-card");
+    radarPrefetch.catch(() => { radarPrefetch = null; });
+  }
+  return radarPrefetch;
+}
+
+/** Loads the radar code with a timeout, an error card and Retry (replaces next/dynamic, which spun for ever on weak signal). */
+function RadarSlot({ location, theme }: { location: AwLocation; theme: Theme }) {
+  const [mod, setMod] = useState<RadarModule | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let done = false;
+    setFailed(false);
+    const timer = window.setTimeout(() => { if (!done) { done = true; radarPrefetch = null; setFailed(true); } }, RADAR_LOAD_TIMEOUT_MS);
+    prefetchRadar().then((m) => { if (!done) { done = true; setMod(m); } }).catch(() => { if (!done) { done = true; setFailed(true); } });
+    return () => { done = true; window.clearTimeout(timer); };
+  }, [attempt]);
+  const retry = () => { setMod(null); setAttempt((n) => n + 1); };
+  if (mod) return <mod.RadarCard key={attempt} location={location} theme={theme} onRetry={retry} />;
+  return <RadarShell failed={failed} onRetry={retry} />;
+}
+
+/** Desktop: stretch the shorter of the feed's last card and the side column's last card so both columns end level. */
+function useLevelColumnEnds(feedRef: React.RefObject<HTMLElement | null>, sideRef: React.RefObject<HTMLElement | null>, key: string) {
+  useEffect(() => {
+    const feed = feedRef.current, side = sideRef.current;
+    if (!feed || !side || typeof ResizeObserver === "undefined") return undefined;
+    const desktop = window.matchMedia("(min-width: 1081px)");
+    let frame = 0;
+    const lastCard = (root: Element, sel: string) => [...root.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetParent !== null).at(-1);
+    const level = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const a = lastCard(feed, ".awx-feed-list > *"), b = lastCard(side, ".awx-side-card");
+        [a, b].forEach((e) => { if (e) e.style.minHeight = ""; });
+        if (!a || !b || !desktop.matches || getComputedStyle(side).display === "none") return;
+        const diff = a.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom;
+        const grow = diff > 0 ? b : a;
+        if (Math.abs(diff) >= 1 && Math.abs(diff) < 24) grow.style.minHeight = `${grow.getBoundingClientRect().height + Math.abs(diff)}px`;
+      });
+    };
+    const ro = new ResizeObserver(level);
+    [...feed.querySelectorAll(".awx-feed-list > *"), ...side.querySelectorAll(".awx-side-card")].forEach((e) => ro.observe(e));
+    desktop.addEventListener("change", level);
+    level();
+    return () => { ro.disconnect(); desktop.removeEventListener("change", level); cancelAnimationFrame(frame); };
+  }, [feedRef, sideRef, key]);
+}
+
+/** Phone header line: the full text if it fits on one line, otherwise the short form. */
+function PhonePlaceLine({ full, short }: { full: string; short: string }) {
+  const boxRef = useRef<HTMLElement>(null);
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const box = boxRef.current, probe = probeRef.current;
+    if (!box || !probe || typeof ResizeObserver === "undefined") return undefined;
+    const check = () => setFits(probe.getBoundingClientRect().width <= box.getBoundingClientRect().width + 0.5);
+    const ro = new ResizeObserver(check);
+    ro.observe(box);
+    check();
+    return () => ro.disconnect();
+  }, [full]);
+  return (
+    <small ref={boxRef} className="awx-place-line">
+      {fits ? full : short}
+      <span ref={probeRef} className="awx-place-probe" aria-hidden="true">{full}</span>
+    </small>
+  );
+}
+const LONDON_HM = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+/** Observation time as 24-hour Europe/London HH:MM, no zone label. */
+function londonTime(at: number | null | undefined, fallback: string): string {
+  return typeof at === "number" && Number.isFinite(at) ? LONDON_HM.format(at) : fallback;
+}
 
 type View = "all" | "now" | "rain" | "radar" | "field" | "outlook" | "seasonal" | "about";
 type MobileNavKey = View | "more";
@@ -245,6 +351,8 @@ export function AceWeatherApp() {
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
   const gpsLastLoadedRef = useRef<LatLon | null>(null);
+  // Set when the user picks a place by hand; any GPS reading still in flight is ignored.
+  const manualPickRef = useRef(false);
   const lastSheetFocusRef = useRef<HTMLElement | null>(null);
 
   // prefs on mount
@@ -355,7 +463,10 @@ export function AceWeatherApp() {
 
   const learned = useMemo(() => (raw ? applyLearned(raw, learnedOverlay) : null), [raw, learnedOverlay]);
   const model = useMemo(() => (learned ? buildModel(learned.forecast) : null), [learned]);
-  const freshness = model ? `${model.now.obsTime} ${location.tz?.includes("London") ? "BST" : ""}`.trim() : "—";
+  const feedRef = useRef<HTMLElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
+  useLevelColumnEnds(feedRef, sideRef, `${view}|${model ? 1 : 0}`);
+  const freshness = model ? londonTime(model.now.obsAt, model.now.obsTime) : "—";
 
   useEffect(() => { if (rainAlerts && model) maybeNotifyRain(model, location.name); }, [rainAlerts, model, location.name]);
   useEffect(() => {
@@ -424,7 +535,9 @@ export function AceWeatherApp() {
       return undefined;
     }
     setGeoStatus("locating");
+    manualPickRef.current = false;
     const applyGpsPosition = (pos: GeolocationPosition) => {
+      if (manualPickRef.current) return;
       const next = gpsLocationFromPosition(pos);
       if (distanceKm(gpsLastLoadedRef.current, next) < GPS_UPDATE_MIN_KM) {
         setGeoStatus("following");
@@ -453,6 +566,8 @@ export function AceWeatherApp() {
 
   function loadLocation(loc: AwLocation, opts: LoadLocationOptions = {}) {
     if (!opts.keepGeoFollow) {
+      manualPickRef.current = true;
+      try { localStorage.setItem(GPS_FOLLOW_KEY, "0"); } catch { /* */ }
       gpsLastLoadedRef.current = null;
       setGeoFollow(false);
       setGeoStatus("idle");
@@ -490,7 +605,9 @@ export function AceWeatherApp() {
       return;
     }
     setGeoStatus("locating");
+    manualPickRef.current = false;
     navigator.geolocation.getCurrentPosition((pos) => {
+      if (manualPickRef.current) return;
       const next = gpsLocationFromPosition(pos);
       gpsLastLoadedRef.current = { lat: next.lat, lon: next.lon };
       loadLocation(next, { keepGeoFollow: true, save: false });
@@ -524,7 +641,8 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location blocked" : "Use my location";
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
+  const placeSubtitle = geoFollow ? (location.region || "GPS location") : [location.region, "Chosen place · GPS off"].filter(Boolean).join(" · ");
 
   const settingsControls = (
     <>
@@ -540,9 +658,10 @@ export function AceWeatherApp() {
         <button type="button" className={windUnit === "kmh" ? "is-on" : ""} onClick={() => setWindUnit("kmh")}>km/h</button>
         <button type="button" className={windUnit === "mph" ? "is-on" : ""} onClick={() => setWindUnit("mph")}>mph</button>
       </div>
-      <button type="button" className={"awx-btn awx-btn-ghost awx-bell" + (rainAlerts ? " is-on" : "")} onClick={toggleRainAlerts}>
+      <button type="button" title={rainAlerts ? "Rain alerts on" : "Rain alerts"} className={"awx-btn awx-btn-ghost awx-bell" + (rainAlerts ? " is-on" : "")} onClick={toggleRainAlerts}>
         <BellIcon /><span>{rainAlerts ? "Rain alerts on" : "Rain alerts"}</span>
       </button>
+      <button type="button" className="awx-link-btn awx-tips-btn" aria-label="Show set-up tips" title="Show set-up tips" onClick={() => { showSetupHint(); setSettingsOpen(false); setView("all"); }}><svg className="awx-tips-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg><span>Show set-up tips</span></button>
     </>
   );
 
@@ -550,20 +669,20 @@ export function AceWeatherApp() {
     <div className="awx">
       {/* RAIL */}
       <aside className="awx-rail" aria-label="Primary">
-        <a className="awx-brand" href="#top"><span className="awx-brand-mark" aria-hidden="true" />
+        <a className="awx-brand" href="#top" title="AceWeather"><span className="awx-brand-mark" aria-hidden="true" />
           <span><span className="awx-brand-name">AceWeather</span></span></a>
         <nav className="awx-nav" aria-label="Sections">
           {NAV.map(([k, label]) => (
-            <button key={k} type="button" aria-pressed={view === k} onClick={() => selectViewAndReset(k)}>
+            <button key={k} type="button" title={label} aria-pressed={view === k} onClick={() => selectViewAndReset(k)}>
               <NavIcon name={k === "all" ? "overview" : k} /><span>{label}</span>
             </button>
           ))}
         </nav>
         <div className="awx-rail-spacer" />
         <div className="awx-rail-foot">
-          <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
+          <button className="awx-btn awx-btn-primary" type="button" title={shareLabel} onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
           <section className="awx-settings-panel" aria-label="Settings">
-            <div className="awx-settings-head">
+            <div className="awx-settings-head" title="Settings">
               <SettingsIcon />
               <span>
                 <strong>Settings</strong>
@@ -578,12 +697,12 @@ export function AceWeatherApp() {
       </aside>
 
       {/* FEED */}
-      <main className="awx-feed" id="top" data-view={view}>
+      <main ref={feedRef} className="awx-feed" id="top" data-view={view}>
         <header className="awx-mobile-top">
           <span className="awx-brand-mark" aria-hidden="true" />
           <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
             <strong>{location.name}</strong>
-            <small>{location.region || (geoFollow ? "GPS active" : "Change location")}</small>
+            <PhonePlaceLine full={geoFollow ? (location.region || "GPS active") : (location.region ? `${location.region} · GPS off` : "Chosen place · GPS off")} short={geoFollow ? "GPS active" : "Chosen place · GPS off"} />
           </button>
           <div className="awx-mtop-right">
             <span className={"awx-status" + statusCls}>{statusText}</span>
@@ -594,7 +713,7 @@ export function AceWeatherApp() {
         <div className="awx-feed-head">
           <div>
             <h1>{location.name}</h1>
-            <span className="awx-sub">{[location.region, model ? `updated ${freshness}` : "loading"].filter(Boolean).join(" · ")}</span>
+            <span className="awx-sub">{placeSubtitle}</span>
           </div>
           <div className="awx-head-actions">
             <span className={"awx-status" + statusCls}>{statusText}</span>
@@ -605,6 +724,7 @@ export function AceWeatherApp() {
         </div>
         {model && view === "all" ? (
           <OverviewExperience
+            hint={<SetupHint onAllowLocation={locateMe} geoFollow={geoFollow} />}
             model={model}
             unit={unit}
             windUnit={windUnit}
@@ -625,7 +745,7 @@ export function AceWeatherApp() {
               {view === "rain" ? (
                 <RainExperience model={model} seasonal={seasonal} onSelectView={selectViewAndReset} />
               ) : null}
-              {view === "radar" ? <RadarCard location={location} theme={theme} /> : null}
+              {view === "radar" ? <RadarSlot location={location} theme={theme} /> : null}
               {view === "outlook" ? <CalendarCard model={model} unit={unit} windUnit={windUnit} /> : null}
               {view === "field" ? <FieldExperience model={model} windUnit={windUnit} /> : null}
               {view === "seasonal" ? <SeasonalCard seasonal={seasonal} /> : null}
@@ -638,7 +758,7 @@ export function AceWeatherApp() {
       </main>
 
       {/* SIDEBAR */}
-      <aside className="awx-side" aria-label="Utilities">
+      <aside ref={sideRef} className="awx-side" aria-label="Utilities">
         <div className="awx-side-card">
           <h3>Location</h3>
           <div className="awx-side-body">
@@ -680,6 +800,7 @@ export function AceWeatherApp() {
             aria-pressed={k === "more" ? moreOpen || MORE_VIEWS.has(view) : view === k}
             onClick={() => {
               if (k === "more") {
+                void prefetchRadar();
                 setMoreOpen(true);
                 setSettingsOpen(false);
                 setLocationOpen(false);
@@ -698,7 +819,7 @@ export function AceWeatherApp() {
           <div className="awx-sheet awx-location-sheet" role="dialog" aria-modal="true" aria-label="Change location" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>Location</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close">x</button>
+              <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
               <LocationPickerContent
@@ -724,13 +845,13 @@ export function AceWeatherApp() {
           <div className="awx-sheet" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>Settings</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close">x</button>
+              <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
               {settingsControls}
               <div className="awx-sheet-actions">
                 <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>{gpsButtonLabel}</span></button>
-                <button className="awx-btn awx-btn-primary" type="button" onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
+                <button className="awx-btn awx-btn-primary" type="button" title={shareLabel} onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
               </div>
             </div>
           </div>
@@ -742,7 +863,7 @@ export function AceWeatherApp() {
           <div className="awx-sheet awx-more-sheet" role="dialog" aria-modal="true" aria-label="More" onClick={(e) => e.stopPropagation()}>
             <div className="awx-sheet-head">
               <strong>More</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setMoreOpen(false)} aria-label="Close">x</button>
+              <button className="awx-icon-btn" type="button" onClick={() => setMoreOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
               <div className="awx-more-grid" role="group" aria-label="More sections">

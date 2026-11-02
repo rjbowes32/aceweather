@@ -9,6 +9,7 @@ import {
 } from "./format";
 import { buildAgronomy } from "./agronomy";
 import { buildAccess, openMeteoDailyRows, openMeteoHourlyRows } from "../weather-engine/index.ts";
+import { pickWeatherIcon, grassOffset as grassOffsetAt } from "./weather-icons";
 
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 const sum = (xs) => xs.reduce((a, b) => a + (Number(b) || 0), 0);
@@ -55,14 +56,19 @@ export function buildModel(raw) {
   const isDay = cur.is_day == null ? 1 : Number(cur.is_day);
   const condition = weatherCondition(cur.weather_code, isDay);
   const compass = dirToCompass(cur.wind_direction_10m);
+  const nowIcon = pickWeatherIcon({
+    code: cur.weather_code, isDay, precipMm: cur.precipitation, tempC: cur.temperature_2m, gustKmh: cur.wind_gusts_10m,
+    grassMinC: !isDay && typeof cur.temperature_2m === "number" ? cur.temperature_2m - grassOffsetAt(cur.cloud_cover, cur.wind_speed_10m) : null,
+  });
   const now = {
+    icon: nowIcon,
     temp: cur.temperature_2m, feels: cur.apparent_temperature,
     hi: d.temperature_2m_max?.[di], lo: d.temperature_2m_min?.[di],
     rh: cur.relative_humidity_2m, dew: cur.dew_point_2m, pressure: cur.pressure_msl,
     wind: cur.wind_speed_10m, gust: cur.wind_gusts_10m, compass, windDir: cur.wind_direction_10m,
     cloud: cur.cloud_cover, vis: cur.visibility != null ? Number(cur.visibility) / 1000 : null,
     uv: cur.uv_index, precip: cur.precipitation, precipProb: h.precipitation_probability?.[ni], isDay, condition,
-    summary: conditionSummary(condition.key, compass), obsTime: timeLabel(obs),
+    summary: conditionSummary(condition.key, compass), obsTime: timeLabel(obs), obsAt: obsInstant(obs, raw.utc_offset_seconds),
   };
 
   // ---------- 24h TREND (line chart) ----------
@@ -129,6 +135,20 @@ export function buildModel(raw) {
     if (!arr) { arr = []; hoursByDate.set(key, arr); }
     arr.push(j);
   }
+  const dayIcon = (code, idxs) => {
+    let wettest = -1, maxMm = null, gustMax = null, grassMin = null;
+    for (const j of idxs) {
+      const mm = h.precipitation[j];
+      if (typeof mm === "number" && (maxMm == null || mm > maxMm)) { maxMm = mm; wettest = j; }
+      const g = h.wind_gusts_10m?.[j];
+      if (typeof g === "number" && (gustMax == null || g > gustMax)) gustMax = g;
+      if (Number(h.time[j].slice(11, 13)) <= 8 && typeof h.temperature_2m[j] === "number") {
+        const gm = h.temperature_2m[j] - grassOffsetAt(h.cloud_cover?.[j], h.wind_speed_10m?.[j]);
+        if (grassMin == null || gm < grassMin) grassMin = gm;
+      }
+    }
+    return pickWeatherIcon({ code, isDay: 1, precipMm: maxMm, tempC: wettest >= 0 ? h.temperature_2m[wettest] : null, gustKmh: gustMax, grassMinC: grassMin });
+  };
   const calMax = Math.max(1, ...dailyP.slice(di, di + 14));
   const calendar = [];
   for (let i = 0; i < 14 && di + i < d.time.length; i++) {
@@ -145,8 +165,13 @@ export function buildModel(raw) {
       // AceWeather's calibrated chance of at least 1 mm (days 0-7); null further ahead or if it is unavailable.
       chance: typeof d.rain_chance?.[k] === "number" ? d.rain_chance[k] : null,
       further: i > 7,
+      // Wind range: hourly minimum to daily maximum (hourly maximum if the daily value is missing); gust = daily max gust.
+      windLo: hWind.length ? Math.round(minOf(hWind)) : null,
+      windHi: typeof d.wind_speed_10m_max?.[k] === "number" ? Math.round(d.wind_speed_10m_max[k]) : (hWind.length ? Math.round(maxOf(hWind)) : null),
+      gustMax: typeof d.wind_gusts_10m_max?.[k] === "number" ? Math.round(d.wind_gusts_10m_max[k]) : null,
       rainPct: clamp(((dailyP[k] || 0) / calMax) * 100, 0, 100),
       condition: weatherCondition(d.weather_code?.[k], 1), isToday: i === 0,
+      icon: dayIcon(d.weather_code?.[k], idxs),
       hours: {
         labels: idxs.map((j) => h.time[j].slice(11, 13)),
         temp: hTemp, rain: hRain, wind: hWind,
@@ -206,6 +231,12 @@ export function buildModel(raw) {
   const AP = h.apparent_temperature || [];
   const mkHour = (i) => ({
     condition: weatherCondition(h.weather_code?.[i], h.is_day?.[i] ?? 1),
+    icon: pickWeatherIcon({
+      code: h.weather_code?.[i], isDay: h.is_day?.[i] ?? 1, precipMm: h.precipitation[i], tempC: h.temperature_2m[i],
+      gustKmh: h.wind_gusts_10m?.[i],
+      // Grass frost is a night/early-morning risk: only badge hours without daylight.
+      grassMinC: typeof h.temperature_2m[i] === "number" && (h.is_day?.[i] ?? 1) === 0 ? h.temperature_2m[i] - grassOffsetAt(h.cloud_cover?.[i], h.wind_speed_10m?.[i]) : null,
+    }),
     label: h.time[i].slice(11, 16), dateKey: h.time[i].slice(0, 10), weekday: weekdayShort(h.time[i]),
     temp: h.temperature_2m[i], feels: AP[i], wind: h.wind_speed_10m[i], gust: h.wind_gusts_10m[i],
     precip: h.precipitation[i] ?? 0, prob: h.precipitation_probability?.[i] ?? 0,
@@ -255,3 +286,10 @@ export function buildModel(raw) {
 }
 
 export type AwModel = ReturnType<typeof buildModel>;
+
+/** Epoch ms for an Open-Meteo local wall time, using the response's utc_offset_seconds. */
+export function obsInstant(local: string, offsetSeconds: unknown): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local);
+  if (!m || typeof offsetSeconds !== "number" || !Number.isFinite(offsetSeconds)) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - offsetSeconds * 1000;
+}

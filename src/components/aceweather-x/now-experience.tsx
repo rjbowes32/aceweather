@@ -2,7 +2,7 @@
 
 import type { AwModel } from "@/lib/aceweather/derive";
 import {
-  formatNextRain,
+  formatNextRain, NO_RAIN_HEADLINE,
   formatRain,
   formatTemperature,
   formatWind,
@@ -63,11 +63,11 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
           <div><span id="awx-now-hourly-title">Next ten hours</span></div>
           <button type="button" onClick={() => onSelectView("rain")}>Rain detail</button>
         </div>
-        <button className="awx-now-rain-callout" type="button" onClick={() => onSelectView("rain")}>
+        {rain.headline === NO_RAIN_HEADLINE ? null : <button className="awx-now-rain-callout" type="button" onClick={() => onSelectView("rain")}>
           <span><small>Change ahead</small><strong>{rain.headline}</strong></span>
           <span>{rain.detail}</span>
           <b aria-hidden="true">›</b>
-        </button>
+        </button>}
         <div className="awx-now-hours" role="list" aria-label="Hourly forecast">
           {hourly.map((hour) => (
             <div key={`${hour.dateKey}-${hour.label}`} role="listitem" className={formatRain(hour.precip ?? 0) !== "0" ? "is-wet" : ""}>
