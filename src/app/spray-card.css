@@ -1,0 +1,43 @@
+/* Spray card: next-window line, 48 h strip with legend, Delta-T segments, skeleton. */
+:root { --awx-hold: #6b7686; } /* ≥3:1 on dark surface (#162338) and on white */
+
+.awx-spray-next { margin: 12px 0 0; font-size: 15px; font-weight: 700; color: var(--awx-text); line-height: 1.35; }
+
+.awx-spray-strip { margin: 16px 0; }
+.awx-sprayhours { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 1px; height: 12px; border-radius: var(--awx-pill); overflow: hidden; }
+.awx-sprayhours > i { display: block; height: 100%; }
+.awx-sh-go { background: var(--awx-go); }
+/* Caution: hatched so it reads without colour. */
+.awx-sh-warn { background: repeating-linear-gradient(135deg, var(--awx-warn) 0 3px, color-mix(in srgb, var(--awx-warn) 45%, var(--awx-surface)) 3px 6px); }
+/* Hold: solid mid-grey with dark dots. */
+.awx-sh-risk { background-color: var(--awx-hold); background-image: radial-gradient(circle, rgba(0, 0, 0, 0.45) 1px, transparent 1.4px); background-size: 4px 4px; }
+.awx-sh-ticks { position: relative; height: 16px; margin-top: 4px; font-size: 12px; color: var(--awx-muted); font-variant-numeric: tabular-nums; }
+.awx-sh-ticks > span { position: absolute; top: 0; left: 0; }
+.awx-sh-ticks > span:nth-child(2) { transform: translateX(-50%); }
+.awx-sh-ticks > span.is-end { left: auto; right: 0; }
+.awx-sh-legend { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; color: var(--awx-text); font-variant-numeric: tabular-nums; }
+.awx-sh-legend li { display: flex; align-items: center; gap: 8px; }
+.awx-sh-legend li > i { flex: none; width: 14px; height: 10px; border-radius: 3px; }
+.awx-shl-go > i { background: var(--awx-go); }
+.awx-shl-warn > i { background: repeating-linear-gradient(135deg, var(--awx-warn) 0 3px, color-mix(in srgb, var(--awx-warn) 45%, var(--awx-surface)) 3px 6px); }
+.awx-shl-risk > i { background-color: var(--awx-hold); background-image: radial-gradient(circle, rgba(0, 0, 0, 0.45) 1px, transparent 1.4px); background-size: 4px 4px; }
+
+/* Delta-T: four segments, the current one stronger. */
+.awx-dt-seg { position: absolute; top: 0; bottom: 0; opacity: 0.45; }
+.awx-dt-seg.is-current { opacity: 1; }
+.awx-dt-seg:first-child { border-radius: var(--awx-pill) 0 0 var(--awx-pill); }
+.awx-dt-seg:nth-child(4) { border-radius: 0 var(--awx-pill) var(--awx-pill) 0; }
+.awx-dt-go { background: var(--awx-go); } .awx-dt-warn { background: var(--awx-warn); } .awx-dt-risk { background: var(--awx-risk); }
+
+/* Loading skeleton. */
+.awx-skel { border-radius: 8px; background: linear-gradient(90deg, var(--awx-surface-2) 0%, var(--awx-surface-3) 50%, var(--awx-surface-2) 100%); background-size: 200% 100%; animation: awx-skel 1.4s ease-in-out infinite; }
+.awx-skel-title { width: 40%; height: 20px; }
+.awx-skel-verdict { height: 52px; margin-top: 16px; border-radius: 14px; }
+.awx-skel-line { height: 16px; margin-top: 12px; width: 75%; }
+.awx-skel-line.short { width: 50%; }
+.awx-skel-strip { height: 12px; margin: 16px 0; border-radius: var(--awx-pill); }
+@keyframes awx-skel { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .awx-skel { animation: none; } }
+.awx-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.awx-shl-toggle { min-height: 44px; margin-top: 6px; padding: 0 12px; border: 1px solid var(--awx-line-2); border-radius: 12px; background: transparent; color: var(--awx-text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.awx-shl-toggle:focus-visible { outline: 2px solid var(--awx-accent); outline-offset: 2px; }

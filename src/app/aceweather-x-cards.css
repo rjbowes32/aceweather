@@ -313,7 +313,6 @@
 .awx-deltat-head b { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .awx-deltat-head small { color: var(--awx-muted); font-weight: 400; font-size: 12px; }
 .awx-deltat-track { position: relative; height: 8px; border-radius: var(--awx-pill); background: var(--awx-surface-3); }
-.awx-deltat-band { position: absolute; top: 0; bottom: 0; border-radius: var(--awx-pill); background: color-mix(in srgb, var(--awx-go) 40%, transparent); }
 .awx-deltat-marker { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--awx-text); transform: translateX(-50%); }
 
 .awx-riskstrip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; margin-top: 6px; }

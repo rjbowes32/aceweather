@@ -1,6 +1,8 @@
 /* Open-Meteo data access: forecast, geocoding search, archive climate context.
    Everything here is the live Open-Meteo API (no backend route needed). */
 
+import { overlayUkmoPayload, UKMO_CURRENT_OVERLAY, UKMO_HOURLY_OVERLAY } from "../weather-engine/ukmo-overlay.ts";
+
 export type AwLocation = {
   name: string;
   region: string;
@@ -66,9 +68,34 @@ export async function fetchForecast(loc: AwLocation, signal?: AbortSignal, cache
       "sunrise", "sunset", "uv_index_max",
     ].join(","),
   });
-  const r = await fetch(`${FORECAST}?${params}`, fetchInit(signal, cache));
-  if (!r.ok) throw new Error(`Open-Meteo forecast ${r.status}`);
-  return (await r.json()) as ForecastResponse;
+  // Met Office 2 km UKV blend (same as AceAg): a second request for the UKMO
+  // model's wind, rain, temperature, humidity and cloud, laid over best_match.
+  // Any UKMO failure keeps the plain forecast.
+  const ukmoParams = new URLSearchParams(params);
+  ukmoParams.set("models", "ukmo_seamless");
+  ukmoParams.set("current", UKMO_CURRENT_OVERLAY.join(","));
+  ukmoParams.set("hourly", UKMO_HOURLY_OVERLAY.join(","));
+  ukmoParams.delete("daily");
+  // UKMO may never hold up the forecast: it gets 8 s, then it is cancelled.
+  const ukmoAbort = new AbortController();
+  const ukmoTimer = setTimeout(() => ukmoAbort.abort(), 8000);
+  const cancelUkmo = () => ukmoAbort.abort();
+  signal?.addEventListener("abort", cancelUkmo, { once: true });
+  const ukmoRequest = fetch(`${FORECAST}?${ukmoParams}`, fetchInit(ukmoAbort.signal, cache))
+    .then((res) => (res.ok ? res.json() : null))
+    .catch(() => null)
+    .finally(() => { clearTimeout(ukmoTimer); signal?.removeEventListener("abort", cancelUkmo); });
+  let base: ForecastResponse;
+  try {
+    const r = await fetch(`${FORECAST}?${params}`, fetchInit(signal, cache));
+    if (!r.ok) throw new Error(`Open-Meteo forecast ${r.status}`);
+    base = (await r.json()) as ForecastResponse;
+  } catch (error) {
+    cancelUkmo();
+    throw error;
+  }
+  const ukmo = await ukmoRequest;
+  return overlayUkmoPayload(base, ukmo);
 }
 
 export async function searchLocations(query: string, signal?: AbortSignal): Promise<AwLocation[]> {
