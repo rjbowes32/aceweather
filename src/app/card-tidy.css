@@ -169,11 +169,16 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
 }
 /* r9: selected day gets a 2px inset accent ring on top of the tint; today keeps its 1px accent border. */
 .awx .awx-cal-day[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--awx-accent), var(--awx-card-shadow); }
-/* Location fixes (2026-11-02): GPS label on every desktop view, and the compact rail keeps set-up tips on one line. */
+/* Location fixes (2026-11-02): GPS label on every desktop view. */
 @media (min-width: 901px) {
   .awx > .awx-side .awx-btn span { display: inline; }
 }
 @media (min-width: 901px) and (max-width: 1080px) {
-  .awx .awx-rail .awx-tips-btn { white-space: nowrap; }
   .awx > .awx-side .awx-btn { width: auto; padding: 0 14px; justify-content: flex-start; text-align: left; }
 }
+/* r2: units shown once in the Next ten hours heading; Sun & daylight UV stays on one line. */
+.awx .awx-now-units { display: block; margin: 2px 0 0; color: var(--awx-muted); font-size: 12px; font-weight: 500; }
+.awx .awx-now-daylight-grid strong { white-space: nowrap; }
+.awx .awx-hour .awx-h-h, .awx .awx-hour .awx-h-r, .awx .awx-hour .awx-h-w, .awx .awx-hours-cap { font-size: 12px; }
+.awx .awx-hour .awx-h-h, .awx .awx-hour .awx-h-r, .awx .awx-hour .awx-h-w { color: var(--awx-muted); }
+.awx .awx-hour .awx-h-r.wet { color: var(--awx-accent); }

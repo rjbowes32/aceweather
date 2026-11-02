@@ -11,6 +11,7 @@ type LocationPickerContentProps = {
   activeLocationName: string;
   currentTemperature?: string;
   gpsButtonLabel: string;
+  gpsStatus?: string;
   autoFocus?: boolean;
   onQueryChange: (query: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -25,6 +26,7 @@ export function LocationPickerContent({
   activeLocationName,
   currentTemperature,
   gpsButtonLabel,
+  gpsStatus,
   autoFocus = false,
   onQueryChange,
   onSubmit,
@@ -33,7 +35,7 @@ export function LocationPickerContent({
 }: LocationPickerContentProps) {
   return (
     <div className="awx-location-picker">
-      <button className={"awx-btn awx-btn-ghost awx-location-gps" + (gpsButtonLabel.startsWith("Location off") ? " is-blocked" : "")} type="button" onClick={onLocate} disabled={gpsButtonLabel === "Locating..."}>
+      <button className={"awx-btn awx-btn-ghost awx-location-gps" + (gpsStatus === "blocked" ? " is-blocked" : "")} type="button" onClick={onLocate} disabled={gpsStatus === "locating"}>
         <GpsIcon /><span>{gpsButtonLabel}</span>
       </button>
       <form className="awx-location-form" onSubmit={onSubmit}>

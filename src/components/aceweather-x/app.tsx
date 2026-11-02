@@ -641,8 +641,8 @@ export function AceWeatherApp() {
   const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating..." : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
-  const placeSubtitle = geoFollow ? (location.region || "GPS location") : [location.region, "Chosen place · GPS off"].filter(Boolean).join(" · ");
+  const gpsButtonLabel = geoStatus === "locating" ? "Locating…" : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
+  const placeSubtitle = geoFollow ? (location.region || "GPS location") : (location.region ? `${location.region} · GPS off` : "Chosen place · GPS off");
 
   const settingsControls = (
     <>
@@ -769,6 +769,7 @@ export function AceWeatherApp() {
               activeLocationName={location.name}
               currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
               gpsButtonLabel={gpsButtonLabel}
+              gpsStatus={geoStatus}
               onQueryChange={setQuery}
               onSubmit={onSubmit}
               onSelectLocation={loadLocation}
@@ -829,6 +830,7 @@ export function AceWeatherApp() {
                 activeLocationName={location.name}
                 currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
                 gpsButtonLabel={gpsButtonLabel}
+              gpsStatus={geoStatus}
                 autoFocus
                 onQueryChange={setQuery}
                 onSubmit={onSubmit}

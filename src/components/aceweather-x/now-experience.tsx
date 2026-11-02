@@ -53,14 +53,13 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
         <div className="awx-now-secondary">
           <span>Dew {now.dew == null ? "—" : now.dew.toFixed(1)}°</span>
           <span>{Math.round(now.cloud ?? 0)}% cloud</span>
-          <span>UV {Math.round(now.uv ?? 0)}</span>
           <span>Visibility {now.vis == null ? "—" : now.vis.toFixed(0)} km</span>
         </div>
       </section>
 
       <section className="awx-now-hourly" aria-labelledby="awx-now-hourly-title">
         <div className="awx-now-section-head">
-          <div><span id="awx-now-hourly-title">Next ten hours</span></div>
+          <div><span id="awx-now-hourly-title">Next ten hours</span><span className="awx-now-units" aria-hidden="true">mm · {windLabel}</span></div>
           <button type="button" onClick={() => onSelectView("rain")}>Rain detail</button>
         </div>
         {rain.headline === NO_RAIN_HEADLINE ? null : <button className="awx-now-rain-callout" type="button" onClick={() => onSelectView("rain")}>
@@ -70,11 +69,11 @@ export function NowExperience({ model, unit, windUnit, freshness, onSelectView }
         </button>}
         <div className="awx-now-hours" role="list" aria-label="Hourly forecast">
           {hourly.map((hour) => (
-            <div key={`${hour.dateKey}-${hour.label}`} role="listitem" className={formatRain(hour.precip ?? 0) !== "0" ? "is-wet" : ""}>
+            <div key={`${hour.dateKey}-${hour.label}`} role="listitem" aria-label={`${hour.label}, ${formatTemperature(hour.temp, unit)}°, ${formatRain(hour.precip ?? 0)} mm rain, wind ${formatWind(hour.wind, windUnit)} ${windLabel}`} className={formatRain(hour.precip ?? 0) !== "0" ? "is-wet" : ""}>
               <span>{hour.label}</span>
               <strong className="awx-tnum">{formatTemperature(hour.temp, unit)}°</strong>
-              <small>{formatRain(hour.precip ?? 0)} mm</small>
-              <small>{formatWind(hour.wind, windUnit)} {windLabel}</small>
+              <small aria-hidden="true">{formatRain(hour.precip ?? 0)}</small>
+              <small aria-hidden="true">{formatWind(hour.wind, windUnit)}</small>
             </div>
           ))}
         </div>

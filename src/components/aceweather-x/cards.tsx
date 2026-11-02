@@ -22,7 +22,6 @@ function HourlyDetail({ day, unit, windUnit }: { day?: CalendarDay; unit: Temper
     <div className="awx-hourly">
       <div className="awx-hourly-head">
         <strong>{day.weekday} {day.dayNum} · hour by hour</strong>
-        <span>High {tC(hrs.tMax, unit)}° · Low {tC(hrs.tMin, unit)}° · {hrs.rainSum} mm · wind to {wSpd(hrs.windMax, windUnit)} {WU(windUnit)}</span>
       </div>
       <HourlyChart temp={hrs.temp} rain={hrs.rain} wind={hrs.wind} labels={hrs.labels} />
       <div className="awx-hours-cap">
