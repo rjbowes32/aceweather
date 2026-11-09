@@ -33,6 +33,7 @@ export function SetupHint({ onAllowLocation, geoFollow }: { onAllowLocation: () 
     setIos(isIosSafari(navigator.userAgent, navigator.maxTouchPoints));
     let status: PermissionStatus | null = null;
     const sync = () => { if (status) setPermission(status.state as LocationPermission); };
+    // Reads the permission only. A position request would prompt, and belongs on the Here tap.
     navigator.permissions?.query({ name: "geolocation" as PermissionName })
       .then((s) => { status = s; sync(); s.addEventListener("change", sync); })
       .catch(() => setPermission("unknown"));

@@ -1,41 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AceWeather">
   <title>AceWeather</title>
-  <defs>
-    <clipPath id="tile"><rect width="1024" height="1024" rx="224" ry="224"/></clipPath>
-    <linearGradient id="bg" x1="160" y1="84" x2="870" y2="930" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0d1218"/>
-      <stop offset="0.58" stop-color="#111b24"/>
-      <stop offset="1" stop-color="#182c37"/>
-    </linearGradient>
-    <radialGradient id="sun" cx="38%" cy="34%" r="64%">
-      <stop offset="0" stop-color="#ffe39a"/>
-      <stop offset="0.62" stop-color="#f0b657"/>
-      <stop offset="1" stop-color="#d8943f"/>
-    </radialGradient>
-    <linearGradient id="cloud" x1="260" y1="336" x2="764" y2="714" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#dfeaf2"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="145%">
-      <feDropShadow dx="0" dy="28" stdDeviation="32" flood-color="#000000" flood-opacity="0.28"/>
-    </filter>
-  </defs>
-  <g clip-path="url(#tile)">
-    <rect width="1024" height="1024" fill="url(#bg)"/>
-    <circle cx="365" cy="326" r="178" fill="url(#sun)"/>
-    <g stroke="#f3c96f" stroke-width="28" stroke-linecap="round" opacity="0.72">
-      <path d="M365 86v72"/>
-      <path d="M365 494v72"/>
-      <path d="M125 326h72"/>
-      <path d="M533 326h72"/>
-      <path d="M195 156l50 50"/>
-      <path d="M485 446l50 50"/>
-      <path d="M535 156l-50 50"/>
-      <path d="M245 446l-50 50"/>
-    </g>
-    <path filter="url(#softShadow)" fill="url(#cloud)" d="M306 702c-82 0-148-62-148-139 0-72 56-130 128-136 29-87 111-149 207-149 85 0 160 48 197 119 10-2 21-3 32-3 80 0 145 65 145 145s-65 145-145 145H306z"/>
-    <path fill="#121b24" d="M306 702c-82 0-148-62-148-139 0-72 56-130 128-136 29-87 111-149 207-149 85 0 160 48 197 119 10-2 21-3 32-3 80 0 145 65 145 145s-65 145-145 145H306z" opacity="0.08"/>
-    <text x="512" y="586" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="250" font-weight="800" letter-spacing="-18" fill="#101820">aw</text>
-  </g>
+  <rect width="1024" height="1024" fill="#0B1220"/>
+  <path fill="#6EA0FF" d="M512 176c10 0 196 250 196 412a196 196 0 0 1-392 0c0-162 186-412 196-412z"/>
 </svg>
