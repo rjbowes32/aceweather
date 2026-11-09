@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="A over a horizon">
+  <title>A over a horizon</title>
+  <rect width="1024" height="1024" fill="#0B1220"/>
+  <g fill="#6EA0FF">
+    <path d="M512 150 L690 560 L334 560 Z"/>
+    <rect x="248" y="500" width="160" height="380" rx="72" transform="rotate(24 328 690)"/>
+    <rect x="616" y="500" width="160" height="380" rx="72" transform="rotate(-24 696 690)"/>
+    <rect x="112" y="548" width="800" height="108" rx="54"/>
+  </g>
+</svg>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Rain over a field">
+  <title>Rain over a field</title>
+  <rect width="1024" height="1024" fill="#164A36"/>
+  <g fill="#6EA0FF">
+    <path d="M512 168c12 0 210 270 210 430a210 210 0 0 1-420 0c0-160 198-430 210-430z"/>
+    <rect x="132" y="700" width="760" height="128" rx="64"/>
+  </g>
+</svg>
