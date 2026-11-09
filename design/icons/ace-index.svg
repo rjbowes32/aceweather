@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Card index A with a raindrop">
+  <title>Card index A with a raindrop</title>
+  <rect width="1024" height="1024" fill="#0B1220"/>
+  <g fill="none" stroke="#F4F0E6" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
+    <path stroke-width="108" d="M168 688 H330 L512 148 L694 688 H856"/>
+    <path stroke-width="104" d="M392 520 H632"/>
+  </g>
+  <path fill="#F4F0E6" d="M512 792c6 0 90 100 90 158a90 90 0 0 1-180 0c0-58 84-158 90-158z"/>
+</svg>

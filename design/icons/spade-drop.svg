@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Spade as a raindrop">
+  <title>Spade as a raindrop</title>
+  <rect width="1024" height="1024" fill="#9E2A2F"/>
+  <g fill="#F4F0E6">
+    <path d="M512 108C548 196 824.4 275.1 918.2 451.7A 220 220 0 1 1 512.0 615.0A 220 220 0 1 1 105.8 451.7C 199.6 275.1 476 196 512 108Z"/>
+    <path d="M448 590H576V892Q576 948 512 948Q448 948 448 892Z"/>
+  </g>
+</svg>
