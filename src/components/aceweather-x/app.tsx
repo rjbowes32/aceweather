@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, nearestUkDistrict, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
-import { HERE_NAME, addSaved, forecastNotice, moveSaved, parseSaved, placeKey, removeSaved, renameSaved } from "@/lib/aceweather/places";
+import { HERE_NAME, addSaved, forecastNotice, isUk, moveSaved, parseSaved, placeKey, removeSaved, renameSaved } from "@/lib/aceweather/places";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
 import { CloseIcon, NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
@@ -406,6 +406,24 @@ export function AceWeatherApp() {
     } catch { /* */ }
   }, [geoFollow, geoPreferenceReady]);
   useEffect(() => { saveLocationForSync(location); }, [location]);
+  // Local authority from the point, not the geocoder's county or a stored post town.
+  const districtLat = location.lat;
+  const districtLon = location.lon;
+  const districtCountry = location.country;
+  const districtCode = location.countryCode;
+  useEffect(() => {
+    if (!isUk({ country: districtCountry, countryCode: districtCode })) return undefined;
+    let cancelled = false;
+    void nearestUkDistrict(districtLat, districtLon).then((district) => {
+      if (cancelled || !district) return;
+      setLocation((current) => (
+        current.lat === districtLat && current.lon === districtLon && current.region !== district
+          ? { ...current, region: district }
+          : current
+      ));
+    });
+    return () => { cancelled = true; };
+  }, [districtLat, districtLon, districtCountry, districtCode]);
   useEffect(() => {
     const focus = new URLSearchParams(window.location.search).get("focus");
     if (focus && isView(focus)) setView(focus);
@@ -661,7 +679,6 @@ export function AceWeatherApp() {
   }
 
   const isFetching = status === "loading" || status === "refreshing";
-  const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
   const hereOn = location.name === HERE_NAME;
@@ -680,7 +697,6 @@ export function AceWeatherApp() {
         onQuery={setQuery}
         onSubmit={onSubmit}
       />
-      <button className={"awx-icon-btn awx-here-btn" + (hereOn ? " is-on" : "")} type="button" aria-label="Here" onClick={locateMe}><GpsIcon /></button>
     </div>
   );
   const placeMenu = locationOpen ? (
@@ -759,7 +775,6 @@ export function AceWeatherApp() {
           <span className="awx-brand-mark" aria-hidden="true" />
           {placeCluster}
           <div className="awx-mtop-right">
-            <span className={"awx-status" + statusCls}>{statusText}</span>
             <button className={"awx-icon-btn awx-refresh-icon" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} aria-label="Reload weather data" title={reloadLabel}><RefreshIcon /></button>
             <button className="awx-icon-btn" type="button" onClick={() => { setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} aria-label="Settings"><SettingsIcon /></button>
           </div>
@@ -768,7 +783,6 @@ export function AceWeatherApp() {
         <div className={"awx-feed-head" + (locationOpen ? " is-finding" : "")}>
           {placeCluster}
           <div className="awx-head-actions">
-            <span className={"awx-status" + statusCls}>{statusText}</span>
             <button className={"awx-btn awx-btn-ghost awx-refresh-btn" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} title={reloadLabel}>
               <RefreshIcon /><span>{reloadLabel}</span>
             </button>

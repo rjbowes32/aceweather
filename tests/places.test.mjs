@@ -15,7 +15,7 @@ import {
   removeSaved,
   renameSaved,
 } from "../src/lib/aceweather/places.ts";
-import { searchLocations } from "../src/lib/aceweather/open-meteo.ts";
+import { DEFAULT_LOCATION, searchLocations } from "../src/lib/aceweather/open-meteo.ts";
 
 const place = (name, region, lat, lon, extra = {}) => ({
   name, region, country: "United Kingdom", countryCode: "GB", lat, lon, elev: null, tz: "Europe/London", ...extra,
@@ -119,11 +119,17 @@ test("search sends a full postcode and an outward code to postcodes.io", async (
   }
 });
 
+function districtResponse(district) {
+  return new Response(JSON.stringify({ result: [{ admin_district: district }] }));
+}
+
 test("Boston search puts Lincolnshire before the American towns and keeps the county", async () => {
   const original = global.fetch;
   global.fetch = async (url) => {
-    assert.match(String(url), /geocoding-api\.open-meteo\.com/);
-    assert.match(String(url), /count=40/);
+    const target = String(url);
+    if (target.includes("postcodes.io")) return districtResponse("Lincolnshire");
+    assert.match(target, /geocoding-api\.open-meteo\.com/);
+    assert.match(target, /count=40/);
     return new Response(JSON.stringify({
       results: [
         { name: "Boston", country: "United States", country_code: "US", admin1: "Massachusetts", latitude: 42.3, longitude: -71.06, timezone: "America/New_York" },
@@ -145,12 +151,19 @@ test("Boston search puts Lincolnshire before the American towns and keeps the co
 
 test("two Driffields keep different counties", async () => {
   const original = global.fetch;
-  global.fetch = async () => new Response(JSON.stringify({
-    results: [
-      { name: "Driffield", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "East Yorkshire", latitude: 54.0, longitude: -0.44, timezone: "Europe/London" },
-      { name: "Driffield", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "Gloucestershire", latitude: 51.7, longitude: -1.9, timezone: "Europe/London" },
-    ],
-  }));
+  global.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("postcodes.io")) {
+      const district = target.includes("lat=54") ? "East Yorkshire" : "Gloucestershire";
+      return districtResponse(district);
+    }
+    return new Response(JSON.stringify({
+      results: [
+        { name: "Driffield", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "East Yorkshire", latitude: 54.0, longitude: -0.44, timezone: "Europe/London" },
+        { name: "Driffield", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "Gloucestershire", latitude: 51.7, longitude: -1.9, timezone: "Europe/London" },
+      ],
+    }));
+  };
   try {
     const rows = await searchLocations("Driffield");
     assert.deepEqual(rows.map((row) => row.region), ["East Yorkshire", "Gloucestershire"]);
@@ -170,6 +183,43 @@ test("a failed place search throws and a missing postcode is an empty list", asy
   global.fetch = async () => new Response(JSON.stringify({ error: "Postcode not found" }), { status: 404 });
   try {
     assert.deepEqual(await searchLocations("YO42 1NS"), []);
+  } finally {
+    global.fetch = original;
+  }
+});
+
+test("UK places use the local authority, not the geocoder county or post town", async () => {
+  assert.equal(DEFAULT_LOCATION.region, "");
+  assert.ok(Math.abs(DEFAULT_LOCATION.lat - 54.58642) < 0.001);
+  assert.equal(DEFAULT_LOCATION.name, "Bishopton");
+  const original = global.fetch;
+  const reverse = [];
+  global.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("postcodes.io/postcodes?")) {
+      reverse.push(target);
+      const district = target.includes("lat=54.58642") ? "Darlington"
+        : target.includes("lat=54.5348") ? "Darlington"
+        : target.includes("lat=54.5586") ? "Stockton-on-Tees"
+        : "Somewhere";
+      return districtResponse(district);
+    }
+    return new Response(JSON.stringify({
+      results: [
+        { name: "Bishopton", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "Darlington", latitude: 54.58642, longitude: -1.43714, timezone: "Europe/London" },
+        { name: "Piercebridge", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "North Yorkshire", latitude: 54.5348, longitude: -1.6756, timezone: "Europe/London" },
+        { name: "Redmarshall", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "County Durham", latitude: 54.5586, longitude: -1.3987, timezone: "Europe/London" },
+      ],
+    }));
+  };
+  try {
+    const rows = await searchLocations("border");
+    const byName = Object.fromEntries(rows.map((row) => [row.name, row.region]));
+    assert.equal(byName.Bishopton, "Darlington");
+    assert.equal(byName.Piercebridge, "Darlington");
+    assert.equal(byName.Redmarshall, "Stockton-on-Tees");
+    assert.equal(reverse.length, 3);
+    assert.ok(reverse.every((url) => url.includes("/postcodes?lon=")));
   } finally {
     global.fetch = original;
   }
