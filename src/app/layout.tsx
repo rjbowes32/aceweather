@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import { PwaBootstrap } from "@/components/pwa-bootstrap";
+import { iconUrl } from "@/lib/aceweather/icon-rev";
 
 import "./aceweather-x.css";
 import "./aceweather-x-cards.css";
@@ -40,13 +41,13 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: iconUrl("/favicon.svg"), type: "image/svg+xml" },
+      { url: iconUrl("/favicon-32.png"), sizes: "32x32", type: "image/png" },
+      { url: iconUrl("/icons/icon-192.png"), sizes: "192x192", type: "image/png" },
+      { url: iconUrl("/icons/icon-512.png"), sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    other: [{ rel: "mask-icon", url: "/icons/aceweather-icon-mono.svg", color: "#0a0b0d" }],
+    apple: [{ url: iconUrl("/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }],
+    other: [{ rel: "mask-icon", url: iconUrl("/icons/aceweather-icon-mono.svg"), color: "#0a0b0d" }],
   },
 };
 
@@ -58,7 +59,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-awx="1" data-theme="dark" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
+        <link rel="apple-touch-startup-image" href={iconUrl("/icons/icon-512.png")} />
       </head>
       <body>
         <Script id="aw-theme-bootstrap" strategy="beforeInteractive">{themeBootstrap}</Script>

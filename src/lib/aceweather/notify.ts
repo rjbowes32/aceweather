@@ -3,6 +3,7 @@
    Reliable closed-app push would need a server with Web Push — not included. */
 
 import type { AwLocation } from "./open-meteo";
+import { iconUrl } from "./icon-rev";
 
 const NOTIFIED_KEY = "awx-rain-notified";
 const RUNTIME_CACHE = "awx-runtime";
@@ -55,7 +56,7 @@ export async function maybeNotifyRain(model: any, locName: string): Promise<void
   const body = `${nr.mm} mm around ${nr.atLabel}, in ~${nr.inHours}h.`;
   try {
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification(title, { body, tag: "awx-rain", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png" });
+    await reg.showNotification(title, { body, tag: "awx-rain", icon: iconUrl("/icons/icon-192.png"), badge: iconUrl("/icons/icon-192.png") });
   } catch {
     try { new Notification(title, { body }); } catch { /* */ }
   }

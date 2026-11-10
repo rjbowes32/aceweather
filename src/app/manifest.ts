@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+import { iconUrl } from "@/lib/aceweather/icon-rev";
+
 type ExtendedManifest = MetadataRoute.Manifest & {
   id?: string;
   share_target?: {
@@ -50,13 +52,13 @@ export default function manifest(): ExtendedManifest {
     ],
     launch_handler: { client_mode: "focus-existing" },
     icons: [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
-      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      { src: "/icons/aceweather-icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-      { src: "/icons/aceweather-icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
-      { src: "/icons/aceweather-icon-mono.svg", sizes: "any", type: "image/svg+xml", purpose: "monochrome" },
+      { src: iconUrl("/icons/icon-192.png"), sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: iconUrl("/icons/icon-512.png"), sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: iconUrl("/icons/icon-maskable-192.png"), sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: iconUrl("/icons/icon-maskable-512.png"), sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: iconUrl("/icons/aceweather-icon.svg"), sizes: "any", type: "image/svg+xml", purpose: "any" },
+      { src: iconUrl("/icons/aceweather-icon-maskable.svg"), sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+      { src: iconUrl("/icons/aceweather-icon-mono.svg"), sizes: "any", type: "image/svg+xml", purpose: "monochrome" },
     ],
     shortcuts: [
       {
@@ -64,21 +66,21 @@ export default function manifest(): ExtendedManifest {
         short_name: "Radar",
         url: "/?focus=radar",
         description: "Jump to live radar for your saved location.",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: iconUrl("/icons/icon-192.png"), sizes: "192x192", type: "image/png" }],
       },
       {
         name: "Seasonal context",
         short_name: "Seasonal",
         url: "/?focus=seasonal",
         description: "Open seasonal rainfall and temperature context.",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: iconUrl("/icons/icon-192.png"), sizes: "192x192", type: "image/png" }],
       },
       {
         name: "Field guidance",
         short_name: "Field",
         url: "/?focus=field",
         description: "Open spray, disease, and soil water guidance.",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: iconUrl("/icons/icon-192.png"), sizes: "192x192", type: "image/png" }],
       },
     ],
   };

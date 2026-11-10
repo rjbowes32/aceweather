@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { ICON_REV } from "@/lib/aceweather/icon-rev";
+
 export const dynamic = "force-static";
 export const revalidate = false;
 
@@ -17,12 +19,12 @@ const APP_SHELL = [
   "/",
   "/offline.html",
   "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/icon-maskable-512.png",
-  "/icons/aceweather-icon.svg",
-  "/icons/aceweather-icon-maskable.svg",
-  "/icons/aceweather-icon-mono.svg",
+  ${JSON.stringify(`/icons/icon-192.png?v=${ICON_REV}`)},
+  ${JSON.stringify(`/icons/icon-512.png?v=${ICON_REV}`)},
+  ${JSON.stringify(`/icons/icon-maskable-512.png?v=${ICON_REV}`)},
+  ${JSON.stringify(`/icons/aceweather-icon.svg?v=${ICON_REV}`)},
+  ${JSON.stringify(`/icons/aceweather-icon-maskable.svg?v=${ICON_REV}`)},
+  ${JSON.stringify(`/icons/aceweather-icon-mono.svg?v=${ICON_REV}`)},
 ];
 const DATA_MAX_ENTRIES = 200;
 const DATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -304,8 +306,8 @@ async function checkRain() {
   await self.registration.showNotification("Rain expected - " + loc.name, {
     body: hit.mm + " mm around " + hit.atLabel + ", in ~" + hit.inHours + "h.",
     tag: "awx-rain",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: ${JSON.stringify(`/icons/icon-192.png?v=${ICON_REV}`)},
+    badge: ${JSON.stringify(`/icons/icon-192.png?v=${ICON_REV}`)},
   });
   await cache.put("/__awx_rain_notified", new Response(key));
 }
@@ -319,8 +321,8 @@ self.addEventListener("push", (event) => {
   try { payload = event.data?.json() || {}; } catch { payload = {}; }
   event.waitUntil(self.registration.showNotification(payload.title || "AceWeather", {
     body: payload.body || "",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: ${JSON.stringify(`/icons/icon-192.png?v=${ICON_REV}`)},
+    badge: ${JSON.stringify(`/icons/icon-192.png?v=${ICON_REV}`)},
     tag: payload.tag || "awx",
   }));
 });
