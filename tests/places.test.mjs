@@ -216,6 +216,28 @@ test("two Driffields keep different counties", async () => {
   }
 });
 
+test("an aborted district lookup does not return the old search", async () => {
+  const original = global.fetch;
+  const ctrl = new AbortController();
+  global.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("postcodes.io")) {
+      ctrl.abort();
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    return new Response(JSON.stringify({
+      results: [
+        { name: "Boston", country: "United Kingdom", country_code: "GB", admin1: "England", admin2: "Lincolnshire", latitude: 52.97, longitude: -0.02, timezone: "Europe/London" },
+      ],
+    }));
+  };
+  try {
+    await assert.rejects(() => searchLocations("Boston", ctrl.signal), (error) => error instanceof Error && error.name === "AbortError");
+  } finally {
+    global.fetch = original;
+  }
+});
+
 test("a failed place search throws and a missing postcode is an empty list", async () => {
   const original = global.fetch;
   global.fetch = async () => { throw new Error("offline"); };

@@ -105,6 +105,10 @@ export async function fetchForecast(loc: AwLocation, signal?: AbortSignal, cache
   return overlayUkmoPayload(base, ukmo);
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 function districtLabel(value: unknown): string {
   if (Array.isArray(value)) {
     const names = [...new Set(value.filter((item): item is string => typeof item === "string" && item.length > 0))];
@@ -149,7 +153,8 @@ export async function nearestUkDistrict(lat: number, lon: number, signal?: Abort
     if (!r.ok) return null;
     const body = (await r.json()) as { result?: Array<Record<string, unknown>> };
     return districtLabel(body.result?.[0]?.admin_district) || null;
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     return null;
   }
 }

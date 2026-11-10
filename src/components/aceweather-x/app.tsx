@@ -390,9 +390,19 @@ export function AceWeatherApp() {
   useEffect(() => {
     const ctrl = new AbortController();
     const cacheMode = loadRequest.cache;
+    // A new place must not keep showing the previous forecast. A reload of the same place can.
+    if (cacheMode !== "reload") {
+      setRaw(null);
+      setSeasonal(null);
+    }
     setStatus(cacheMode === "reload" ? "refreshing" : "loading");
     fetchForecast(location, ctrl.signal, cacheMode)
-      .then((data) => { setRaw(data); setRawCacheMode(cacheMode); setStatus("live"); })
+      .then((data) => {
+        if (ctrl.signal.aborted) return;
+        setRaw(data);
+        setRawCacheMode(cacheMode);
+        setStatus("live");
+      })
       .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("error"); });
     // The learned forecast arrives separately and is laid over temperature, wind and rain; if it fails the page keeps Open-Meteo's values.
     setLearnedOverlay(null);
@@ -414,6 +424,7 @@ export function AceWeatherApp() {
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       searchLocations(query, ctrl.signal).then((rows) => {
+        if (ctrl.signal.aborted) return;
         setSuggestions(rows);
         setSearchNote(rows.length ? null : "No places found");
       }).catch((error: unknown) => {
