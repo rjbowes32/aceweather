@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AW inside the drop">
+  <title>AW inside the drop</title>
+  <rect width="1024" height="1024" fill="#0B1220"/>
+  <g transform="translate(512 148) scale(1.5 1.2) translate(-512 -176)">
+    <path fill="#6EA0FF" d="M512 176c10 0 196 250 196 412a196 196 0 0 1-392 0c0-162 186-412 196-412z"/>
+  </g><path fill="#FFFFFF" fill-rule="evenodd" d="M359.1 558.4L436.4 726.4L392.2 726.4L379.8 671L338.4 671L326 726.4L281.8 726.4ZM359.1 605.4L371.4 633.5L346.8 633.5Z"/><path fill="#FFFFFF" d="M431.4 571.4L525.4 773.8L597.7 618.2L597.7 618.2L669.9 773.8L763.9 571.4L720.4 551.2L669.9 659.8L597.7 504.3L597.7 504.3L525.4 659.8L475 551.2Z"/>
+</svg>
