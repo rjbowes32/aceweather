@@ -3,6 +3,37 @@ import { HERE_NAME } from "./places.ts";
 /** Last Here fix. Kept on the phone so a home-screen launch can show a forecast without asking again. */
 export const HERE_CACHE_KEY = "awx-here";
 export const HERE_ACTIVE_KEY = "awx-here-active";
+/** A stored Here fix older than this is deleted and not sent anywhere. */
+export const HERE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
+type KeyStore = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+};
+
+function browserStore(): KeyStore | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** About 110 m. Enough for a village forecast, not a street address. */
+export function roundHereDegrees(value: number): number {
+  return Number(value.toFixed(3));
+}
+
+export function coarsenHereFix<T extends { lat: number; lon: number }>(fix: T): T {
+  return { ...fix, lat: roundHereDegrees(fix.lat), lon: roundHereDegrees(fix.lon) };
+}
+
+/** A fix older than three days is no longer used. */
+export function hereFixFresh(cache: { at: number }, now = Date.now()): boolean {
+  return Number.isFinite(cache.at) && now - cache.at <= HERE_MAX_AGE_MS;
+}
 
 export type GeoPermission = "granted" | "prompt" | "denied" | "unknown";
 export type GeoEvent =
@@ -30,21 +61,41 @@ export function geolocationPlan(event: GeoEvent): "request" | "none" {
   return "none";
 }
 
-export function hereIsActive(): boolean {
-  try { return localStorage.getItem(HERE_ACTIVE_KEY) === "1"; } catch { return false; }
+export function hereIsActive(store: KeyStore | null = browserStore()): boolean {
+  try { return store?.getItem(HERE_ACTIVE_KEY) === "1"; } catch { return false; }
 }
 
-export function markHereActive(active: boolean): void {
-  try { localStorage.setItem(HERE_ACTIVE_KEY, active ? "1" : "0"); } catch { /* private mode */ }
+export function markHereActive(active: boolean, store: KeyStore | null = browserStore()): void {
+  try { store?.setItem(HERE_ACTIVE_KEY, active ? "1" : "0"); } catch { /* private mode */ }
 }
 
-export function readStoredHere(): HereCache | null {
-  try { return parseHereCache(JSON.parse(localStorage.getItem(HERE_CACHE_KEY) || "null")); } catch { return null; }
+/** Drop the stored fix. Turning Here off must not leave the coordinates behind. */
+export function clearStoredHere(store: KeyStore | null = browserStore()): void {
+  try { store?.removeItem(HERE_CACHE_KEY); } catch { /* private mode */ }
+  markHereActive(false, store);
 }
 
-export function storeHereFix(fix: HereCache): void {
-  try { localStorage.setItem(HERE_CACHE_KEY, JSON.stringify(fix)); } catch { /* private mode */ }
-  markHereActive(true);
+export function readStoredHere(now = Date.now(), store: KeyStore | null = browserStore()): HereCache | null {
+  try {
+    const cache = parseHereCache(JSON.parse(store?.getItem(HERE_CACHE_KEY) || "null"));
+    if (!cache) return null;
+    if (!hereFixFresh(cache, now)) {
+      clearStoredHere(store);
+      return null;
+    }
+    const coarse = coarsenHereFix(cache);
+    if (coarse.lat !== cache.lat || coarse.lon !== cache.lon) {
+      try { store?.setItem(HERE_CACHE_KEY, JSON.stringify(coarse)); } catch { /* private mode */ }
+    }
+    return coarse;
+  } catch {
+    return null;
+  }
+}
+
+export function storeHereFix(fix: HereCache, store: KeyStore | null = browserStore()): void {
+  try { store?.setItem(HERE_CACHE_KEY, JSON.stringify(coarsenHereFix(fix))); } catch { /* private mode */ }
+  markHereActive(true, store);
 }
 
 export function parseHereCache(raw: unknown): HereCache | null {

@@ -2,7 +2,7 @@
    Everything here is the live Open-Meteo API (no backend route needed). */
 
 import { overlayUkmoPayload, UKMO_CURRENT_OVERLAY, UKMO_HOURLY_OVERLAY } from "../weather-engine/ukmo-overlay.ts";
-import { classifyQuery, isUk, rankPlaces, regionFromGeocode } from "./places.ts";
+import { capSearchQuery, classifyQuery, inRoughUkBox, isUk, rankPlaces, regionFromGeocode } from "./places.ts";
 
 export type AwLocation = {
   id?: string;
@@ -142,6 +142,7 @@ async function searchPostcode(kind: "full-postcode" | "outcode", compact: string
 
 /** Local authority (admin_district) for a point in the UK. Failure returns null. */
 export async function nearestUkDistrict(lat: number, lon: number, signal?: AbortSignal): Promise<string | null> {
+  if (!inRoughUkBox(lat, lon)) return null;
   const params = new URLSearchParams({ lon: String(lon), lat: String(lat), limit: "1", radius: "2000" });
   try {
     const r = await fetch(`${POSTCODES}/postcodes?${params}`, { signal });
@@ -163,10 +164,11 @@ export async function withLocalAuthorities(places: AwLocation[], signal?: AbortS
 }
 
 export async function searchLocations(query: string, signal?: AbortSignal): Promise<AwLocation[]> {
-  const classified = classifyQuery(query);
+  const capped = capSearchQuery(query);
+  const classified = classifyQuery(capped);
   if (!classified) return [];
   if (classified.kind !== "place") return searchPostcode(classified.kind, classified.compact, signal);
-  const params = new URLSearchParams({ name: query.trim(), count: "40", language: "en", format: "json" });
+  const params = new URLSearchParams({ name: capped, count: "40", language: "en", format: "json" });
   const r = await fetch(`${GEOCODE}?${params}`, { signal });
   if (!r.ok) throw new Error(`Geocoding ${r.status}`);
   const body = (await r.json()) as { results?: Array<Record<string, unknown>> };

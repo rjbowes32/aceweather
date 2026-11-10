@@ -3,6 +3,8 @@ import type { AwLocation } from "./open-meteo.ts";
 export const HERE_NAME = "Here";
 /** Enough farms and fields for a day's round, with a visible stop instead of a silent drop. */
 export const MAX_SAVED = 24;
+/** Search text sent to a geocoder. Longer pastes are cut, not forwarded. */
+export const MAX_SEARCH_CHARS = 80;
 
 export type SearchKind = "full-postcode" | "outcode" | "place";
 
@@ -11,9 +13,18 @@ export type ClassifiedQuery = { kind: SearchKind; compact: string };
 const FULL_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/;
 const OUTCODE = /^[A-Z]{1,2}\d[A-Z\d]?$/;
 
+export function capSearchQuery(raw: string): string {
+  return raw.trim().slice(0, MAX_SEARCH_CHARS);
+}
+
+/** Great Britain and Northern Ireland, with a little slack. Outside this, postcodes.io is not asked. */
+export function inRoughUkBox(lat: number, lon: number): boolean {
+  return lat >= 49.5 && lat <= 61 && lon >= -8.8 && lon <= 1.9;
+}
+
 /** A UK postcode (full or outward code) or an ordinary place name. */
 export function classifyQuery(raw: string): ClassifiedQuery | null {
-  const trimmed = raw.trim();
+  const trimmed = capSearchQuery(raw);
   if (trimmed.length < 2) return null;
   const compact = trimmed.toUpperCase().replace(/\s+/g, "");
   if (FULL_POSTCODE.test(compact)) return { kind: "full-postcode", compact };

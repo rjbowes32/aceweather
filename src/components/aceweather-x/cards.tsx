@@ -318,6 +318,7 @@ export function SourcesCard({ source, freshness, aceForecast }: { source: string
       <div className="awx-rows">
         <div className="awx-row-item"><span className="awx-k">Forecast</span><span className={"awx-v " + (aceForecast ? "awx-v-go" : "awx-v-warn")}>{aceForecast ? "AceWeather" : "Open-Meteo only"}</span></div>
         <div className="awx-row-item"><span className="awx-k">Weather data</span><span className="awx-v awx-v-go">Open-Meteo</span></div>
+        <div className="awx-row-item"><span className="awx-k">UK districts</span><span className="awx-v awx-v-go">postcodes.io</span></div>
         <div className="awx-row-item"><span className="awx-k">Rainfall radar</span><span className="awx-v awx-v-go">Met Office open data</span></div>
         <div className="awx-row-item"><span className="awx-k">Seasonal normals</span><span className="awx-v awx-v-go">Open-Meteo archive</span></div>
         <div className="awx-row-item"><span className="awx-k">Status</span><span className={"awx-v " + (source === "live" ? "awx-v-go" : "awx-v-warn")}>{source === "live" ? "Live" : source === "loading" ? "Fetching" : "Offline"} · {freshness}</span></div>

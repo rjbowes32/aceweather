@@ -6,7 +6,7 @@ import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, nearestUkDistrict, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { HERE_NAME, addSaved, forecastNotice, isUk, moveSaved, parseSaved, placeKey, removeSaved, renameSaved } from "@/lib/aceweather/places";
-import { geolocationPlan, hereIsActive, markHereActive, readGeoPermission, readStoredHere, storeHereFix } from "@/lib/aceweather/here-fix";
+import { clearStoredHere, geolocationPlan, hereIsActive, readGeoPermission, readStoredHere, roundHereDegrees, storeHereFix } from "@/lib/aceweather/here-fix";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
 import { CloseIcon, NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
@@ -239,8 +239,8 @@ function gpsLocationFromPosition(pos: GeolocationPosition): AwLocation {
     name: HERE_NAME,
     region: "",
     country: "",
-    lat: Number(pos.coords.latitude.toFixed(5)),
-    lon: Number(pos.coords.longitude.toFixed(5)),
+    lat: roundHereDegrees(pos.coords.latitude),
+    lon: roundHereDegrees(pos.coords.longitude),
     elev: pos.coords.altitude != null && Number.isFinite(pos.coords.altitude) ? Math.round(pos.coords.altitude) : null,
     tz: "auto",
   };
@@ -338,6 +338,7 @@ export function AceWeatherApp() {
       const places = s ? parseSaved(JSON.parse(s)) : [];
       if (places.length) setSaved(places);
       const cachedHere = hereIsActive() ? readStoredHere() : null;
+      if (!cachedHere) clearStoredHere();
       if (cachedHere) {
         setLocation({ name: cachedHere.name, region: cachedHere.region, country: "", lat: cachedHere.lat, lon: cachedHere.lon, elev: null, tz: "auto" });
         setGeoStatus("following");
@@ -511,7 +512,7 @@ export function AceWeatherApp() {
     }
     if (!opts.keepGeoFollow) {
       manualPickRef.current = true;
-      markHereActive(false);
+      clearStoredHere();
       setGeoStatus("idle");
     }
     setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
@@ -567,7 +568,7 @@ export function AceWeatherApp() {
         });
       });
     }, (error) => {
-      if (error?.code === 1) markHereActive(false);
+      if (error?.code === 1) clearStoredHere();
       setGeoStatus(error?.code === 1 ? "blocked" : "error");
     }, GPS_OPTIONS);
   }

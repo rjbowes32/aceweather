@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { bootHere, geolocationPlan, parseHereCache } from "../src/lib/aceweather/here-fix.ts";
+import {
+  HERE_ACTIVE_KEY,
+  HERE_CACHE_KEY,
+  HERE_MAX_AGE_MS,
+  bootHere,
+  clearStoredHere,
+  geolocationPlan,
+  parseHereCache,
+  readStoredHere,
+  roundHereDegrees,
+  storeHereFix,
+} from "../src/lib/aceweather/here-fix.ts";
 
 const cache = { lat: 54.58642, lon: -1.43714, name: "Here", region: "Darlington", at: 1_700_000_000_000 };
 
@@ -65,4 +76,53 @@ test("the app no longer watches position or starts GPS on load", () => {
   assert.match(app, /geolocationPlan/);
   assert.match(app, /readStoredHere/);
   assert.match(app, /storeHereFix/);
+  assert.match(app, /clearStoredHere/);
+  assert.match(app, /roundHereDegrees/);
+  assert.equal(app.includes("toFixed(5)"), false);
+  assert.equal(app.includes("markHereActive(false)"), false);
+});
+
+function memoryStore() {
+  const data = new Map();
+  return {
+    data,
+    getItem(key) { return data.has(key) ? data.get(key) : null; },
+    setItem(key, value) { data.set(key, String(value)); },
+    removeItem(key) { data.delete(key); },
+  };
+}
+
+test("a Here fix is stored at 3 decimal places, about 110 m", () => {
+  const store = memoryStore();
+  const now = 1_700_000_000_000;
+  storeHereFix({ lat: 54.58642, lon: -1.437149, name: "Here", region: "Darlington", at: now }, store);
+  const raw = JSON.parse(store.getItem(HERE_CACHE_KEY));
+  assert.equal(raw.lat, 54.586);
+  assert.equal(raw.lon, -1.437);
+  assert.equal(roundHereDegrees(54.58642), 54.586);
+  const read = readStoredHere(now, store);
+  assert.equal(read.lat, 54.586);
+  assert.equal(read.lon, -1.437);
+  assert.equal(read.region, "Darlington");
+});
+
+test("turning Here off deletes the stored fix", () => {
+  const store = memoryStore();
+  storeHereFix({ lat: 54.586, lon: -1.437, name: "Here", region: "", at: Date.now() }, store);
+  assert.equal(store.getItem(HERE_ACTIVE_KEY), "1");
+  clearStoredHere(store);
+  assert.equal(store.getItem(HERE_CACHE_KEY), null);
+  assert.equal(store.getItem(HERE_ACTIVE_KEY), "0");
+  assert.equal(readStoredHere(Date.now(), store), null);
+});
+
+test("a Here fix older than three days is dropped", () => {
+  const store = memoryStore();
+  const now = 1_700_000_000_000;
+  storeHereFix({ lat: 54.58642, lon: -1.437, name: "Here", region: "Darlington", at: now - HERE_MAX_AGE_MS }, store);
+  assert.equal(readStoredHere(now, store)?.region, "Darlington");
+  storeHereFix({ lat: 54.586, lon: -1.437, name: "Here", region: "Darlington", at: now - HERE_MAX_AGE_MS - 1 }, store);
+  assert.equal(readStoredHere(now, store), null);
+  assert.equal(store.getItem(HERE_CACHE_KEY), null);
+  assert.equal(store.getItem(HERE_ACTIVE_KEY), "0");
 });

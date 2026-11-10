@@ -4,9 +4,12 @@ import { readFileSync } from "node:fs";
 import {
   HERE_NAME,
   MAX_SAVED,
+  MAX_SEARCH_CHARS,
   addSaved,
+  capSearchQuery,
   classifyQuery,
   forecastNotice,
+  inRoughUkBox,
   moveSaved,
   parseSaved,
   placeKey,
@@ -15,7 +18,7 @@ import {
   removeSaved,
   renameSaved,
 } from "../src/lib/aceweather/places.ts";
-import { DEFAULT_LOCATION, searchLocations } from "../src/lib/aceweather/open-meteo.ts";
+import { DEFAULT_LOCATION, nearestUkDistrict, searchLocations } from "../src/lib/aceweather/open-meteo.ts";
 
 const place = (name, region, lat, lon, extra = {}) => ({
   name, region, country: "United Kingdom", countryCode: "GB", lat, lon, elev: null, tz: "Europe/London", ...extra,
@@ -85,6 +88,47 @@ test("overview is loading or offline only while the forecast is missing", () => 
   assert.equal(forecastNotice("error", false), "offline");
   assert.equal(forecastNotice("error", true), null);
   assert.equal(forecastNotice("live", true), null);
+});
+
+test("a long search is cut before it is sent", async () => {
+  const calls = [];
+  const original = global.fetch;
+  global.fetch = async (url) => {
+    calls.push(String(url));
+    return new Response(JSON.stringify({ results: [] }));
+  };
+  try {
+    const query = `Bishopton ${"x".repeat(200)}`;
+    assert.equal(capSearchQuery(query).length, MAX_SEARCH_CHARS);
+    await searchLocations(query);
+    assert.equal(calls.length, 1);
+    const sent = new URL(calls[0]).searchParams.get("name");
+    assert.equal(sent.length, MAX_SEARCH_CHARS);
+    assert.equal(sent.startsWith("Bishopton "), true);
+    assert.equal(calls[0].includes("x".repeat(MAX_SEARCH_CHARS)), false);
+  } finally {
+    global.fetch = original;
+  }
+});
+
+test("postcodes.io is only asked for a point inside the UK", async () => {
+  assert.equal(inRoughUkBox(54.586, -1.437), true);
+  assert.equal(inRoughUkBox(42.36, -71.06), false);
+  const calls = [];
+  const original = global.fetch;
+  global.fetch = async (url) => {
+    calls.push(String(url));
+    return new Response(JSON.stringify({ result: [{ admin_district: "Darlington" }] }));
+  };
+  try {
+    assert.equal(await nearestUkDistrict(42.36, -71.06), null);
+    assert.equal(calls.length, 0);
+    assert.equal(await nearestUkDistrict(54.58642, -1.43714), "Darlington");
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /api\.postcodes\.io\/postcodes\?/);
+  } finally {
+    global.fetch = original;
+  }
 });
 
 test("search sends a full postcode and an outward code to postcodes.io", async () => {
