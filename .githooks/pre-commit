@@ -1,0 +1,36 @@
+#!/bin/sh
+# AceWeather design guardrails, the fast pass (docs/design-guardrails.md).
+# The full gate is `npm run verify`; the Vercel build also runs the design guard.
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+fail() {
+  echo ""
+  echo "Commit stopped by the design guardrails: $1"
+  echo "What the rules mean and how to fix a breach: docs/design-guardrails.md"
+  exit 1
+}
+
+sources=$(printf '%s\n' "$staged" | grep -E '^src/.*\.(ts|tsx)$')
+if [ -n "$sources" ]; then
+  printf '%s\n' "$sources" | tr '\n' '\0' | xargs -0 npx eslint --quiet || fail "lint failed."
+fi
+
+if printf '%s\n' "$staged" | grep -qE '^src/.*\.(css|ts|tsx)$|^design\.md$|^design-baseline\.json$|^docs/design-|^scripts/design-guard'; then
+  node scripts/design-guard.mjs || fail "the design guard failed."
+fi
+
+# The golden screens are frozen by screenshot. Changing how they look means looking at it.
+if printf '%s\n' "$staged" | grep -qE '^src/app/.*\.css$|^src/components/|^src/app/(layout|page)\.tsx$'; then
+  if [ "${SKIP_VISUAL:-0}" = "1" ]; then
+    echo "UI files changed; screenshot check skipped (SKIP_VISUAL=1). npm run verify still runs it."
+  else
+    echo "UI files changed: running the screenshot check (about 30 seconds)…"
+    npm run --silent test:visual || fail "a golden screen no longer matches its picture. If the change is intended and Rob has seen it: npm run test:visual:update"
+  fi
+fi
+
+exit 0
