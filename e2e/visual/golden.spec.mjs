@@ -32,11 +32,11 @@ async function pin(page, recording, theme) {
   });
 }
 
-async function settle(page) {
+async function settle(page, forecast) {
   // The dev server can still be compiling on the first visit, so allow it time.
   await expect(page.locator(".awx-feed")).toBeVisible({ timeout: 45_000 });
-  // The forecast has landed once the status reads Live.
-  await expect(page.locator(".awx-status:visible", { hasText: /^Live$/ }).first()).toBeVisible({ timeout: 30_000 });
+  // Wait for the forecast itself, not for any one element: the screens are what may change.
+  await forecast;
   await page.waitForLoadState("networkidle");
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(1200); // replayed answers land over a few frames; let the last chart draw
@@ -54,8 +54,9 @@ for (const screen of SCREENS) {
   for (const theme of screen.themes) {
     test(`${screen.name} (${theme}) matches its golden picture`, async ({ page }) => {
       await pin(page, "weather", theme);
+      const forecast = page.waitForResponse((response) => response.url().includes("api.open-meteo.com/v1/forecast"), { timeout: 45_000 });
       await page.goto(screen.view === "all" ? "/" : `/?focus=${screen.view}`);
-      await settle(page);
+      await settle(page, forecast);
       await expect(page).toHaveScreenshot(`${screen.name}-${theme}.png`, { fullPage: true, mask: [page.locator("canvas, .maplibregl-map")], maskColor: "#808080" });
     });
   }
