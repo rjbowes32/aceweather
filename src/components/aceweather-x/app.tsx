@@ -363,11 +363,23 @@ export function AceWeatherApp() {
   const districtLon = location.lon;
   const districtCountry = location.country;
   const districtCode = location.countryCode;
+  // Here has no country yet; nearestUkDistrict only asks postcodes.io for a point inside the UK.
+  const districtForHere = location.name === HERE_NAME;
   useEffect(() => {
-    if (!isUk({ country: districtCountry, countryCode: districtCode })) return undefined;
+    if (!districtForHere && !isUk({ country: districtCountry, countryCode: districtCode })) return undefined;
     let cancelled = false;
     void nearestUkDistrict(districtLat, districtLon).then((district) => {
       if (cancelled || !district) return;
+      if (districtForHere) storeHereFix({ lat: districtLat, lon: districtLon, name: HERE_NAME, region: district, at: Date.now() });
+      else {
+        // Keep the saved row in step with the header.
+        setSaved((prev) => {
+          if (!prev.some((p) => p.lat === districtLat && p.lon === districtLon && p.region !== district)) return prev;
+          const next = prev.map((p) => (p.lat === districtLat && p.lon === districtLon ? { ...p, region: district } : p));
+          try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
+          return next;
+        });
+      }
       setLocation((current) => (
         current.lat === districtLat && current.lon === districtLon && current.region !== district
           ? { ...current, region: district }
@@ -375,7 +387,7 @@ export function AceWeatherApp() {
       ));
     });
     return () => { cancelled = true; };
-  }, [districtLat, districtLon, districtCountry, districtCode]);
+  }, [districtLat, districtLon, districtCountry, districtCode, districtForHere]);
   useEffect(() => {
     const focus = new URLSearchParams(window.location.search).get("focus");
     if (focus && isView(focus)) setView(focus);
@@ -386,7 +398,16 @@ export function AceWeatherApp() {
     return () => window.removeEventListener("aceweather:pwa-update-ready", onUpd);
   }, []);
 
-  // fetch forecast on location change
+  // The forecast depends on the point only. A district filled in later, or a rename, must not refetch it.
+  const pointLat = location.lat;
+  const pointLon = location.lon;
+  const pointTz = location.tz;
+  const point = useMemo<AwLocation>(
+    () => ({ name: "", region: "", country: "", lat: pointLat, lon: pointLon, elev: null, tz: pointTz }),
+    [pointLat, pointLon, pointTz],
+  );
+
+  // fetch forecast when the point changes or a reload is asked for
   useEffect(() => {
     const ctrl = new AbortController();
     const cacheMode = loadRequest.cache;
@@ -396,7 +417,7 @@ export function AceWeatherApp() {
       setSeasonal(null);
     }
     setStatus(cacheMode === "reload" ? "refreshing" : "loading");
-    fetchForecast(location, ctrl.signal, cacheMode)
+    fetchForecast(point, ctrl.signal, cacheMode)
       .then((data) => {
         if (ctrl.signal.aborted) return;
         setRaw(data);
@@ -406,17 +427,17 @@ export function AceWeatherApp() {
       .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("error"); });
     // The learned forecast arrives separately and is laid over temperature, wind and rain; if it fails the page keeps Open-Meteo's values.
     setLearnedOverlay(null);
-    fetchLearned(location, ctrl.signal).then(setLearnedOverlay).catch(() => {});
+    fetchLearned(point, ctrl.signal).then(setLearnedOverlay).catch(() => {});
     return () => ctrl.abort();
-  }, [location, loadRequest]);
+  }, [point, loadRequest]);
 
   // seasonal (best-effort, async; forecast actuals fill the archive's recent-day gap)
   useEffect(() => {
     if (!raw) return undefined;
     const ctrl = new AbortController();
-    fetchSeasonal(location, raw.daily, ctrl.signal, rawCacheMode).then(setSeasonal).catch(() => setSeasonal(null));
+    fetchSeasonal(point, raw.daily, ctrl.signal, rawCacheMode).then(setSeasonal).catch(() => setSeasonal(null));
     return () => ctrl.abort();
-  }, [location, raw, rawCacheMode]);
+  }, [point, raw, rawCacheMode]);
 
   // search debounce
   useEffect(() => {
@@ -570,14 +591,7 @@ export function AceWeatherApp() {
       storeHereFix({ lat: next.lat, lon: next.lon, name: HERE_NAME, region: "", at: Date.now() });
       loadLocation(next, { keepGeoFollow: true, save: false });
       setGeoStatus("following");
-      void nearestUkDistrict(next.lat, next.lon).then((district) => {
-        if (manualPickRef.current || !district) return;
-        setLocation((current) => {
-          if (current.name !== HERE_NAME) return current;
-          storeHereFix({ lat: current.lat, lon: current.lon, name: HERE_NAME, region: district, at: Date.now() });
-          return { ...current, region: district };
-        });
-      });
+      // The district is filled by the district effect, which also stores it with the fix.
     }, (error) => {
       if (error?.code === 1) clearStoredHere();
       setGeoStatus(error?.code === 1 ? "blocked" : "error");

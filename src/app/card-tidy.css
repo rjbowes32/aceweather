@@ -320,8 +320,15 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
   background: var(--awx-surface-2); color: var(--awx-text); font: inherit; font-size: 15px; font-weight: 500;
 }
 .awx .awx-place-swipe-actions button.is-delete { color: var(--awx-risk); }
-.awx .awx-place-swipe-face { position: relative; background: var(--awx-surface); min-height: 48px; touch-action: pan-y; }
-.awx .awx-place-swipe-face .awx-place-row { border-top: 0; }
+.awx .awx-place-swipe-face { position: relative; display: flex; align-items: stretch; background: var(--awx-surface); min-height: 48px; touch-action: pan-y; }
+.awx .awx-place-swipe-face .awx-place-row { flex: 1 1 auto; min-width: 0; border-top: 0; }
+.awx .awx-place-swipe-face > form { flex: 1 1 auto; min-width: 0; }
+.awx .awx-place-grip {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; min-height: 48px; padding: 0; border: 0; background: transparent;
+  color: var(--awx-muted); font-size: 18px; line-height: 1; cursor: grab; touch-action: none;
+}
+.awx .awx-place-grip:active { cursor: grabbing; }
 .awx .awx-place-rename-input {
   display: block; width: 100%; min-height: 48px; padding: 0 16px; border: 0;
   border-bottom: 1px solid var(--awx-accent); background: var(--awx-surface);

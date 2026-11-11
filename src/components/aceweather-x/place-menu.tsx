@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type PointerEvent } from "react";
+import { useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
 import type { AwLocation } from "@/lib/aceweather/open-meteo";
 import { HERE_NAME, placeKey } from "@/lib/aceweather/places";
 import { CloseIcon } from "./icons";
@@ -94,28 +94,26 @@ function SavedRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(place.name);
 
+  /** Rows in this menu only. The phone and desktop headers each draw a copy of the list. */
+  function siblingIds(from: HTMLElement): string[] {
+    const menu = from.closest(".awx-place-menu");
+    return [...(menu?.querySelectorAll<HTMLElement>("[data-place-id]") ?? [])].map((row) => row.getAttribute("data-place-id") || "");
+  }
+
+  // Swipe left on the row face for Rename and Delete. Vertical movement is left to the page scroll.
+  // The pointer is captured only once a swipe has started, so a plain tap still clicks the row button.
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest("input")) return;
+    if ((event.target as HTMLElement).closest("input, .awx-place-grip")) return;
     start.current = { x: event.clientX, y: event.clientY };
     moved.current = false;
-    dragging.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
   }
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!start.current) return;
     const dx = event.clientX - start.current.x;
     const dy = event.clientY - start.current.y;
-    if (!dragging.current && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) dragging.current = true;
-    if (dragging.current) {
-      moved.current = true;
-      const overId = [...document.querySelectorAll<HTMLElement>("[data-place-id]")].find((row) => {
-        const box = row.getBoundingClientRect();
-        return event.clientY >= box.top && event.clientY <= box.bottom;
-      })?.getAttribute("data-place-id");
-      if (overId && overId !== id) onMove(overId);
-      return;
-    }
+    if (!moved.current && Math.abs(dy) > Math.abs(dx)) return;
     if (dx < -8) {
+      if (!moved.current) event.currentTarget.setPointerCapture(event.pointerId);
       moved.current = true;
       setShift(Math.max(dx, -156));
     }
@@ -124,13 +122,34 @@ function SavedRow({
     if (!start.current) return;
     const dx = event.clientX - start.current.x;
     start.current = null;
-    if (dragging.current) {
-      dragging.current = false;
-      setShift(0);
-      return;
-    }
+    if (!moved.current) return;
     if (dx < -48) setShift(-156);
     else setShift(0);
+  }
+
+  // Reorder from the grip only. It sets touch-action: none, so a phone drags instead of scrolling.
+  function onGripDown(event: PointerEvent<HTMLButtonElement>) {
+    dragging.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+  function onGripMove(event: PointerEvent<HTMLButtonElement>) {
+    if (!dragging.current) return;
+    const menu = event.currentTarget.closest(".awx-place-menu");
+    const overId = [...(menu?.querySelectorAll<HTMLElement>("[data-place-id]") ?? [])].find((row) => {
+      const box = row.getBoundingClientRect();
+      return event.clientY >= box.top && event.clientY <= box.bottom;
+    })?.getAttribute("data-place-id");
+    if (overId && overId !== id) onMove(overId);
+  }
+  function onGripUp() {
+    dragging.current = false;
+  }
+  function onGripKey(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const ids = siblingIds(event.currentTarget);
+    const target = ids[ids.indexOf(id) + (event.key === "ArrowUp" ? -1 : 1)];
+    if (target) onMove(target);
   }
   function commitRename(event?: FormEvent) {
     event?.preventDefault();
@@ -167,6 +186,20 @@ function SavedRow({
             onClick={() => { if (moved.current) { moved.current = false; return; } onSelect(); }}
           >
             <PlaceLine name={place.name} region={place.region} active={active} temperature={temperature} />
+          </button>
+        )}
+        {editing ? null : (
+          <button
+            className="awx-place-grip"
+            type="button"
+            aria-label={`Move ${place.name}. Use the up and down arrow keys.`}
+            onPointerDown={onGripDown}
+            onPointerMove={onGripMove}
+            onPointerUp={onGripUp}
+            onPointerCancel={onGripUp}
+            onKeyDown={onGripKey}
+          >
+            <span aria-hidden="true">≡</span>
           </button>
         )}
       </div>
