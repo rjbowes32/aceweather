@@ -1,0 +1,47 @@
+{
+  "src/app/aceweather-x-cards.css": {
+    "rawColour": 5,
+    "offFontSize": 24,
+    "offRadius": 11,
+    "offWeight": 6
+  },
+  "src/app/aceweather-x.css": {
+    "rawColour": 5,
+    "offFontSize": 76,
+    "viewportHeight": 2,
+    "offRadius": 3,
+    "offWeight": 18
+  },
+  "src/app/card-tidy.css": {
+    "offRadius": 1,
+    "tokenOverride": 5
+  },
+  "src/app/layout.tsx": {
+    "rawColour": 3
+  },
+  "src/app/manifest.ts": {
+    "rawColour": 2
+  },
+  "src/app/spray-card.css": {
+    "rawColour": 3,
+    "offRadius": 2,
+    "offFontSize": 1
+  },
+  "src/app/ui-tidy.css": {
+    "rawColour": 2
+  },
+  "src/app/weather-dashboard.css": {
+    "rawColour": 1,
+    "offFontSize": 8
+  },
+  "src/components/aceweather-x/app.tsx": {
+    "inlineStyle": 2
+  },
+  "src/components/aceweather-x/cards.tsx": {
+    "inlineStyle": 1
+  },
+  "src/components/aceweather-x/radar-card.tsx": {
+    "rawColour": 7,
+    "inlineStyle": 1
+  }
+}

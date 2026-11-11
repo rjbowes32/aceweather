@@ -3,11 +3,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "node scripts/design-guard.mjs && next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/design-guard.mjs",
     "test:mcp": "node --test tests/mcp/*.test.mjs && python3 -m unittest tests.test_api_errors",
-    "test": "node scripts/require-node.mjs 22 && node --test tests/*.test.mjs tests/mcp/*.test.mjs && python3 -m unittest tests.test_api_errors"
+    "test": "node scripts/require-node.mjs 22 && node --test tests/*.test.mjs tests/mcp/*.test.mjs && python3 -m unittest tests.test_api_errors",
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "design:guard": "node scripts/design-guard.mjs",
+    "verify:self-test": "node --test tests/design-guard.test.mjs",
+    "test:visual": "playwright test -c playwright.visual.config.mjs",
+    "test:visual:update": "playwright test -c playwright.visual.config.mjs --update-snapshots",
+    "verify": "npm run lint && npm test && npm run test:visual && npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
@@ -19,6 +25,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

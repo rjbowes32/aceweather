@@ -53,6 +53,72 @@ system. Breakpoints rearrange shared components; never duplicate business logic
 or maintain a second mobile UI. Legacy CSS loads first; shared tokens/treatments
 load afterwards. Do not fix one tab with another hard-coded palette/font stack.
 
+### Tokens (checked by the build)
+
+This table must equal `src/app/design-tokens.css`. `npm run lint` and
+`npm run build` fail when a token is added, removed or changed in one place and
+not the other. To change a value, change both; `node scripts/design-guard.mjs
+--token-table` prints the table from the CSS. A dash means the token keeps its
+default value there.
+
+| Token | Default (dark, desktop) | Light | Phone (≤700px) | Use |
+|---|---|---|---|---|
+| `--awx-chart-fill` | `#5b9ce1` | — | — | Chart bars and areas |
+| `--awx-space-sm` | `8px` | — | — | Small gap |
+| `--awx-space-md` | `16px` | — | — | Standard gap |
+| `--awx-space-lg` | `24px` | — | — | Section gap |
+| `--awx-card-padding` | `clamp(18px, 2.2vw, 28px)` | — | `14px` | Card inner padding |
+| `--awx-card-gap` | `clamp(14px, 2vw, 24px)` | — | `10px` | Gap between cards |
+| `--awx-type-label` | `13px` | — | — | Labels and meta text |
+| `--awx-type-heading` | `18px` | — | `16px` | Card headings |
+| `--awx-type-value` | `28px` | — | `24px` | Key values |
+| `--awx-control-radius` | `12px` | — | — | Buttons, inputs, chips |
+| `--awx-control-height` | `44px` | — | — | Minimum control and tap height |
+| `--awx-bg` | `#0d1727` | `#e3f1ff` | — | Page canvas |
+| `--awx-surface` | `#162338` | `#ffffff` | — | Card fill |
+| `--awx-surface-2` | `#1c2c43` | `#f2f7fc` | — | Inset fill, hover |
+| `--awx-surface-3` | `#253852` | `#e4eff9` | — | Pressed or selected fill |
+| `--awx-line` | `rgba(255, 255, 255, 0.07)` | `rgba(12, 16, 22, 0.09)` | — | Hairline divider |
+| `--awx-line-2` | `rgba(255, 255, 255, 0.13)` | `rgba(12, 16, 22, 0.16)` | — | Control border |
+| `--awx-text` | `#e9eaec` | `#14283d` | — | Primary text |
+| `--awx-muted` | `#9aa0a8` | `#50647a` | — | Secondary text |
+| `--awx-faint` | `#6a7079` | `#61748a` | — | Tertiary text, kickers |
+| `--awx-accent` | `#6ea0ff` | `#286bc0` | — | The one interactive accent |
+| `--awx-accent-weak` | `rgba(110, 160, 255, 0.13)` | `rgba(47, 108, 240, 0.10)` | — | Soft active background |
+| `--awx-accent-line` | `rgba(110, 160, 255, 0.34)` | `rgba(47, 108, 240, 0.32)` | — | Active and focus border |
+| `--awx-sun` | `#e0b15e` | `#c98a2b` | — | Temperature, sun, UV, heat |
+| `--awx-warn` | `#d6a45c` | `#b67d2c` | — | Marginal, watch |
+| `--awx-go` | `#5cb98c` | `#2f9d6b` | — | Good, live, settled |
+| `--awx-risk` | `#db7d84` | `#cf5158` | — | Severe, hold, frost risk |
+| `--awx-cool` | `#7fb6d9` | `#3d86b3` | — | Frost, cold, snow |
+| `--awx-violet` | `#a596e8` | `#7b6bd6` | — | Pressure, anomaly, seasonal |
+| `--awx-sky-1` | `#1b2536` | `#cfe0f4` | — | Sky gradient top |
+| `--awx-sky-2` | `#0d131b` | `#eef3fa` | — | Sky gradient bottom |
+| `--awx-glow` | `rgba(224, 177, 94, 0.50)` | `rgba(224, 177, 94, 0.65)` | — | Sun glow |
+| `--awx-radius` | `28px` | — | `20px` | Card corner |
+| `--awx-radius-sm` | `16px` | — | — | Inner panel corner |
+| `--awx-pill` | `999px` | — | — | Pill corner |
+| `--awx-shadow` | `0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 30px rgba(0, 0, 0, 0.18)` | `0 4px 24px rgba(43, 93, 143, 0.035)` | — | Card shadow |
+| `--awx-glass` | `rgba(16, 18, 22, 0.78)` | `rgba(255, 255, 255, 0.78)` | — | Translucent chrome |
+| `--awx-glass-strong` | `rgba(18, 20, 25, 0.97)` | `rgba(255, 255, 255, 0.98)` | — | Near-opaque chrome |
+| `--awx-glass-line` | `rgba(255, 255, 255, 0.12)` | `rgba(12, 16, 22, 0.10)` | — | Chrome border |
+| `--awx-mobile-shadow` | `0 18px 52px rgba(0, 0, 0, 0.34)` | `0 18px 48px rgba(12, 16, 22, 0.12)` | — | Phone sheet shadow |
+
+Scales the guard enforces outside the token file:
+
+- Type ramp: 11, 12, 13, 15, 16, 18, 20, 24, 28 px, or a `--awx-type-*` token.
+- Corner radii: 0, 4, 8, 12, 16, 20, 28 px, 50%, full, or a radius token.
+- Font weights: 300 (display numerals), 400, 500, 600, 700.
+- Colours: tokens only. Map paint, the web manifest and `<meta theme-color>`
+  can't read CSS variables; their few raw values are counted in
+  `design-baseline.json` and may not grow.
+
+Known gap (logged in `docs/design-nope.md`): `card-tidy.css` overrides
+`--awx-radius` and `--awx-radius-sm` to 12px inside `.awx`, so cards render at
+12px, not the 28px above. Decide which is right and make the token say it.
+
+How the guardrails work: `docs/design-guardrails.md`.
+
 Default screens contain labels, values, statuses and actions only. No explainer
 paragraphs or redundant subtitles. Keep methodology behind Details; retain units,
 source timestamps, missing/cached labels and essential safety qualifications.
@@ -424,20 +490,8 @@ This "minimal by default, depth on demand" rhythm is mandatory.
 
 AceWeather is near-monochrome, dark-first, with one main interactive accent.
 
-Core dark tokens:
-
-- `--awx-bg`: `#0a0b0d`
-- `--awx-surface`: `#101216`
-- `--awx-surface-2`: `#15181d`
-- `--awx-surface-3`: `#1c2026`
-- `--awx-line`: low-opacity hairline divider.
-- `--awx-line-2`: stronger control border.
-- `--awx-text`: primary text.
-- `--awx-muted`: secondary text.
-- `--awx-faint`: tertiary text.
-- `--awx-accent`: calm blue interactive accent.
-- `--awx-accent-weak`: soft active background.
-- `--awx-accent-line`: active/focus border.
+Core tokens and their values: see **Tokens (checked by the build)** under the
+current contract above. That table is the only place values are written down.
 
 Semantic colors:
 
@@ -793,8 +847,12 @@ When changing AceWeather:
   - radar map and controls.
   - Outlook.
 - Run:
-  - `npm run lint`
+  - `npm run lint` (ESLint and the design guard)
+  - `npm run test:visual` when CSS or components changed
   - `npm run build`
+- The guardrails, what each rule stops and how to fix a breach:
+  `docs/design-guardrails.md`. Approved components: `docs/design-components.md`.
+  Ruled-out designs: `docs/design-nope.md`.
 
 ## Suggested Next Mobile Work
 

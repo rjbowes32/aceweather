@@ -40,3 +40,7 @@ Thumbs.db
 
 # Backtest download cache
 .cache/
+
+# Playwright output
+/test-results/
+/playwright-report/
