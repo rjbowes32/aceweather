@@ -6,7 +6,7 @@ import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
 import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, nearestUkDistrict, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
 import { HERE_NAME, addSaved, forecastNotice, isUk, moveSaved, parseSaved, placeKey, removeSaved, renameSaved } from "@/lib/aceweather/places";
-import { clearStoredHere, geolocationPlan, hereIsActive, readGeoPermission, readStoredHere, roundHereDegrees, storeHereFix } from "@/lib/aceweather/here-fix";
+import { clearStoredHere, geolocationPlan, hereFixWithDistrict, hereIsActive, readGeoPermission, readStoredHere, roundHereDegrees, storeHereFix } from "@/lib/aceweather/here-fix";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
 import { CloseIcon, NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
@@ -384,7 +384,10 @@ export function AceWeatherApp() {
     let cancelled = false;
     void nearestUkDistrict(districtLat, districtLon).then((district) => {
       if (cancelled || !district) return;
-      if (districtForHere) storeHereFix({ lat: districtLat, lon: districtLon, name: HERE_NAME, region: district, at: Date.now() });
+      if (districtForHere) {
+        const next = hereFixWithDistrict(readStoredHere(), districtLat, districtLon, district);
+        if (next) storeHereFix(next);
+      }
       else {
         // Keep the saved row in step with the header.
         setSaved((prev) => {

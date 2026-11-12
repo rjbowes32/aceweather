@@ -35,6 +35,16 @@ export function hereFixFresh(cache: { at: number }, now = Date.now()): boolean {
   return Number.isFinite(cache.at) && now - cache.at <= HERE_MAX_AGE_MS;
 }
 
+/**
+ * A district label can be written onto the stored fix without making it new.
+ * A different point, or no stored fix, is left alone so only a GPS reading refreshes the age.
+ */
+export function hereFixWithDistrict(stored: HereCache | null, lat: number, lon: number, region: string): HereCache | null {
+  if (!stored) return null;
+  if (roundHereDegrees(stored.lat) !== roundHereDegrees(lat) || roundHereDegrees(stored.lon) !== roundHereDegrees(lon)) return null;
+  return { ...stored, lat: roundHereDegrees(lat), lon: roundHereDegrees(lon), region };
+}
+
 export type GeoPermission = "granted" | "prompt" | "denied" | "unknown";
 export type GeoEvent =
   | { type: "load"; hereActive: boolean; permission: GeoPermission }

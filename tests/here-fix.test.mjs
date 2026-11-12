@@ -9,6 +9,7 @@ import {
   clearStoredHere,
   geolocationPlan,
   parseHereCache,
+  hereFixWithDistrict,
   readStoredHere,
   roundHereDegrees,
   storeHereFix,
@@ -114,6 +115,16 @@ test("turning Here off deletes the stored fix", () => {
   assert.equal(store.getItem(HERE_CACHE_KEY), null);
   assert.equal(store.getItem(HERE_ACTIVE_KEY), "0");
   assert.equal(readStoredHere(Date.now(), store), null);
+});
+
+test("a district label keeps the original Here timestamp", () => {
+  const stored = { lat: 54.58642, lon: -1.43714, name: "Here", region: "", at: 1_700_000_000_000 };
+  const next = hereFixWithDistrict(stored, 54.5864, -1.4371, "Darlington");
+  assert.equal(next.at, stored.at);
+  assert.equal(next.region, "Darlington");
+  assert.equal(next.lat, 54.586);
+  assert.equal(hereFixWithDistrict(stored, 51.5, -0.1, "London"), null);
+  assert.equal(hereFixWithDistrict(null, stored.lat, stored.lon, "Darlington"), null);
 });
 
 test("a Here fix older than three days is dropped", () => {
