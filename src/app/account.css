@@ -1,0 +1,28 @@
+/* Sign-in and sync panel in Settings (rail and sheet). */
+.awx .awx-account { display: grid; gap: 8px; min-width: 0; }
+.awx .awx-account svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.awx .awx-account-start { width: 100%; }
+.awx .awx-account-who { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--awx-muted); font-size: 12.5px; line-height: 1.4; }
+.awx .awx-account-who svg { color: var(--awx-accent); margin-top: 1px; }
+.awx .awx-account-who strong { color: var(--awx-text); font-weight: 600; overflow-wrap: anywhere; }
+.awx .awx-account-form label { color: var(--awx-muted); font-size: 12.5px; line-height: 1.4; }
+.awx .awx-account-form input {
+  min-height: 44px; width: 100%; padding: 0 12px; border-radius: var(--awx-control-radius);
+  border: 1px solid var(--awx-line-2); background: var(--awx-surface-2); color: var(--awx-text); font: inherit; font-size: 16px;
+}
+.awx .awx-account-form input#awx-account-code { letter-spacing: 4px; font-variant-numeric: tabular-nums; }
+.awx .awx-account-form input:focus-visible { outline: 2px solid var(--awx-accent); outline-offset: 1px; }
+.awx .awx-account-form .awx-btn { width: 100%; border: 1px solid var(--awx-accent-line); border-radius: var(--awx-control-radius); background: var(--awx-accent-weak); color: var(--awx-text); }
+.awx .awx-account-form .awx-btn:disabled { opacity: 0.6; }
+.awx .awx-account-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.awx .awx-account-links .awx-link-btn { min-height: 32px; font-size: 12.5px; }
+.awx .awx-account-danger { color: var(--awx-risk); }
+.awx .awx-account-error { margin: 0; color: var(--awx-risk); font-size: 12.5px; }
+
+/* Icon-only rail: the button keeps its icon; the signed-in line shrinks to its icon. */
+@media (max-width: 1080px) and (min-width: 901px) {
+  .awx-rail .awx-account-who { justify-content: center; }
+  .awx-rail .awx-account-who span { display: none; }
+}
+.awx button.awx-account-who { min-height: 44px; padding: 0 4px; background: none; border: 0; text-align: left; font: inherit; font-size: 12.5px; cursor: pointer; align-items: center; }
+.awx button.awx-account-who:hover strong { text-decoration: underline; text-underline-offset: 3px; }

@@ -17,6 +17,8 @@ import { PlaceMenu, PlaceSlot } from "./place-menu";
 import { FieldExperience } from "./field-experience";
 import { SprayCardSkeleton } from "./spray-strip";
 import { SetupHint, showSetupHint } from "./setup-hint";
+import { AccountPanel, useAccountSync } from "./account";
+import { mergePlaces } from "@/lib/account/data";
 
 const RADAR_LOAD_TIMEOUT_MS = 12_000;
 type RadarModule = typeof import("./radar-card");
@@ -323,6 +325,18 @@ export function AceWeatherApp() {
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
+  // Set when the rail's "Sign in to sync" opens the Settings sheet straight at the email step.
+  const [accountStart, setAccountStart] = useState(false);
+  const account = useAccountSync(saved, { theme, unit, windUnit }, (data, mode) => {
+    const places = mode === "merge" ? mergePlaces(data.saved, saved) : data.saved;
+    remember(places);
+    if (data.prefs.theme) setTheme(data.prefs.theme);
+    if (data.prefs.unit) setUnit(data.prefs.unit);
+    if (data.prefs.windUnit) setWindUnit(data.prefs.windUnit);
+    // A device still on the default place opens the account's first place; one showing Here or a picked place stays put.
+    const onDefault = location.lat === DEFAULT_LOCATION.lat && location.lon === DEFAULT_LOCATION.lon;
+    if (places[0] && onDefault && geoStatus !== "following") setLocation(places[0]);
+  });
   // Set when the user picks a place by hand; any GPS reading still in flight is ignored.
   const manualPickRef = useRef(false);
   const locateRef = useRef<() => void>(() => {});
@@ -702,6 +716,7 @@ export function AceWeatherApp() {
               </span>
             </div>
             <div className="awx-settings-body">
+              <AccountPanel account={account} compact onStart={(signIn) => { setAccountStart(signIn); setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} />
               {settingsControls}
               <EndpointDocs rail />
             </div>
@@ -716,7 +731,7 @@ export function AceWeatherApp() {
           {placeCluster}
           <div className="awx-mtop-right">
             <button className={"awx-icon-btn awx-refresh-icon" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} aria-label="Reload weather data" title={reloadLabel}><RefreshIcon /></button>
-            <button className="awx-icon-btn" type="button" onClick={() => { setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} aria-label="Settings"><SettingsIcon /></button>
+            <button className="awx-icon-btn" type="button" onClick={() => { setAccountStart(false); setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} aria-label="Settings"><SettingsIcon /></button>
           </div>
           {placeMenu}
         </header>
@@ -820,6 +835,7 @@ export function AceWeatherApp() {
               <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
+              <AccountPanel account={account} startOpen={accountStart} />
               {settingsControls}
               <div className="awx-sheet-actions">
                 <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>Here</span></button>
