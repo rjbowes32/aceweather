@@ -194,7 +194,7 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
 .awx .awx-location-picker .awx-search input { font-size: 16px; height: 46px; line-height: 46px; outline: none; box-shadow: none; }
 .awx .awx-location-picker .awx-search input:focus-visible { outline: none; }
 .awx .awx-location-picker .awx-search input::placeholder { color: var(--awx-muted); }
-.awx .awx-location-picker .awx-search svg { stroke: var(--awx-muted); flex: none; }
+.awx .awx-location-picker .awx-search svg { color: var(--awx-muted); stroke: var(--awx-muted); flex: none; }
 .awx .awx-location-picker .awx-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .awx .awx-location-picker .awx-search .awx-go { min-height: 44px; padding: 0 10px; font-size: 15px; background: none; border: 0; }
 .awx .awx-loc-list {

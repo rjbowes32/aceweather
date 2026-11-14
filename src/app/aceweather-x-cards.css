@@ -86,7 +86,7 @@
 .awx-outlook-lead.is-breezy .awx-outlook-lead-main {
   background: linear-gradient(135deg, color-mix(in srgb, var(--awx-warn) 16%, var(--awx-surface)), var(--awx-surface));
 }
-.awx-outlook-icon { width: 30px; height: 30px; flex: 0 0 auto; stroke: var(--awx-accent); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.awx-outlook-icon { width: 30px; height: 30px; flex: 0 0 auto; color: var(--awx-accent); stroke: var(--awx-accent); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .awx-outlook-lead-main span,
 .awx-outlook-stat span { display: block; color: var(--awx-faint); font-size: 11px; font-weight: 650; letter-spacing: 0; text-transform: uppercase; }
 .awx-outlook-lead-main strong { display: block; margin-top: 3px; min-width: 0; color: var(--awx-text); font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -141,7 +141,7 @@
 .awx-cal-day .awx-date { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--awx-faint); }
 .awx-cal-day.is-today .awx-date b { color: var(--awx-accent); }
 .awx-cal-day .awx-date b { font-weight: 750; color: var(--awx-text); }
-.awx-cal-day .awx-cal-icon { width: 16px; height: 16px; flex: 0 0 auto; stroke: var(--awx-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.awx-cal-day .awx-cal-icon { width: 16px; height: 16px; flex: 0 0 auto; color: var(--awx-muted); stroke: var(--awx-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .awx-cal-temps { display: grid; gap: 3px; min-width: 0; }
 .awx-cal-hi { font-size: 20px; font-weight: 700; color: var(--awx-text); line-height: 1; }
 .awx-cal-temps .awx-lo { color: var(--awx-muted); font-size: 14px; font-weight: 500; line-height: 1.1; }
@@ -447,8 +447,12 @@
 .weather-dashboard .awx-wicon .awx-badge, .awx-wicon .awx-badge { width: var(--awx-badge); height: var(--awx-badge); border-radius: 50%;
   background: var(--awx-badge-ring); box-shadow: 0 0 0 1px var(--awx-badge-ring); fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .awx-wicon .awx-badge * { vector-effect: non-scaling-stroke; stroke-width: 1px; }
-.awx-badge-frost { stroke: var(--awx-badge-frost); }
-.awx-badge-gust { stroke: var(--awx-badge-gust); }
+.awx-badge-frost { color: var(--awx-badge-frost); stroke: var(--awx-badge-frost); }
+.awx-badge-gust { color: var(--awx-badge-gust); stroke: var(--awx-badge-gust); }
+
+/* Phosphor icons are filled shapes: fill the path in the text colour, never stroke it. */
+svg.awx-ph path { fill: currentColor; stroke: none; }
+.awx-close-icon { width: 20px; height: 20px; }
 .weather-dashboard .weather-hour-icon > svg { width: 26px; height: 26px; }
 .awx-outlook-icon.awx-wicon { width: 30px; height: 30px; }
 .awx-cal-day .awx-cal-icon.awx-wicon { width: 20px; height: 20px; --awx-badge: 12px; --awx-badge-ring: var(--awx-cal-fill); }
