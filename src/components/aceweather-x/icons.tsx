@@ -1,56 +1,61 @@
-/* Thin line icons (24x24, stroke=currentColor). Inherit sizing/stroke from CSS. */
-import type { ReactNode } from "react";
+/* Phosphor Regular icons (256x256, filled with currentColor). Size comes from CSS; colour from `color`. */
 import type { ConditionKey } from "@/lib/aceweather/format";
 import { weatherIconText, type IconKey, type WeatherIcon as WeatherIconData } from "@/lib/aceweather/weather-icons";
+import { PH, type PhName } from "./phosphor-paths";
 
-const P = (d: string) => <path d={d} />;
+function Ph({ name, className }: { name: PhName; className?: string }) {
+  return (
+    <svg className={"awx-ph" + (className ? " " + className : "")} viewBox="0 0 256 256" aria-hidden="true">
+      <path d={PH[name]} />
+    </svg>
+  );
+}
 
-const NAV: Record<string, ReactNode> = {
-  humidity: <><path d="M9 3C7 6 3 10 3 14a6 6 0 0 0 12 0c0-4-4-8-6-11Z" /><path d="M17 3c-1 2-3 4-3 6a4 4 0 0 0 8 0c0-2-3-5-5-6Z" /></>,
-  wind: <><path d="M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h5a3 3 0 1 1-3 3" /></>,
-  thermometer: <><path d="M9 14V5a3 3 0 0 1 6 0v9a5 5 0 1 1-6 0Z" /><path d="M12 7v10" /><circle cx="12" cy="18" r="1" /></>,
-  umbrella: <><path d="M3 12a9 9 0 0 1 18 0H3ZM12 12v7a2 2 0 0 0 4 0M12 2v1" /></>,
-  overview: P("M4 6h16M4 12h16M4 18h10"),
-  now: <><circle cx="12" cy="12" r="4.5" />{P("M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8")}</>,
-  rain: <>{P("M7 15.5h9.5a3.6 3.6 0 0 0 .5-7.2 5.5 5.5 0 0 0-10.4 1.5A3 3 0 0 0 7 15.5z")}{P("M9 18.5l-.8 2M13 18.5l-.8 2M17 18.5l-.8 2")}</>,
-  radar: <><circle cx="12" cy="12" r="8.5" />{P("M3.5 12h17M12 3.5c2.6 2.3 2.6 14.7 0 17M12 3.5c-2.6 2.3-2.6 14.7 0 17")}</>,
-  field: <>{P("M3 17c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6")}{P("M3 13c4-3.5 7-3.5 11 0 2.2 1.8 4 2.6 7 1.6")}</>,
-  outlook: <><rect x="4" y="5" width="16" height="15" rx="2" />{P("M8 3v4M16 3v4M4 10h16")}</>,
-  seasonal: <>{P("M12 21V9")}{P("M12 9c0-3 2-5 5-5 0 3-2 5-5 5z")}{P("M12 13c0-2.4-1.6-4-4-4 0 2.4 1.6 4 4 4z")}</>,
-  about: <>{P("M5 5h14v14H5z")}{P("M8 9h8M8 13h8M8 17h5")}</>,
-  more: <><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="19" cy="12" r="1.4" /></>,
+const NAV: Record<string, PhName> = {
+  humidity: "drop",
+  wind: "wind",
+  thermometer: "thermometer",
+  umbrella: "umbrella",
+  overview: "house",
+  now: "sun",
+  rain: "cloud-rain",
+  radar: "globe-simple",
+  field: "grains",
+  outlook: "calendar-blank",
+  seasonal: "plant",
+  about: "info",
+  more: "dots-three",
 };
 
 export function NavIcon({ name }: { name: string }) {
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{NAV[name] ?? NAV.overview}</svg>;
+  return <Ph name={NAV[name] ?? NAV.overview} />;
 }
 
-const COND: Record<ConditionKey, ReactNode> = {
-  clear: <><circle cx="12" cy="12" r="4.5" />{P("M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5L19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5L19 5")}</>,
-  cloud: P("M7 17h10a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.6 1.2A3 3 0 0 0 7 17z"),
-  fog: <>{P("M5 10.5h11a3 3 0 0 0 .3-6 5 5 0 0 0-9.5 1A2.6 2.6 0 0 0 5 10.5z")}{P("M4 14h16M6 17.5h12M8 21h8")}</>,
-  rain: <>{P("M7 14.5h9.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.5 1.2A3 3 0 0 0 7 14.5z")}{P("M9 17l-1 3M13 17l-1 3M17 17l-1 3")}</>,
-  snow: <>{P("M7 13.5h9.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.5 1.2A3 3 0 0 0 7 13.5z")}{P("M9 18h.01M12 20h.01M15 18h.01")}</>,
-  storm: <>{P("M7 14.5h9.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.5 1.2A3 3 0 0 0 7 14.5z")}{P("M13 14l-3 4h3l-1 3")}</>,
+const COND: Record<ConditionKey, PhName> = {
+  clear: "sun",
+  cloud: "cloud",
+  fog: "cloud-fog",
+  rain: "cloud-rain",
+  snow: "cloud-snow",
+  storm: "cloud-lightning",
 };
 
 export function ConditionIcon({ k, className }: { k: ConditionKey; className?: string }) {
-  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true">{COND[k] ?? COND.cloud}</svg>;
+  return <Ph name={COND[k] ?? COND.cloud} className={className} />;
 }
 
-
-const CLOUD_TOP = "M7 14.5h9.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.5 1.2A3 3 0 0 0 7 14.5z";
-const RULE: Record<IconKey, ReactNode> = {
-  storm: COND.storm,
-  snow: <>{P(CLOUD_TOP)}{P("M9 18h.01M12 20.5h.01M15 18h.01M10.5 22h.01M13.5 22h.01")}</>,
-  rain: COND.rain,
-  drizzle: <>{P(CLOUD_TOP)}{P("M10 18l-.5 1.5M14 18l-.5 1.5")}</>,
-  fog: COND.fog,
-  cloud: COND.cloud,
-  partly: <>{P("M8 3.5v1.2M3.5 8h1.2M4.8 4.8l.9.9M11.2 4.8l-.9.9")}{P("M5.6 10.4A3.2 3.2 0 1 1 10.9 7")}{P("M9 19h8.5a3.3 3.3 0 0 0 .3-6.6 5 5 0 0 0-9.6 1.1A2.8 2.8 0 0 0 9 19z")}</>,
-  "partly-night": <>{P("M10.8 6.6A3.6 3.6 0 1 1 5.2 11 3 3 0 0 0 10.8 6.6z")}{P("M9 19h8.5a3.3 3.3 0 0 0 .3-6.6 5 5 0 0 0-9.6 1.1A2.8 2.8 0 0 0 9 19z")}</>,
-  clear: COND.clear,
-  night: P("M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"),
+/* Phosphor has no drizzle icon, so drizzle shares the rain cloud; the label still says Drizzle. */
+const RULE: Record<IconKey, PhName> = {
+  storm: "cloud-lightning",
+  snow: "cloud-snow",
+  rain: "cloud-rain",
+  drizzle: "cloud-rain",
+  fog: "cloud-fog",
+  cloud: "cloud",
+  partly: "cloud-sun",
+  "partly-night": "cloud-moon",
+  clear: "sun",
+  night: "moon",
 };
 
 /** Main condition icon from pickWeatherIcon, plus small frost and gust badges. */
@@ -58,27 +63,27 @@ export function WeatherIcon({ icon, className }: { icon: WeatherIconData; classN
   const text = weatherIconText(icon);
   return (
     <span className={"awx-wicon" + (className ? " " + className : "")} role="img" aria-label={text} title={text}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">{RULE[icon.key] ?? RULE.partly}</svg>
+      <Ph name={RULE[icon.key] ?? RULE.partly} />
       {icon.frost || icon.gust ? (
         <span className="awx-wicon-badges" aria-hidden="true">
-          {icon.frost === "frost" ? <svg className="awx-badge awx-badge-frost" viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" /></svg> : null}
-          {icon.frost === "risk" ? <svg className="awx-badge awx-badge-frost is-risk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6.5v11M7.2 9.2l9.6 5.6M7.2 14.8l9.6-5.6" /></svg> : null}
-          {icon.gust ? <svg className="awx-badge awx-badge-gust" viewBox="0 0 24 24"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h6" /></svg> : null}
+          {icon.frost === "frost" ? <Ph name="snowflake" className="awx-badge awx-badge-frost" /> : null}
+          {icon.frost === "risk" ? <Ph name="thermometer-cold" className="awx-badge awx-badge-frost is-risk" /> : null}
+          {icon.gust ? <Ph name="wind" className="awx-badge awx-badge-gust" /> : null}
         </span>
       ) : null}
     </span>
   );
 }
 
-export const ChevronIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>;
-export const SearchIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>;
-export const ShareIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" /><path d="M12 15V4M8 8l4-4 4 4" /></svg>;
-export const GpsIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle className="awx-gps-ring" cx="12" cy="12" r="7" /><circle className="awx-gps-dot" cx="12" cy="12" r="2.5" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>;
-export const RefreshIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5" /><path d="M4 18v-5h5" /><path d="M18.2 9A7 7 0 0 0 6.4 6.6L4 9" /><path d="M5.8 15a7 7 0 0 0 11.8 2.4L20 15" /></svg>;
-export const SettingsIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.1 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 1h-4l-.6 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 4.9 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 23h4l.6-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" /></svg>;
-export const BellIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
-export const DocsIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v5h5M9 12h6M9 16h6M9 8h2" /></svg>;
+export const ChevronIcon = () => <Ph name="caret-down" />;
+export const SearchIcon = () => <Ph name="magnifying-glass" />;
+export const ShareIcon = () => <Ph name="export" />;
+export const GpsIcon = () => <Ph name="crosshair" />;
+export const RefreshIcon = () => <Ph name="arrows-clockwise" />;
+export const SettingsIcon = () => <Ph name="gear" />;
+export const BellIcon = () => <Ph name="bell" />;
+export const DocsIcon = () => <Ph name="file-text" />;
 
 export function CloseIcon() {
-  return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
+  return <Ph name="x" className="awx-close-icon" />;
 }
