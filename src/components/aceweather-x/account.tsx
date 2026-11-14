@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { parseAccountData, type AccountData, type Prefs } from "@/lib/account/data";
+import { PENDING_KEY, pendingEmail, pendingNote } from "@/lib/account/pending";
 import type { AwLocation } from "@/lib/aceweather/open-meteo";
 
 /** "merge": first sign-in on this device, so this device's places join the account's. "load": the account wins. */
@@ -106,6 +107,14 @@ export function useAccountSync(saved: AwLocation[], prefs: Prefs, apply: ApplyAc
   };
 }
 
+/** The email with a sign-in code still on its way, if any (see pending.ts). */
+export function signInPending(): string | null {
+  try { return pendingEmail(localStorage.getItem(PENDING_KEY)); } catch { return null; }
+}
+const setPending = (email: string | null) => {
+  try { if (email) localStorage.setItem(PENDING_KEY, pendingNote(email)); else localStorage.removeItem(PENDING_KEY); } catch { /* */ }
+};
+
 const UserIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>
 );
@@ -119,8 +128,10 @@ export function AccountPanel({ account, compact, onStart, startOpen }: {
   onStart?: (signIn: boolean) => void;
   startOpen?: boolean;
 }) {
-  const [step, setStep] = useState<"idle" | "email" | "code">(startOpen ? "email" : "idle");
-  const [email, setEmail] = useState("");
+  // A code already sent (before a reload) reopens at the code step.
+  const [waiting] = useState(() => (compact ? null : signInPending()));
+  const [step, setStep] = useState<"idle" | "email" | "code">(waiting ? "code" : startOpen ? "email" : "idle");
+  const [email, setEmail] = useState(waiting ?? "");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +158,7 @@ export function AccountPanel({ account, compact, onStart, startOpen }: {
               account.deleteAccount().catch((e: Error) => setError(e.message));
             }}
           >Delete account</button>
+          <a className="awx-account-privacy" href="/privacy">Privacy</a>
         </div>}
         {error ? <p className="awx-account-error" role="alert">{error}</p> : null}
       </div>
@@ -170,10 +182,12 @@ export function AccountPanel({ account, compact, onStart, startOpen }: {
     try {
       if (step === "email") {
         await call("/account/code", "POST", { email });
+        setPending(email.trim().toLowerCase());
         setCode("");
         setStep("code");
       } else {
         const res = await call("/account/verify", "POST", { email, code });
+        setPending(null);
         account.signedIn(String(res.email), parseAccountData(res.data));
         setStep("idle");
       }
@@ -201,8 +215,9 @@ export function AccountPanel({ account, compact, onStart, startOpen }: {
       )}
       {error ? <p className="awx-account-error" role="alert">{error}</p> : null}
       <div className="awx-account-links">
-        {step === "code" ? <button type="button" className="awx-link-btn" onClick={() => { setStep("email"); setError(null); }}>Use another email</button> : null}
-        <button type="button" className="awx-link-btn" onClick={() => { setStep("idle"); setError(null); }}>Cancel</button>
+        {step === "code" ? <button type="button" className="awx-link-btn" onClick={() => { setPending(null); setStep("email"); setError(null); }}>Use another email</button> : null}
+        <button type="button" className="awx-link-btn" onClick={() => { setPending(null); setStep("idle"); setError(null); }}>Cancel</button>
+        <a className="awx-account-privacy" href="/privacy">Privacy</a>
       </div>
     </form>
   );

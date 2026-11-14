@@ -1,5 +1,5 @@
 import { MAX_DATA_BYTES, parseAccountData } from "@/lib/account/data";
-import { clearCookie, context, fail, keys, loadData, readJson, reply, sessionOf } from "@/lib/account/server";
+import { clearCookie, context, fail, hasSessionCookie, keys, loadData, readJson, reply, sessionOf } from "@/lib/account/server";
 
 export const dynamic = "force-dynamic";
 
@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const ctx = context();
   if (!ctx) return reply({ enabled: false, email: null });
-  const session = sessionOf(request, ctx);
-  if (!session) return reply({ enabled: true, email: null });
   try {
+    const session = await sessionOf(request, ctx);
+    // A cookie that no longer works (expired, or its account was deleted) is cleared.
+    if (!session) return reply({ enabled: true, email: null }, 200, hasSessionCookie(request) ? { "set-cookie": clearCookie() } : {});
     return reply({ enabled: true, email: session.email, data: await loadData(ctx, session.uid) });
   } catch (error) {
     console.error("[account] load", error);
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const ctx = context();
   if (!ctx) return fail(503, "Sign-in isn't available right now");
-  const session = sessionOf(request, ctx);
+  const session = await sessionOf(request, ctx).catch(() => null);
   if (!session) return fail(401, "Signed out");
   const body = await readJson(request);
   if (!body) return fail(400, "Bad request");
@@ -41,7 +42,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const ctx = context();
   if (!ctx) return fail(503, "Sign-in isn't available right now");
-  const session = sessionOf(request, ctx);
+  const session = await sessionOf(request, ctx).catch(() => null);
   if (!session) return fail(401, "Signed out");
   if (!(await readJson(request))) return fail(400, "Bad request");
   try {

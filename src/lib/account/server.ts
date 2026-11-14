@@ -39,13 +39,30 @@ function cookie(request: Request, name: string): string | undefined {
   return undefined;
 }
 
-export const sessionOf = (request: Request, ctx: Ctx): Session | null => readSession(ctx.secret, cookie(request, SESSION_COOKIE));
+/**
+ * The signed-in session, checked against the account record on every request: a deleted account signs out
+ * every device at once, and a cookie from before the account was made again is not honoured.
+ */
+export async function sessionOf(request: Request, ctx: Ctx): Promise<Session | null> {
+  const session = readSession(ctx.secret, cookie(request, SESSION_COOKIE));
+  if (!session) return null;
+  const raw = await ctx.store.get(keys.user(session.uid));
+  if (!raw) return null;
+  try {
+    const createdAt = Date.parse((JSON.parse(raw) as { createdAt?: string }).createdAt ?? "");
+    return Number.isFinite(createdAt) && session.iat >= createdAt ? session : null;
+  } catch {
+    return null;
+  }
+}
+
+export const hasSessionCookie = (request: Request) => Boolean(cookie(request, SESSION_COOKIE));
 
 const secure = () => (process.env.NODE_ENV === "production" ? "; Secure" : "");
 
 export function sessionCookie(ctx: Ctx, uid: string, email: string): string {
-  const exp = Date.now() + SESSION_DAYS * 86_400_000;
-  const token = signSession(ctx.secret, { uid, email, exp });
+  const iat = Date.now();
+  const token = signSession(ctx.secret, { uid, email, iat, exp: iat + SESSION_DAYS * 86_400_000 });
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86_400}${secure()}`;
 }
 

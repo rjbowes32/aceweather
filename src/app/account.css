@@ -14,7 +14,7 @@
 .awx .awx-account-form input:focus-visible { outline: 2px solid var(--awx-accent); outline-offset: 1px; }
 .awx .awx-account-form .awx-btn { width: 100%; border: 1px solid var(--awx-accent-line); border-radius: var(--awx-control-radius); background: var(--awx-accent-weak); color: var(--awx-text); }
 .awx .awx-account-form .awx-btn:disabled { opacity: 0.6; }
-.awx .awx-account-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.awx .awx-account-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .awx .awx-account-links .awx-link-btn { min-height: 32px; font-size: 12.5px; }
 .awx .awx-account-danger { color: var(--awx-risk); }
 .awx .awx-account-error { margin: 0; color: var(--awx-risk); font-size: 12.5px; }
@@ -26,3 +26,15 @@
 }
 .awx button.awx-account-who { min-height: 44px; padding: 0 4px; background: none; border: 0; text-align: left; font: inherit; font-size: 12.5px; cursor: pointer; align-items: center; }
 .awx button.awx-account-who:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.awx .awx-account-privacy { font-size: 12.5px; color: var(--awx-muted); text-underline-offset: 3px; }
+
+/* Plain text pages (privacy). */
+.awx-legal { max-width: 680px; margin: 0 auto; padding: 32px 20px 64px; color: var(--awx-text); font-size: 15.5px; line-height: 1.6; }
+.awx-legal h1 { margin: 16px 0 4px; font-size: 28px; line-height: 1.2; }
+.awx-legal h2 { margin: 32px 0 8px; font-size: 18px; }
+.awx-legal p, .awx-legal ul { margin: 0 0 12px; }
+.awx-legal ul { padding-left: 20px; }
+.awx-legal li { margin-bottom: 6px; }
+.awx-legal a { color: var(--awx-accent); text-underline-offset: 3px; }
+.awx-legal code { font-size: 0.92em; }
+.awx-legal-date { color: var(--awx-muted); font-size: 13px; }

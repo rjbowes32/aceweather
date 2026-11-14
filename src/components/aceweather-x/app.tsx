@@ -17,7 +17,7 @@ import { PlaceMenu, PlaceSlot } from "./place-menu";
 import { FieldExperience } from "./field-experience";
 import { SprayCardSkeleton } from "./spray-strip";
 import { SetupHint, showSetupHint } from "./setup-hint";
-import { AccountPanel, useAccountSync } from "./account";
+import { AccountPanel, signInPending, useAccountSync } from "./account";
 import { mergePlaces } from "@/lib/account/data";
 
 const RADAR_LOAD_TIMEOUT_MS = 12_000;
@@ -337,6 +337,9 @@ export function AceWeatherApp() {
     const onDefault = location.lat === DEFAULT_LOCATION.lat && location.lon === DEFAULT_LOCATION.lon;
     if (places[0] && onDefault && geoStatus !== "following") setLocation(places[0]);
   });
+  // Back from reading the code in an email, after the app reloaded: reopen Settings at the code step.
+  const accountStatus = account.status;
+  useEffect(() => { if (accountStatus === "out" && signInPending()) setSettingsOpen(true); }, [accountStatus]);
   // Set when the user picks a place by hand; any GPS reading still in flight is ignored.
   const manualPickRef = useRef(false);
   const locateRef = useRef<() => void>(() => {});

@@ -4,12 +4,14 @@
  */
 import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
+export { CODE_MINUTES } from "./pending.ts";
+
 export const SESSION_COOKIE = "awx_session";
 export const SESSION_DAYS = 30;
-export const CODE_MINUTES = 10;
 export const CODE_ATTEMPTS = 5;
 
-export type Session = { uid: string; email: string; exp: number };
+/** `iat`: when the session started. A session older than its account record (deleted, then made again) is refused. */
+export type Session = { uid: string; email: string; iat: number; exp: number };
 
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const unb64 = (s: string) => Buffer.from(s, "base64url").toString();
@@ -46,8 +48,8 @@ export function readSession(secret: string, token: string | undefined, now = Dat
   if (!body || !sig || !sameHash(sig, hmac(secret, body))) return null;
   try {
     const s = JSON.parse(unb64(body)) as Partial<Session>;
-    if (typeof s.uid !== "string" || typeof s.email !== "string" || typeof s.exp !== "number" || s.exp <= now) return null;
-    return { uid: s.uid, email: s.email, exp: s.exp };
+    if (typeof s.uid !== "string" || typeof s.email !== "string" || typeof s.iat !== "number" || typeof s.exp !== "number" || s.exp <= now) return null;
+    return { uid: s.uid, email: s.email, iat: s.iat, exp: s.exp };
   } catch {
     return null;
   }
