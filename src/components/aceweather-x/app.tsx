@@ -4,17 +4,21 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 
 import { buildModel, type AwModel } from "@/lib/aceweather/derive";
 import { formatNextRain, formatRain, formatTemperature, type TemperatureUnit, type WindUnit } from "@/lib/aceweather/format";
-import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
+import { DEFAULT_LOCATION, fetchForecast, fetchSeasonal, nearestUkDistrict, searchLocations, type AwLocation, type ForecastResponse, type SeasonalContext } from "@/lib/aceweather/open-meteo";
+import { HERE_NAME, addSaved, forecastNotice, isUk, moveSaved, parseSaved, placeKey, removeSaved, renameSaved } from "@/lib/aceweather/places";
+import { clearStoredHere, geolocationPlan, hereFixWithDistrict, hereIsActive, readGeoPermission, readStoredHere, roundHereDegrees, storeHereFix } from "@/lib/aceweather/here-fix";
 import { applyLearned, fetchLearned, type LearnedOverlay } from "@/lib/aceweather/learned";
 import { CloseIcon, NavIcon, ShareIcon, GpsIcon, RefreshIcon, SettingsIcon, BellIcon, DocsIcon } from "./icons";
 import { CalendarCard, SeasonalCard, SourcesCard } from "./cards";
 import { enableRainAlerts, maybeNotifyRain, notifyPermission, saveLocationForSync } from "@/lib/aceweather/notify";
 import { NowExperience } from "./now-experience";
 import { OverviewExperience } from "./overview-experience";
-import { LocationPickerContent } from "./location-picker-content";
+import { PlaceMenu, PlaceSlot } from "./place-menu";
 import { FieldExperience } from "./field-experience";
 import { SprayCardSkeleton } from "./spray-strip";
 import { SetupHint, showSetupHint } from "./setup-hint";
+import { AccountPanel, signInPending, useAccountSync } from "./account";
+import { mergePlaces } from "@/lib/account/data";
 
 const RADAR_LOAD_TIMEOUT_MS = 12_000;
 type RadarModule = typeof import("./radar-card");
@@ -100,27 +104,6 @@ function useLevelColumnEnds(feedRef: React.RefObject<HTMLElement | null>, sideRe
   }, [feedRef, sideRef, key]);
 }
 
-/** Phone header line: the full text if it fits on one line, otherwise the short form. */
-function PhonePlaceLine({ full, short }: { full: string; short: string }) {
-  const boxRef = useRef<HTMLElement>(null);
-  const probeRef = useRef<HTMLSpanElement>(null);
-  const [fits, setFits] = useState(true);
-  useEffect(() => {
-    const box = boxRef.current, probe = probeRef.current;
-    if (!box || !probe || typeof ResizeObserver === "undefined") return undefined;
-    const check = () => setFits(probe.getBoundingClientRect().width <= box.getBoundingClientRect().width + 0.5);
-    const ro = new ResizeObserver(check);
-    ro.observe(box);
-    check();
-    return () => ro.disconnect();
-  }, [full]);
-  return (
-    <small ref={boxRef} className="awx-place-line">
-      {fits ? full : short}
-      <span ref={probeRef} className="awx-place-probe" aria-hidden="true">{full}</span>
-    </small>
-  );
-}
 const LONDON_HM = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 /** Observation time as 24-hour Europe/London HH:MM, no zone label. */
 function londonTime(at: number | null | undefined, fallback: string): string {
@@ -133,7 +116,6 @@ type Theme = "dark" | "light";
 type RainRange = keyof AwModel["rain"]["ranges"];
 type GeoStatus = "idle" | "locating" | "following" | "blocked" | "unsupported" | "error";
 type LoadLocationOptions = { keepGeoFollow?: boolean; resetView?: boolean; closeLocationSheet?: boolean; save?: boolean };
-type LatLon = Pick<AwLocation, "lat" | "lon">;
 type RainBar = { h: number; value: number; label: string; dry: boolean; now: boolean };
 
 const NAV: ReadonlyArray<readonly [View, string]> = [["all", "Overview"], ["now", "Now"], ["rain", "Rain"], ["radar", "Radar"], ["field", "Field"], ["outlook", "Outlook"], ["seasonal", "Seasonal"], ["about", "Sources"]];
@@ -141,8 +123,6 @@ const MOBILE_NAV: ReadonlyArray<readonly [MobileNavKey, string]> = [["all", "Ove
 const MORE_NAV: ReadonlyArray<readonly [View, string]> = [["radar", "Radar"], ["seasonal", "Seasonal"], ["about", "Sources"]];
 const MORE_VIEWS = new Set<View>(MORE_NAV.map(([k]) => k));
 const isView = (value: string): value is View => NAV.some(([key]) => key === value);
-const GPS_FOLLOW_KEY = "awx-gps-follow";
-const GPS_UPDATE_MIN_KM = 0.75;
 const GPS_OPTIONS: PositionOptions = { enableHighAccuracy: true, maximumAge: 60 * 1000, timeout: 15 * 1000 };
 const DOC_ENDPOINTS = [
   {
@@ -166,12 +146,6 @@ const DOC_ENDPOINTS = [
     href: "https://aceweather.app/openapi.json",
   },
 ];
-const SEED_SAVED = [
-  DEFAULT_LOCATION,
-  { name: "Pocklington", region: "East Yorkshire", country: "United Kingdom", lat: 53.93, lon: -0.78, elev: 25, tz: "Europe/London" },
-  { name: "York", region: "North Yorkshire", country: "United Kingdom", lat: 53.96, lon: -1.08, elev: 17, tz: "Europe/London" },
-];
-
 function RainExperience({ model, seasonal, onSelectView }: { model: AwModel; seasonal: SeasonalContext | null; onSelectView: (view: View) => void }) {
   const [range, setRange] = useState<RainRange>("24h");
   const selected = model.rain.ranges[range];
@@ -264,25 +238,14 @@ function RainExperience({ model, seasonal, onSelectView }: { model: AwModel; sea
 
 function gpsLocationFromPosition(pos: GeolocationPosition): AwLocation {
   return {
-    name: "Current location",
-    region: "GPS active",
+    name: HERE_NAME,
+    region: "",
     country: "",
-    lat: Number(pos.coords.latitude.toFixed(5)),
-    lon: Number(pos.coords.longitude.toFixed(5)),
+    lat: roundHereDegrees(pos.coords.latitude),
+    lon: roundHereDegrees(pos.coords.longitude),
     elev: pos.coords.altitude != null && Number.isFinite(pos.coords.altitude) ? Math.round(pos.coords.altitude) : null,
     tz: "auto",
   };
-}
-
-function distanceKm(a: LatLon | null, b: LatLon | null) {
-  if (!a || !b) return Infinity;
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 function EndpointDocs({ rail = false }: { rail?: boolean }) {
@@ -340,11 +303,11 @@ export function AceWeatherApp() {
   const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AwLocation[]>([]);
-  const [saved, setSaved] = useState<AwLocation[]>(SEED_SAVED);
+  const [saved, setSaved] = useState<AwLocation[]>([]);
   const [shareLabel, setShareLabel] = useState("Share report");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
-  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  const [searchNote, setSearchNote] = useState<string | null>(null);
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!locationOpen || !vv) return;
@@ -359,14 +322,27 @@ export function AceWeatherApp() {
     return () => { vv.removeEventListener("resize", sync); vv.removeEventListener("scroll", sync); root.style.removeProperty("--awx-vvh"); root.style.removeProperty("--awx-kb"); };
   }, [locationOpen]);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [geoFollow, setGeoFollow] = useState(false);
-  const [geoPreferenceReady, setGeoPreferenceReady] = useState(false);
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [rainAlerts, setRainAlerts] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
-  const gpsLastLoadedRef = useRef<LatLon | null>(null);
+  // Set when the rail's "Sign in to sync" opens the Settings sheet straight at the email step.
+  const [accountStart, setAccountStart] = useState(false);
+  const account = useAccountSync(saved, { theme, unit, windUnit }, (data, mode) => {
+    const places = mode === "merge" ? mergePlaces(data.saved, saved) : data.saved;
+    remember(places);
+    if (data.prefs.theme) setTheme(data.prefs.theme);
+    if (data.prefs.unit) setUnit(data.prefs.unit);
+    if (data.prefs.windUnit) setWindUnit(data.prefs.windUnit);
+    // A device still on the default place opens the account's first place; one showing Here or a picked place stays put.
+    const onDefault = location.lat === DEFAULT_LOCATION.lat && location.lon === DEFAULT_LOCATION.lon;
+    if (places[0] && onDefault && geoStatus !== "following") setLocation(places[0]);
+  });
+  // Back from reading the code in an email, after the app reloaded: reopen Settings at the code step.
+  const accountStatus = account.status;
+  useEffect(() => { if (accountStatus === "out" && signInPending()) setSettingsOpen(true); }, [accountStatus]);
   // Set when the user picks a place by hand; any GPS reading still in flight is ignored.
   const manualPickRef = useRef(false);
+  const locateRef = useRef<() => void>(() => {});
   const lastSheetFocusRef = useRef<HTMLElement | null>(null);
 
   // prefs on mount
@@ -376,15 +352,21 @@ export function AceWeatherApp() {
       const u = localStorage.getItem("awx-unit"); if (u === "c" || u === "f") setUnit(u);
       const wu = localStorage.getItem("awx-windunit"); if (wu === "kmh" || wu === "mph") setWindUnit(wu);
       const s = localStorage.getItem("awx-saved");
-      if (s) {
-        const p: unknown = JSON.parse(s);
-        if (Array.isArray(p) && p.length) {
-          setSaved(p as AwLocation[]);
-          const last = p[0] as AwLocation;
-          if (last && typeof last.name === "string" && Number.isFinite(last.lat) && Number.isFinite(last.lon)) setLocation(last);
-        }
+      const places = s ? parseSaved(JSON.parse(s)) : [];
+      if (places.length) setSaved(places);
+      const cachedHere = hereIsActive() ? readStoredHere() : null;
+      if (!cachedHere) clearStoredHere();
+      if (cachedHere) {
+        setLocation({ name: cachedHere.name, region: cachedHere.region, country: "", lat: cachedHere.lat, lon: cachedHere.lon, elev: null, tz: "auto" });
+        setGeoStatus("following");
+      } else if (places[0]) {
+        setLocation(places[0]);
       }
       if (localStorage.getItem("awx-rainalerts") === "1" && notifyPermission() === "granted") setRainAlerts(true);
+      const hereActive = Boolean(cachedHere);
+      void readGeoPermission().then((permission) => {
+        if (geolocationPlan({ type: "load", hereActive, permission }) === "request") locateRef.current();
+      });
     } catch { /* ignore */ }
   }, []);
 
@@ -392,49 +374,40 @@ export function AceWeatherApp() {
   useEffect(() => { try { localStorage.setItem("awx-unit", unit); } catch { /* */ } }, [unit]);
   useEffect(() => { try { localStorage.setItem("awx-windunit", windUnit); } catch { /* */ } }, [windUnit]);
   useEffect(() => { try { localStorage.setItem("awx-rainalerts", rainAlerts ? "1" : "0"); } catch { /* */ } }, [rainAlerts]);
-  useEffect(() => {
-    let cancelled = false;
-    try {
-      if (localStorage.getItem(GPS_FOLLOW_KEY) === "0") {
-        setGeoPreferenceReady(true);
-        return undefined;
-      }
-    } catch { /* GPS can still work when storage is unavailable. */ }
-    if (!navigator.geolocation) {
-      setGeoStatus("unsupported");
-      setGeoPreferenceReady(true);
-      return undefined;
-    }
-    const resumeFollow = () => {
-      if (cancelled) return;
-      setGeoStatus("locating");
-      setGeoFollow(true);
-      setGeoPreferenceReady(true);
-    };
-    if (navigator.permissions?.query) {
-      navigator.permissions
-        .query({ name: "geolocation" })
-        .then((permission) => {
-          if (cancelled) return;
-          if (permission.state !== "denied") resumeFollow();
-          else {
-            setGeoStatus("blocked");
-            setGeoPreferenceReady(true);
-          }
-        })
-        .catch(resumeFollow);
-    } else {
-      resumeFollow();
-    }
-    return () => { cancelled = true; };
-  }, []);
-  useEffect(() => {
-    if (!geoPreferenceReady) return;
-    try {
-      localStorage.setItem(GPS_FOLLOW_KEY, geoFollow ? "1" : "0");
-    } catch { /* */ }
-  }, [geoFollow, geoPreferenceReady]);
   useEffect(() => { saveLocationForSync(location); }, [location]);
+  // Local authority from the point, not the geocoder's county or a stored post town.
+  const districtLat = location.lat;
+  const districtLon = location.lon;
+  const districtCountry = location.country;
+  const districtCode = location.countryCode;
+  // Here has no country yet; nearestUkDistrict only asks postcodes.io for a point inside the UK.
+  const districtForHere = location.name === HERE_NAME;
+  useEffect(() => {
+    if (!districtForHere && !isUk({ country: districtCountry, countryCode: districtCode })) return undefined;
+    let cancelled = false;
+    void nearestUkDistrict(districtLat, districtLon).then((district) => {
+      if (cancelled || !district) return;
+      if (districtForHere) {
+        const next = hereFixWithDistrict(readStoredHere(), districtLat, districtLon, district);
+        if (next) storeHereFix(next);
+      }
+      else {
+        // Keep the saved row in step with the header.
+        setSaved((prev) => {
+          if (!prev.some((p) => p.lat === districtLat && p.lon === districtLon && p.region !== district)) return prev;
+          const next = prev.map((p) => (p.lat === districtLat && p.lon === districtLon ? { ...p, region: district } : p));
+          try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
+          return next;
+        });
+      }
+      setLocation((current) => (
+        current.lat === districtLat && current.lon === districtLon && current.region !== district
+          ? { ...current, region: district }
+          : current
+      ));
+    });
+    return () => { cancelled = true; };
+  }, [districtLat, districtLon, districtCountry, districtCode, districtForHere]);
   useEffect(() => {
     const focus = new URLSearchParams(window.location.search).get("focus");
     if (focus && isView(focus)) setView(focus);
@@ -445,34 +418,62 @@ export function AceWeatherApp() {
     return () => window.removeEventListener("aceweather:pwa-update-ready", onUpd);
   }, []);
 
-  // fetch forecast on location change
+  // The forecast depends on the point only. A district filled in later, or a rename, must not refetch it.
+  const pointLat = location.lat;
+  const pointLon = location.lon;
+  const pointTz = location.tz;
+  const point = useMemo<AwLocation>(
+    () => ({ name: "", region: "", country: "", lat: pointLat, lon: pointLon, elev: null, tz: pointTz }),
+    [pointLat, pointLon, pointTz],
+  );
+
+  // fetch forecast when the point changes or a reload is asked for
   useEffect(() => {
     const ctrl = new AbortController();
     const cacheMode = loadRequest.cache;
+    // A new place must not keep showing the previous forecast. A reload of the same place can.
+    if (cacheMode !== "reload") {
+      setRaw(null);
+      setSeasonal(null);
+    }
     setStatus(cacheMode === "reload" ? "refreshing" : "loading");
-    fetchForecast(location, ctrl.signal, cacheMode)
-      .then((data) => { setRaw(data); setRawCacheMode(cacheMode); setStatus("live"); })
+    fetchForecast(point, ctrl.signal, cacheMode)
+      .then((data) => {
+        if (ctrl.signal.aborted) return;
+        setRaw(data);
+        setRawCacheMode(cacheMode);
+        setStatus("live");
+      })
       .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("error"); });
     // The learned forecast arrives separately and is laid over temperature, wind and rain; if it fails the page keeps Open-Meteo's values.
     setLearnedOverlay(null);
-    fetchLearned(location, ctrl.signal).then(setLearnedOverlay).catch(() => {});
+    fetchLearned(point, ctrl.signal).then(setLearnedOverlay).catch(() => {});
     return () => ctrl.abort();
-  }, [location, loadRequest]);
+  }, [point, loadRequest]);
 
   // seasonal (best-effort, async; forecast actuals fill the archive's recent-day gap)
   useEffect(() => {
     if (!raw) return undefined;
     const ctrl = new AbortController();
-    fetchSeasonal(location, raw.daily, ctrl.signal, rawCacheMode).then(setSeasonal).catch(() => setSeasonal(null));
+    fetchSeasonal(point, raw.daily, ctrl.signal, rawCacheMode).then(setSeasonal).catch(() => setSeasonal(null));
     return () => ctrl.abort();
-  }, [location, raw, rawCacheMode]);
+  }, [point, raw, rawCacheMode]);
 
   // search debounce
   useEffect(() => {
-    if (query.trim().length < 2) { setSuggestions([]); setSearchedQuery(null); return undefined; }
+    if (query.trim().length < 2) { setSuggestions([]); setSearchNote(null); return undefined; }
     const ctrl = new AbortController();
-    const q = query.trim();
-    const t = setTimeout(() => { searchLocations(query, ctrl.signal).then((r) => { setSuggestions(r); setSearchedQuery(q); }).catch(() => {}); }, 280);
+    const t = setTimeout(() => {
+      searchLocations(query, ctrl.signal).then((rows) => {
+        if (ctrl.signal.aborted) return;
+        setSuggestions(rows);
+        setSearchNote(rows.length ? null : "No places found");
+      }).catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setSuggestions([]);
+        setSearchNote("Search failed");
+      });
+    }, 280);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [query]);
 
@@ -504,8 +505,12 @@ export function AceWeatherApp() {
     ].join(",");
     const focusables = () => Array.from(sheet?.querySelectorAll<HTMLElement>(focusableSelector) || []).filter((el) => el.getClientRects().length > 0);
     window.setTimeout(() => {
-      const preferred = sheet?.matches(".awx-location-sheet") ? sheet.querySelector("input") : null;
-      const first = preferred || focusables()[0];
+      if (locationOpen && !settingsOpen && !moreOpen) {
+        const visible = [...document.querySelectorAll<HTMLInputElement>(".awx-place-search input")].find((el) => el.getClientRects().length > 0);
+        visible?.focus();
+        return;
+      }
+      const first = focusables()[0];
       if (first instanceof HTMLElement) first.focus();
     }, 0);
     function closeSheets() {
@@ -542,70 +547,48 @@ export function AceWeatherApp() {
       }, 0);
     };
   }, [locationOpen, settingsOpen, moreOpen]);
-  useEffect(() => {
-    if (!geoFollow) return undefined;
-    if (!navigator.geolocation) {
-      setGeoStatus("unsupported");
-      setGeoFollow(false);
-      return undefined;
-    }
-    setGeoStatus("locating");
-    manualPickRef.current = false;
-    const applyGpsPosition = (pos: GeolocationPosition) => {
-      if (manualPickRef.current) return;
-      const next = gpsLocationFromPosition(pos);
-      if (distanceKm(gpsLastLoadedRef.current, next) < GPS_UPDATE_MIN_KM) {
-        setGeoStatus("following");
+  function remember(next: AwLocation[]) {
+    setSaved(next);
+    try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
+  }
+  function loadLocation(loc: AwLocation, opts: LoadLocationOptions = {}) {
+    const saving = opts.save !== false && loc.name !== HERE_NAME;
+    if (saving) {
+      const result = addSaved(saved, loc);
+      if (result.atLimit) {
+        setSearchNote("24 place limit");
+        setLocationOpen(true);
         return;
       }
-      gpsLastLoadedRef.current = { lat: next.lat, lon: next.lon };
-      setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
-      setLocation(next);
-      setQuery("");
-      setSuggestions([]);
-      setLocationOpen(false);
-      setGeoStatus("following");
-    };
-    const onGpsError = (error: GeolocationPositionError) => {
-      if (error?.code === 1) {
-        gpsLastLoadedRef.current = null;
-        setGeoFollow(false);
-        setGeoStatus("blocked");
-      } else {
-        setGeoStatus("error");
-      }
-    };
-    const watchId = navigator.geolocation.watchPosition(applyGpsPosition, onGpsError, GPS_OPTIONS);
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [geoFollow]);
-
-  function loadLocation(loc: AwLocation, opts: LoadLocationOptions = {}) {
+      remember(result.places);
+    }
     if (!opts.keepGeoFollow) {
       manualPickRef.current = true;
-      try { localStorage.setItem(GPS_FOLLOW_KEY, "0"); } catch { /* */ }
-      gpsLastLoadedRef.current = null;
-      setGeoFollow(false);
+      clearStoredHere();
       setGeoStatus("idle");
     }
     setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: undefined }));
-    setLocation(loc); setQuery(""); setSuggestions([]);
-    if (opts.resetView !== false) setView("all");
+    setLocation(loc); setQuery(""); setSuggestions([]); setSearchNote(null);
     if (opts.closeLocationSheet !== false) setLocationOpen(false);
-    if (opts.save !== false) {
-      setSaved((prev) => {
-        const next = [loc, ...prev.filter((p) => p.name !== loc.name)].slice(0, 8);
-        try { localStorage.setItem("awx-saved", JSON.stringify(next)); } catch { /* */ }
-        return next;
-      });
-    }
   }
   function onSubmit(e: FormEvent<HTMLFormElement>) { e.preventDefault(); if (suggestions[0]) loadLocation(suggestions[0]); }
   function openLocationSheet() {
     setQuery("");
     setSuggestions([]);
+    setSearchNote(null);
     setLocationOpen(true);
     setSettingsOpen(false);
     setMoreOpen(false);
+  }
+  function renamePlace(id: string, name: string) {
+    remember(renameSaved(saved, id, name));
+    if (placeKey(location) === id) setLocation((current) => ({ ...current, name: name.trim() || current.name }));
+  }
+  function deletePlace(id: string) {
+    remember(removeSaved(saved, id));
+  }
+  function movePlace(fromId: string, toId: string) {
+    remember(moveSaved(saved, fromId, toId));
   }
   function selectViewAndReset(nextView: string) {
     if (!isView(nextView)) return;
@@ -615,6 +598,7 @@ export function AceWeatherApp() {
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
   }
   function locateMe() {
+    if (geolocationPlan({ type: "tap-here" }) !== "request") return;
     if (!navigator.geolocation) {
       setGeoStatus("unsupported");
       return;
@@ -624,15 +608,16 @@ export function AceWeatherApp() {
     navigator.geolocation.getCurrentPosition((pos) => {
       if (manualPickRef.current) return;
       const next = gpsLocationFromPosition(pos);
-      gpsLastLoadedRef.current = { lat: next.lat, lon: next.lon };
+      storeHereFix({ lat: next.lat, lon: next.lon, name: HERE_NAME, region: "", at: Date.now() });
       loadLocation(next, { keepGeoFollow: true, save: false });
-      setGeoFollow(true);
       setGeoStatus("following");
+      // The district is filled by the district effect, which also stores it with the fix.
     }, (error) => {
-      setGeoFollow(false);
+      if (error?.code === 1) clearStoredHere();
       setGeoStatus(error?.code === 1 ? "blocked" : "error");
     }, GPS_OPTIONS);
   }
+  useEffect(() => { locateRef.current = locateMe; });
   function share() {
     if (!model) return;
     const n = model.now;
@@ -642,6 +627,7 @@ export function AceWeatherApp() {
   }
 
   function reloadData() {
+    if (geolocationPlan({ type: "refresh", hereActive: location.name === HERE_NAME }) === "request") locateMe();
     setStatus("refreshing");
     setLoadRequest((current) => ({ nonce: current.nonce + 1, cache: "reload" }));
   }
@@ -653,11 +639,43 @@ export function AceWeatherApp() {
   }
 
   const isFetching = status === "loading" || status === "refreshing";
-  const statusCls = status === "live" ? "" : isFetching ? " is-stale" : " is-offline";
   const statusText = status === "live" ? "Live" : status === "refreshing" ? "Reloading" : status === "loading" ? "Fetching" : "Offline";
   const reloadLabel = status === "refreshing" ? "Reloading data" : "Reload data";
-  const gpsButtonLabel = geoStatus === "locating" ? "Locating…" : geoFollow ? "GPS location on" : geoStatus === "blocked" ? "Location off · allow in settings" : location.name === DEFAULT_LOCATION.name ? "Use my location" : "Switch back to my location";
-  const placeSubtitle = geoFollow ? (location.region || "GPS location") : (location.region ? `${location.region} · GPS off` : "Chosen place · GPS off");
+  const hereOn = location.name === HERE_NAME;
+  const hereDetail = geoStatus === "blocked" ? "Location blocked" : geoStatus === "error" ? "Couldn't find you" : hereOn ? location.region : "";
+  const notice = forecastNotice(status, Boolean(model));
+  const temperature = model ? `${formatTemperature(model.now.temp, unit)}°` : undefined;
+  const placeCluster = (
+    <div className="awx-place-cluster">
+      <PlaceSlot
+        open={locationOpen}
+        name={location.name}
+        region={location.region}
+        query={query}
+        onOpen={openLocationSheet}
+        onClose={() => setLocationOpen(false)}
+        onQuery={setQuery}
+        onSubmit={onSubmit}
+      />
+    </div>
+  );
+  const placeMenu = locationOpen ? (
+    <PlaceMenu
+      query={query}
+      suggestions={suggestions}
+      saved={saved}
+      note={searchNote}
+      hereDetail={hereDetail}
+      hereOn={hereOn}
+      activeKey={hereOn ? null : placeKey(location)}
+      temperature={temperature}
+      onSelect={loadLocation}
+      onHere={locateMe}
+      onRename={renamePlace}
+      onDelete={deletePlace}
+      onMove={movePlace}
+    />
+  ) : null;
 
   const settingsControls = (
     <>
@@ -704,6 +722,7 @@ export function AceWeatherApp() {
               </span>
             </div>
             <div className="awx-settings-body">
+              <AccountPanel account={account} compact onStart={(signIn) => { setAccountStart(signIn); setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} />
               {settingsControls}
               <EndpointDocs rail />
             </div>
@@ -713,33 +732,35 @@ export function AceWeatherApp() {
 
       {/* FEED */}
       <main ref={feedRef} className="awx-feed" id="top" data-view={view}>
-        <header className="awx-mobile-top">
+        <header className={"awx-mobile-top" + (locationOpen ? " is-finding" : "")}>
           <span className="awx-brand-mark" aria-hidden="true" />
-          <button className="awx-location-trigger" type="button" onClick={openLocationSheet} aria-label={`Search or change location. Current location ${location.name}`}>
-            <strong>{location.name}</strong>
-            <PhonePlaceLine full={geoFollow ? (location.region || "GPS active") : (location.region ? `${location.region} · GPS off` : "Chosen place · GPS off")} short={geoFollow ? "GPS active" : "Chosen place · GPS off"} />
-          </button>
+          {placeCluster}
           <div className="awx-mtop-right">
-            <span className={"awx-status" + statusCls}>{statusText}</span>
             <button className={"awx-icon-btn awx-refresh-icon" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} aria-label="Reload weather data" title={reloadLabel}><RefreshIcon /></button>
-            <button className="awx-icon-btn" type="button" onClick={() => { setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} aria-label="Settings"><SettingsIcon /></button>
+            <button className="awx-icon-btn" type="button" onClick={() => { setAccountStart(false); setSettingsOpen(true); setLocationOpen(false); setMoreOpen(false); }} aria-label="Settings"><SettingsIcon /></button>
           </div>
+          {placeMenu}
         </header>
-        <div className="awx-feed-head">
-          <div>
-            <h1>{location.name}</h1>
-            <span className="awx-sub">{placeSubtitle}</span>
-          </div>
+        <div className={"awx-feed-head" + (locationOpen ? " is-finding" : "")}>
+          {placeCluster}
           <div className="awx-head-actions">
-            <span className={"awx-status" + statusCls}>{statusText}</span>
             <button className={"awx-btn awx-btn-ghost awx-refresh-btn" + (status === "refreshing" ? " is-loading" : "")} type="button" onClick={reloadData} disabled={isFetching} title={reloadLabel}>
               <RefreshIcon /><span>{reloadLabel}</span>
             </button>
           </div>
+          {placeMenu}
         </div>
+        {notice && !(view === "field" && notice === "loading") ? (
+          <div className="awx-feed-status">
+            <article className="awx-card awx-overview-status">
+              <span>{notice === "offline" ? "Offline" : "Loading"}</span>
+              {notice === "offline" ? <button className="awx-btn" type="button" onClick={reloadData}>Retry</button> : null}
+            </article>
+          </div>
+        ) : null}
         {model && view === "all" ? (
           <OverviewExperience
-            hint={<SetupHint onAllowLocation={locateMe} geoFollow={geoFollow} />}
+            hint={<SetupHint onAllowLocation={locateMe} geoFollow={hereOn} />}
             model={model}
             unit={unit}
             windUnit={windUnit}
@@ -767,32 +788,13 @@ export function AceWeatherApp() {
               {view === "about" ? <SourcesCard source={status} freshness={freshness} aceForecast={Boolean(learned?.meta)} /> : null}
             </>
           ) : (
-            status !== "error" && view === "field" ? <SprayCardSkeleton /> : <article className="awx-card"><div className="awx-radar-status">{status === "error" ? "Could not reach Open-Meteo. Check your connection and retry." : "Loading live conditions…"}</div></article>
+            status !== "error" && view === "field" ? <SprayCardSkeleton /> : null
           )}
         </section>
       </main>
 
       {/* SIDEBAR */}
       <aside ref={sideRef} className="awx-side" aria-label="Utilities">
-        <div className="awx-side-card">
-          <h3>Location</h3>
-          <div className="awx-side-body">
-            <LocationPickerContent
-              query={query}
-              suggestions={suggestions}
-              searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
-              saved={saved}
-              activeLocationName={location.name}
-              currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
-              gpsButtonLabel={gpsButtonLabel}
-              gpsStatus={geoStatus}
-              onQueryChange={setQuery}
-              onSubmit={onSubmit}
-              onSelectLocation={loadLocation}
-              onLocate={locateMe}
-            />
-          </div>
-        </div>
         {model ? (
           <div className="awx-side-card">
             <h3>Today at a glance</h3>
@@ -831,34 +833,6 @@ export function AceWeatherApp() {
         ))}
       </nav>
 
-      {locationOpen ? (
-        <div className="awx-sheet-overlay" onClick={() => setLocationOpen(false)}>
-          <div className="awx-sheet awx-location-sheet" role="dialog" aria-modal="true" aria-label="Change location" onClick={(e) => e.stopPropagation()}>
-            <div className="awx-sheet-head">
-              <strong>Location</strong>
-              <button className="awx-icon-btn" type="button" onClick={() => setLocationOpen(false)} aria-label="Close"><CloseIcon /></button>
-            </div>
-            <div className="awx-sheet-body">
-              <LocationPickerContent
-                query={query}
-                suggestions={suggestions}
-                searchEmpty={searchedQuery !== null && searchedQuery === query.trim() && suggestions.length === 0}
-                saved={saved}
-                activeLocationName={location.name}
-                currentTemperature={model ? `${formatTemperature(model.now.temp, unit)}°` : undefined}
-                gpsButtonLabel={gpsButtonLabel}
-              gpsStatus={geoStatus}
-                autoFocus
-                onQueryChange={setQuery}
-                onSubmit={onSubmit}
-                onSelectLocation={loadLocation}
-                onLocate={locateMe}
-              />
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {settingsOpen ? (
         <div className="awx-sheet-overlay" onClick={() => setSettingsOpen(false)}>
           <div className="awx-sheet" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
@@ -867,9 +841,10 @@ export function AceWeatherApp() {
               <button className="awx-icon-btn" type="button" onClick={() => setSettingsOpen(false)} aria-label="Close"><CloseIcon /></button>
             </div>
             <div className="awx-sheet-body">
+              <AccountPanel account={account} startOpen={accountStart} />
               {settingsControls}
               <div className="awx-sheet-actions">
-                <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>{gpsButtonLabel}</span></button>
+                <button className="awx-btn awx-btn-ghost" type="button" onClick={() => { locateMe(); setSettingsOpen(false); }}><GpsIcon /><span>Here</span></button>
                 <button className="awx-btn awx-btn-primary" type="button" title={shareLabel} onClick={share}><ShareIcon /><span>{shareLabel}</span></button>
               </div>
             </div>

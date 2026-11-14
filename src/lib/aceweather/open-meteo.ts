@@ -2,11 +2,14 @@
    Everything here is the live Open-Meteo API (no backend route needed). */
 
 import { overlayUkmoPayload, UKMO_CURRENT_OVERLAY, UKMO_HOURLY_OVERLAY } from "../weather-engine/ukmo-overlay.ts";
+import { capSearchQuery, classifyQuery, inRoughUkBox, isUk, rankPlaces, regionFromGeocode } from "./places.ts";
 
 export type AwLocation = {
+  id?: string;
   name: string;
   region: string;
   country: string;
+  countryCode?: string;
   lat: number;
   lon: number;
   elev: number | null;
@@ -14,12 +17,15 @@ export type AwLocation = {
 };
 
 export const DEFAULT_LOCATION: AwLocation = {
+  // The village, TS21 1HX. An earlier pin sat about 5 km south, in Longnewton,
+  // which is Stockton-on-Tees. The district is filled from postcodes.io, not stored here.
   name: "Bishopton",
-  region: "Stockton-on-Tees",
+  region: "",
   country: "United Kingdom",
-  lat: 54.5435,
-  lon: -1.4373,
-  elev: 30,
+  countryCode: "GB",
+  lat: 54.58642,
+  lon: -1.43714,
+  elev: null,
   tz: "Europe/London",
 };
 
@@ -34,6 +40,7 @@ export type ForecastResponse = {
 const FORECAST = "https://api.open-meteo.com/v1/forecast";
 const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 const ARCHIVE = "https://archive-api.open-meteo.com/v1/archive";
+const POSTCODES = "https://api.postcodes.io";
 
 function fetchInit(signal?: AbortSignal, cache?: RequestCache): RequestInit {
   const init: RequestInit = {};
@@ -98,22 +105,99 @@ export async function fetchForecast(loc: AwLocation, signal?: AbortSignal, cache
   return overlayUkmoPayload(base, ukmo);
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function districtLabel(value: unknown): string {
+  if (Array.isArray(value)) {
+    const names = [...new Set(value.filter((item): item is string => typeof item === "string" && item.length > 0))];
+    return names.slice(0, 2).join(", ");
+  }
+  return typeof value === "string" ? value : "";
+}
+
+function ukPlace(name: string, region: string, lat: number, lon: number): AwLocation {
+  return {
+    name,
+    region,
+    country: "United Kingdom",
+    countryCode: "GB",
+    lat,
+    lon,
+    elev: null,
+    tz: "Europe/London",
+  };
+}
+
+/** Full postcode or outward code via postcodes.io. A 404 is no match. Other failures throw. */
+async function searchPostcode(kind: "full-postcode" | "outcode", compact: string, signal?: AbortSignal): Promise<AwLocation[]> {
+  const path = kind === "full-postcode" ? `postcodes/${encodeURIComponent(compact)}` : `outcodes/${encodeURIComponent(compact)}`;
+  const r = await fetch(`${POSTCODES}/${path}`, { signal });
+  if (r.status === 404) return [];
+  if (!r.ok) throw new Error(`Postcode lookup ${r.status}`);
+  const body = (await r.json()) as { result?: Record<string, unknown> };
+  const result = body.result;
+  if (!result || !Number.isFinite(Number(result.latitude)) || !Number.isFinite(Number(result.longitude))) return [];
+  const name = String(kind === "full-postcode" ? result.postcode ?? compact : result.outcode ?? compact);
+  const region = districtLabel(result.admin_district) || districtLabel(result.admin_county);
+  return [ukPlace(name, region, Number(result.latitude), Number(result.longitude))];
+}
+
+/** Local authority (admin_district) for a point in the UK. Failure returns null. */
+export async function nearestUkDistrict(lat: number, lon: number, signal?: AbortSignal): Promise<string | null> {
+  if (!inRoughUkBox(lat, lon)) return null;
+  const params = new URLSearchParams({ lon: String(lon), lat: String(lat), limit: "1", radius: "2000" });
+  try {
+    const r = await fetch(`${POSTCODES}/postcodes?${params}`, { signal });
+    if (!r.ok) return null;
+    const body = (await r.json()) as { result?: Array<Record<string, unknown>> };
+    return districtLabel(body.result?.[0]?.admin_district) || null;
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    return null;
+  }
+}
+
+/** Replace a UK place's region with the local authority. Other places are left as the geocoder named them. */
+export async function withLocalAuthorities(places: AwLocation[], signal?: AbortSignal): Promise<AwLocation[]> {
+  return Promise.all(places.map(async (place) => {
+    if (!isUk(place)) return place;
+    const district = await nearestUkDistrict(place.lat, place.lon, signal);
+    return district ? { ...place, region: district } : place;
+  }));
+}
+
 export async function searchLocations(query: string, signal?: AbortSignal): Promise<AwLocation[]> {
-  const q = query.trim();
-  if (q.length < 2) return [];
-  const params = new URLSearchParams({ name: q, count: "6", language: "en", format: "json" });
+  const capped = capSearchQuery(query);
+  const classified = classifyQuery(capped);
+  if (!classified) return [];
+  if (classified.kind !== "place") return searchPostcode(classified.kind, classified.compact, signal);
+  const params = new URLSearchParams({ name: capped, count: "40", language: "en", format: "json" });
   const r = await fetch(`${GEOCODE}?${params}`, { signal });
   if (!r.ok) throw new Error(`Geocoding ${r.status}`);
   const body = (await r.json()) as { results?: Array<Record<string, unknown>> };
-  return (body.results ?? []).map((res) => ({
-    name: String(res.name ?? "Location"),
-    region: String(res.admin1 ?? ""),
-    country: String(res.country ?? ""),
-    lat: Number(res.latitude),
-    lon: Number(res.longitude),
-    elev: res.elevation != null ? Number(res.elevation) : null,
-    tz: String(res.timezone ?? "auto"),
-  }));
+  const mapped = (body.results ?? []).map((res) => {
+    const countryCode = String(res.country_code ?? "");
+    const country = String(res.country ?? "");
+    return {
+      name: String(res.name ?? "Location"),
+      region: regionFromGeocode({
+        country,
+        country_code: countryCode,
+        admin1: res.admin1,
+        admin2: res.admin2,
+        admin3: res.admin3,
+      }),
+      country,
+      countryCode,
+      lat: Number(res.latitude),
+      lon: Number(res.longitude),
+      elev: res.elevation != null ? Number(res.elevation) : null,
+      tz: String(res.timezone ?? "auto"),
+    };
+  });
+  return withLocalAuthorities(rankPlaces(mapped, 8), signal);
 }
 
 export type SeasonalContext = {

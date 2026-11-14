@@ -1,35 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <defs>
-    <clipPath id="tile"><rect width="192" height="192" rx="42" ry="42"/></clipPath>
-    <linearGradient id="bg" x1="30" y1="16" x2="163" y2="174" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0d1218"/>
-      <stop offset="0.58" stop-color="#111b24"/>
-      <stop offset="1" stop-color="#182c37"/>
-    </linearGradient>
-    <radialGradient id="sun" cx="38%" cy="34%" r="64%">
-      <stop offset="0" stop-color="#ffe39a"/>
-      <stop offset="0.62" stop-color="#f0b657"/>
-      <stop offset="1" stop-color="#d8943f"/>
-    </radialGradient>
-    <linearGradient id="cloud" x1="49" y1="63" x2="143" y2="134" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#dfeaf2"/>
-    </linearGradient>
-  </defs>
-  <g clip-path="url(#tile)">
-    <rect width="192" height="192" fill="url(#bg)"/>
-    <circle cx="68" cy="61" r="33" fill="url(#sun)"/>
-    <g stroke="#f3c96f" stroke-width="5" stroke-linecap="round" opacity="0.72">
-      <path d="M68 16v14"/>
-      <path d="M68 92v14"/>
-      <path d="M23 61h14"/>
-      <path d="M99 61h14"/>
-      <path d="M37 29l9 9"/>
-      <path d="M90 82l9 9"/>
-      <path d="M99 29l-9 9"/>
-      <path d="M46 82l-9 9"/>
-    </g>
-    <path fill="url(#cloud)" d="M57 132c-15 0-28-12-28-26 0-14 11-25 24-26 6-16 21-28 39-28 16 0 30 9 37 22 2-1 4-1 6-1 15 0 27 12 27 27s-12 27-27 27H57z"/>
-    <text x="96" y="110" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="47" font-weight="800" letter-spacing="-3" fill="#101820">aw</text>
-  </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AceWeather">
+  <title>AceWeather</title>
+  <rect width="1024" height="1024" fill="#0B1220"/>
+  <path fill="#6EA0FF" d="M512 176c10 0 196 250 196 412a196 196 0 0 1-392 0c0-162 186-412 196-412z"/>
+  <path fill="#0B1220" fill-rule="evenodd" d="M411.7 483.4L487.8 310.9L535.9 310.9L612.3 483.4L561.6 483.4L548.0 449.9L475.0 449.9L461.5 483.4ZM489.3 413.9L533.7 413.9L511.5 358.7Z"/>
+  <path fill="#0B1220" d="M426.0 696.0L370.0 523.4L420.3 523.4L455.1 633.6L491.5 523.4L536.4 523.4L571.4 634.9L607.4 523.4L654.0 523.4L598.0 696.0L545.8 696.0L512.7 591.0L478.2 696.0Z"/>
 </svg>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Ace card with a raindrop">
+  <title>Ace card with a raindrop</title>
+  <rect width="1024" height="1024" fill="#0B1220"/>
+  <g transform="rotate(-10 512 512)">
+    <rect x="230" y="150" width="564" height="724" rx="56" fill="#F4F0E6"/>
+    <path fill="#0B1220" d="M512 300c10 0 150 190 150 310a150 150 0 0 1-300 0c0-120 140-310 150-310z"/>
+  </g>
+</svg>

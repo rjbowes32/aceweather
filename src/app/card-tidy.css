@@ -259,3 +259,90 @@ html[data-theme="dark"] .awx .awx-cal-day[aria-pressed="true"] { background: col
 .awx .awx-loc-empty { padding-block: 12px; }
 .awx .awx-loc-empty:empty { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .awx .awx-location-picker { position: relative; }
+
+/* Header place search: the name becomes the field, and the list hangs under the bar. */
+.awx .awx-place-cluster { display: flex; align-items: center; min-width: 0; flex: 1 1 auto; gap: 2px; }
+.awx .awx-place-slot { min-width: 0; flex: 1 1 auto; }
+.awx .awx-place-search { display: flex; align-items: center; min-width: 0; min-height: 44px; margin: 0; }
+.awx .awx-place-search input {
+  flex: 1 1 auto; min-width: 0; height: 44px; border: 0; outline: none; background: transparent;
+  color: var(--awx-text); font: inherit; font-size: 16px; font-weight: 650;
+}
+.awx .awx-place-search input::placeholder { color: var(--awx-muted); font-weight: 500; }
+.awx .awx-place-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.awx .awx-location-trigger {
+  display: grid; justify-items: start; align-content: center; min-width: 0; min-height: 44px; width: 100%;
+  padding: 0 4px; border: 0; background: transparent; color: var(--awx-text); text-align: left;
+}
+.awx .awx-location-trigger strong {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 15px; font-weight: 650; line-height: 1.2;
+}
+.awx .awx-location-trigger small {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  margin-top: 1px; color: var(--awx-muted); font-size: 13px; font-weight: 500; line-height: 1.2;
+}
+.awx .awx-here-btn { flex: 0 0 auto; }
+.awx .awx-here-btn.is-on,
+.awx .awx-here-btn.is-on svg { color: var(--awx-accent); }
+.awx .awx-here-btn.is-on .awx-gps-dot { fill: var(--awx-accent); }
+.awx .awx-mobile-top,
+.awx .awx-feed-head { overflow: visible; }
+.awx .awx-mobile-top.is-finding,
+.awx .awx-feed-head.is-finding {
+  flex-wrap: wrap; align-items: center;
+  background: var(--awx-surface); backdrop-filter: none;
+}
+.awx .awx-place-menu {
+  position: static; flex: 1 0 100%; width: 100%; z-index: 1;
+  max-height: min(62dvh, 520px); overflow: auto;
+  background: transparent; border: 0; box-shadow: none;
+}
+.awx .awx-place-note {
+  display: flex; align-items: center; min-height: 48px; padding: 0 16px;
+  color: var(--awx-text); font-size: 15px; font-weight: 500;
+}
+.awx .awx-place-row {
+  display: flex; align-items: baseline; gap: 8px; width: 100%; min-height: 48px;
+  padding: 8px 16px; border: 0; border-top: 1px solid var(--awx-line);
+  background: transparent; color: var(--awx-text); text-align: left; font-size: 15px; font-weight: 500;
+}
+.awx .awx-place-menu > .awx-place-row:first-child,
+.awx .awx-place-menu > .awx-place-note:first-child { border-top: 0; }
+.awx .awx-place-row .awx-p-name { flex: none; font-size: 15px; font-weight: 500; color: var(--awx-text); }
+.awx .awx-place-row .awx-p-region { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--awx-muted); }
+.awx .awx-place-row .awx-p-temp { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: 15px; color: var(--awx-text); }
+.awx .awx-place-here.is-on .awx-p-name { color: var(--awx-accent); }
+.awx .awx-place-swipe { position: relative; overflow: hidden; min-height: 48px; background: var(--awx-surface); border-top: 1px solid var(--awx-line); }
+.awx .awx-place-swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+.awx .awx-place-swipe-actions button {
+  min-width: 78px; min-height: 48px; padding: 0 12px; border: 0;
+  background: var(--awx-surface-2); color: var(--awx-text); font: inherit; font-size: 15px; font-weight: 500;
+}
+.awx .awx-place-swipe-actions button.is-delete { color: var(--awx-risk); }
+.awx .awx-place-swipe-face { position: relative; display: flex; align-items: stretch; background: var(--awx-surface); min-height: 48px; touch-action: pan-y; }
+.awx .awx-place-swipe-face .awx-place-row { flex: 1 1 auto; min-width: 0; border-top: 0; }
+.awx .awx-place-swipe-face > form { flex: 1 1 auto; min-width: 0; }
+.awx .awx-place-grip {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; min-height: 48px; padding: 0; border: 0; background: transparent;
+  color: var(--awx-muted); font-size: 18px; line-height: 1; cursor: grab; touch-action: none;
+}
+.awx .awx-place-grip:active { cursor: grabbing; }
+.awx .awx-place-rename-input {
+  display: block; width: 100%; min-height: 48px; padding: 0 16px; border: 0;
+  border-bottom: 1px solid var(--awx-accent); background: var(--awx-surface);
+  color: var(--awx-text); font: inherit; font-size: 16px; font-weight: 500; outline: none;
+}
+.awx .awx-feed-status { padding: 12px 16px 0; }
+.awx .awx-overview-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 48px; margin: 0; color: var(--awx-text); font-size: 15px; font-weight: 600;
+}
+.awx .awx-overview-status .awx-btn { min-height: 44px; min-width: 88px; }
+@media (max-width: 900px) {
+  .awx .awx-location-trigger { justify-items: center; text-align: center; }
+  .awx .awx-mobile-top.is-finding .awx-mtop-right,
+  .awx .awx-mobile-top.is-finding .awx-here-btn { display: none; }
+  .awx .awx-feed-status { padding: 10px 12px 0; }
+}
