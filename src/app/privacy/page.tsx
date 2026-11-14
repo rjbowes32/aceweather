@@ -14,6 +14,7 @@ export default function PrivacyPage() {
       <p><Link href="/">← AceWeather</Link></p>
       <h1>Privacy</h1>
       <p className="awx-legal-date">Last updated 14 November 2026</p>
+      <p>AceWeather is run by Rob Bowes, who is responsible for the information described here.</p>
       <p>AceWeather works without an account. It has no adverts, no analytics and no tracking cookies.</p>
 
       <h2>What stays on your device</h2>
